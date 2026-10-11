@@ -16,6 +16,7 @@ Status: **Proposed.** Commands below were smoke-tested with FFmpeg 6.1 on synthe
 | WebM / Opus | Chrome/Android `MediaRecorder` | Yes |
 | Ogg / Opus | WhatsApp-style voice notes, Firefox | Yes |
 | MP4 (M4A) / AAC | iOS Safari `MediaRecorder`, phone recorder apps | Yes |
+| Raw AAC in ADTS (`.aac`) | Android phone recorder apps (seen in the Q-T1 spike) | Yes |
 | WAV / PCM (8–32-bit int, 32-bit float) | Field recorders | Yes |
 | FLAC | Field recorders, archives | Yes |
 | MP3 | Older recordings | Yes |
@@ -69,6 +70,7 @@ Read the first 64 bytes and match against an allow-list of magic numbers:
 | WebM/Matroska | `1A 45 DF A3` |
 | MP4/M4A | `....ftyp` (bytes 4–7) with brand allow-list (`M4A `, `mp42`, `isom`, `iso5`, …) |
 | MP3 | `ID3` or MPEG frame sync `FF Ex`/`FF Fx` |
+| AAC (ADTS) | ADTS sync `FF F1` / `FF F9` (layer bits `00`); shares the MPEG sync pattern, so tell it apart from MP3 by the layer bits |
 | 3GP/AMR | `....ftyp3gp` / `#!AMR` (if accepted) |
 
 A signature match is necessary but not sufficient; the full decode in 3.3 is the real check.
@@ -113,7 +115,7 @@ Parsed into `recordings.quality_metrics`:
 | `clipping_ratio` | astats (samples at full scale / total) or peak ≥ −0.1 dBFS count | `clipping` if > 0.1 % |
 | `silence_ratio` | silencedetect total silence / duration | `silent` if > 95 % |
 | `speech_ratio_vad` | Silero VAD (optional, advisory) | shown only, no automatic flag in MVP |
-| `duration_ms` | ffprobe | `too_short` if < 1 s |
+| `duration_ms` | full decode (`ffmpeg -f null`), not the ffprobe header: browser WebM files have no duration (Q-T1) | `too_short` if < 1 s |
 
 Flags are **advisory** signals for reviewers; they never auto-reject in the MVP (except `silent` + `too_short` which warn the contributor before upload where detectable client-side).
 

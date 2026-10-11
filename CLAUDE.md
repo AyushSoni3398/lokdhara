@@ -8,7 +8,7 @@ Lokdhara is a community-driven, research-oriented platform for preserving and di
 
 ## Current phase
 
-**Plan approved (2026-10-11); Milestone 1 (application skeleton) in progress.** Implement only the current milestone in `docs/ROADMAP.md`; do not start later milestones (uploads, auth, migrations, production infrastructure) without the owner's go-ahead.
+**Plan approved (2026-10-11); Milestone 1 (application skeleton) done; Milestone 2 awaits the owner's go-ahead.** Implement only the current milestone in `docs/ROADMAP.md`; do not start later milestones (uploads, auth, migrations, production infrastructure) without the owner's go-ahead.
 
 ## Architecture (see `docs/SYSTEM_ARCHITECTURE.md`, `docs/ARCHITECTURE_DECISIONS.md`)
 

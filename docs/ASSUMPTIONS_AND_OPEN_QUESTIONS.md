@@ -73,12 +73,31 @@ These are assumptions the plan currently relies on. Each one can change the desi
 
 | ID | Question | How it gets answered | Impact |
 |----|----------|----------------------|--------|
-| Q-T1 | Which recording formats do target phones' browsers actually produce, and do they decode reliably with ffmpeg? | Spike in M1 on real devices | Blocks M4 |
+| Q-T1 | Which recording formats do target phones' browsers actually produce, and do they decode reliably with ffmpeg? | Spike in M1 on real devices | **Answered for Android Chrome** (see §2.1); iOS Safari still untested |
 | Q-T2 | Is Opus playback reliable on all target browsers (notably iOS Safari), or is an AAC fallback needed? | Spike in M4 | Blocks M4 |
 | Q-T3 | Are proposed upload limits (100 MB / 30 min) right for field recordings? | Pilot feedback | Later |
 | Q-T4 | Which object-storage provider meets cost and residency needs? | Compare after Q-L7 | Blocks M8 |
 | Q-T5 | Does near-duplicate audio detection (e.g., Chromaprint) work usefully on speech? | Experiment in M4 | Later |
 | Q-T6 | Which fonts render Nag Mundari acceptably on target phones? | Device test in M3 | Blocks M3 if Nag Mundari is required |
+
+### 2.1 Q-T1 findings: device recording spike (2026-10-11)
+
+Method: a standalone test page reported `MediaRecorder.isTypeSupported` results, recorded a 4-second synthetic tone through `MediaRecorder` with no microphone, decoded it in the browser, and analysed a ~10 s file from the phone's own recorder app. Formats were then checked with FFmpeg 6.1 on equivalent files produced by Chromium's `MediaRecorder`. No audio was uploaded or kept.
+
+| Device | Browser | Default `MediaRecorder` output | Also supported | Phone recorder app |
+|--------|---------|-------------------------------|----------------|--------------------|
+| Android 10 phone (owner's) | Chrome 149 | `audio/webm;codecs=opus`, WebM container, 48 kHz | `audio/mp4` with AAC (`mp4a.40.2`) or Opus | `.aac`, AAC in ADTS, 48 kHz stereo, ~99 kbit/s |
+| Android 10 phone (second tester) | Chrome 154 | same type support (recording step not run) | same | not tested |
+| iPhone / iOS Safari | — | **not tested** | — | — |
+
+Conclusions:
+
+1. Android Chrome records **WebM/Opus at 48 kHz** by default; the browser recorder should request `audio/webm;codecs=opus` first, then `audio/mp4`, and send whatever `MediaRecorder.mimeType` reports.
+2. Uploaded files from phone recorder apps arrive as **AAC (ADTS) `.aac`**, so the allow-list must include `aac` (ADTS) as well as WebM, Ogg, MP4/M4A, WAV, FLAC, and MP3.
+3. FFmpeg decodes all three formats fully (WebM/Opus, MP4/Opus, ADTS/AAC).
+4. **WebM files from `MediaRecorder` carry no duration** in the header (`ffprobe` reports `duration=N/A`). `duration_ms` must come from the full decode, not from ffprobe's format header (AUDIO_PROCESSING_PIPELINE §3.5). ADTS durations from ffprobe are estimates for the same reason.
+5. A real microphone recording through the browser was not possible from the test page (sandbox blocked the mic); it uses the same encoder, so the format is expected to match. M3 must confirm on a real phone.
+6. Still open: iOS Safari (expected `audio/mp4`), and a low-end Android phone. Q-T2 (Opus playback on iOS) remains an M4 task.
 
 ## 3. Decision log for answered questions
 
@@ -86,3 +105,4 @@ These are assumptions the plan currently relies on. Each one can change the desi
 |------|----|----------|-----------|
 | 2026-10-11 | Plan | Planning phase (M0) approved; ADR-001–018 accepted | Ayush Soni (owner) |
 | 2026-10-11 | Q-P4 | Repository stays public | Ayush Soni (owner) |
+| 2026-10-11 | Q-T1 (partial) | Android Chrome records WebM/Opus 48 kHz; phone recorder apps give AAC/ADTS; duration taken from full decode; iOS still to test | Device spike (owner + one tester) |

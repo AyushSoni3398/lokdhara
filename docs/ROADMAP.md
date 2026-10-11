@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-Status: **Approved by Ayush Soni (project owner) on 2026-10-11.** M0 complete; M1 in progress. The **Blocks pilot** questions must still be answered before any real data is collected.
+Status: **Approved by Ayush Soni (project owner) on 2026-10-11.** M0 and M1 complete; M2 awaits the owner's go-ahead. The **Blocks pilot** questions must still be answered before any real data is collected.
 
 ## Approach
 
@@ -31,7 +31,7 @@ flowchart LR
 - **Tests:** document consistency review (see PLANNING_REVIEW); `.gitignore` verified with `git check-ignore`.
 - **Before moving on:** explicit approval to start implementation.
 
-## M1 — Application skeleton and development environment *(in progress: skeleton, CI and docs done; device recording spike pending)*
+## M1 — Application skeleton and development environment *(done 2026-10-11; device spike done for Android Chrome, iOS Safari still to test; see Q-T1 findings)*
 
 - **Deliverables:** `backend/` (FastAPI app factory, config, health endpoints, worker entrypoint stub), `frontend/` (Vite React TS, router, i18n with `hi`/`en`, layout), `infra/docker-compose.yml` (PostgreSQL 18), GitHub Actions CI (lint, type-check, unit tests, forbidden-file check, secret scan), development commands added to `CLAUDE.md`.
 - **Dependencies:** M0 approval.
