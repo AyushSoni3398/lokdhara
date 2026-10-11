@@ -8,7 +8,7 @@ Lokdhara is a community-driven, research-oriented platform for preserving and di
 
 ## Current phase
 
-**Plan approved (2026-10-11); Milestone 1 (application skeleton) done; Milestone 2 awaits the owner's go-ahead.** Implement only the current milestone in `docs/ROADMAP.md`; do not start later milestones (uploads, auth, migrations, production infrastructure) without the owner's go-ahead.
+**Plan approved (2026-10-11); Milestone 1 done; Milestone 2 (database, storage, auth) in progress.** Implement only the current milestone in `docs/ROADMAP.md`; do not start later milestones (uploads, auth, migrations, production infrastructure) without the owner's go-ahead.
 
 ## Architecture (see `docs/SYSTEM_ARCHITECTURE.md`, `docs/ARCHITECTURE_DECISIONS.md`)
 
@@ -27,7 +27,8 @@ CLAUDE.md, README.md, .gitignore, .editorconfig, .env.example
 docs/                 # all planning and design docs (source of truth)
 .claude/rules/        # path-scoped rules (load when matching files are touched)
 .claude/skills/       # procedures: audio, text, database, privacy, git
-backend/              # FastAPI app/ (main, config, db, health, worker), tests/; migrations/ in M2
+backend/              # FastAPI app/ (main, config, db, errors, security, cli, worker,
+                      #   modules/<domain>/{models,schemas,service,router}.py), migrations/, tests/
 frontend/             # Vite React app: src/{pages,components,i18n}
 infra/                # docker-compose.yml (Caddyfile in M8)
 scripts/              # repository checks used by CI
@@ -39,6 +40,9 @@ scripts/              # repository checks used by CI
 ```bash
 docker compose -f infra/docker-compose.yml up -d db     # PostgreSQL 18 (local only)
 cd backend && uv sync                                   # Python 3.13 deps
+uv run alembic upgrade head                             # apply migrations
+uv run python -m app.cli seed-dev                       # synthetic users (prints passwords)
+uv run python -m app.cli create-admin --username …       # first real admin
 uv run uvicorn app.main:app --reload                    # API :8000 (docs /api/docs)
 uv run python -m app.worker                             # worker
 uv run ruff check . && uv run ruff format --check . && uv run mypy app tests && uv run pytest

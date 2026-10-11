@@ -30,7 +30,10 @@ Production secrets live in the host's secret mechanism (environment file outside
 - Alembic, one migration per coherent schema change, reviewed like code.
 - Never edit a migration that has been applied anywhere shared (staging/prod); write a new one.
 - Destructive changes (drop column/table) use expand → migrate → contract across two releases.
-- Migrations run as a separate step before the new app version starts (`alembic upgrade head` in a one-off container) under the schema-owner role.
+- Migrations run as a separate step before the new app version starts (`alembic upgrade head` in a one-off container) under the schema-owner role (`LKD_MIGRATION_DATABASE_URL`).
+- The API and worker connect (`LKD_DATABASE_URL`) as a login role that is a member of `app_rw` and is **not** the schema owner or a superuser, e.g. `CREATE ROLE lokdhara_app LOGIN PASSWORD '…' IN ROLE app_rw;`. The withdrawal routine uses a separate member of `app_erasure`.
+- Run uvicorn with `--proxy-headers --forwarded-allow-ips=<Caddy's address>` so the client IP used for per-network sign-in throttling is the real client, not Caddy (otherwise one network limit would apply to everyone).
+- The first administrator is created on the server with `uv run python -m app.cli create-admin`; everyone else joins by invitation.
 - CI tests upgrade → downgrade → upgrade on an empty DB.
 
 ## 4. CI/CD

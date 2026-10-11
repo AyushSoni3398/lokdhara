@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-Status: **Approved by Ayush Soni (project owner) on 2026-10-11.** M0 and M1 complete; M2 awaits the owner's go-ahead. The **Blocks pilot** questions must still be answered before any real data is collected.
+Status: **Approved by Ayush Soni (project owner) on 2026-10-11.** M0 and M1 complete; M2 in progress. The **Blocks pilot** questions must still be answered before any real data is collected.
 
 ## Approach
 
@@ -40,7 +40,7 @@ flowchart LR
 - **Tests:** health endpoint test; i18n key-completeness test; CI forbidden-file test case.
 - **Before moving on:** spike findings recorded in `ASSUMPTIONS_AND_OPEN_QUESTIONS.md`.
 
-## M2 — Database and secure file-storage foundation
+## M2 — Database and secure file-storage foundation *(in progress: migrations, DB roles, audit log, invite-only auth done; storage, job queue, and domain tables next)*
 
 - **Deliverables:** Alembic migrations for identity, speakers, consent, submissions, recordings, renditions, text layers/revisions, review events, processing runs, audit events; append-only triggers and DB roles; `ObjectStore` interface with local and S3 adapters; job queue (Procrastinate spike vs. in-house, ADR-007); invite-only auth with sessions + CSRF; audit logging helper; seed script with synthetic users.
 - **Dependencies:** M1.
