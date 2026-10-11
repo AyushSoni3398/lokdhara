@@ -78,7 +78,7 @@ The same rule is implemented as a SQL predicate used by every list/search query,
 |---------|--------|
 | Authentication | Argon2id password hashes; opaque session token (256-bit random) stored hashed; cookie `HttpOnly; Secure; SameSite=Lax; Path=/`; idle timeout 7 days for contributors, 12 hours for reviewers/admins (initial values). |
 | CSRF | Double-submit token header on all non-GET requests. |
-| Brute force | Login rate limit per account and per IP; temporary lockout with admin unlock. |
+| Brute force | Failed sign-ins counted per account (5) and per client network (20, higher because facilitators may share one connection) within 15 minutes; reaching a limit locks sign-in for 15 minutes (`429` + `Retry-After`). Values are settings. An admin unlock action is not built yet; the lock expires on its own. |
 | Object access | Short-lived signed URLs (≤ 10 min) for playback renditions only; originals via admin endpoint that streams after audit write. |
 | Database roles | `app_rw` (normal), `app_erasure` (withdrawal routine only, may delete in append-only tables), `app_readonly` (reporting). Migrations run under a separate owner role. |
 | Storage credentials | Separate keys per bucket class; `consent-evidence` key only available to the API, not the worker. |

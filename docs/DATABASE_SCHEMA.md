@@ -1,6 +1,6 @@
 # Database Schema (proposed)
 
-Status: **Proposed, not implemented.** This is the logical schema that Milestone 2 turns into Alembic migrations. Field meanings are in [DATA_DICTIONARY.md](DATA_DICTIONARY.md).
+Status: **Partly implemented.** Identity (§1) and the audit log (§7) are implemented by migrations `0001`–`0002` in `backend/migrations/`; the rest is the logical schema that later Milestone 2 migrations implement. Field meanings are in [DATA_DICTIONARY.md](DATA_DICTIONARY.md).
 
 Conventions:
 
@@ -16,7 +16,7 @@ Conventions:
 | Column | Type | Notes |
 |--------|------|-------|
 | id | uuid PK | |
-| username | text UNIQUE NOT NULL | Login name; not necessarily real name. |
+| username | text UNIQUE NOT NULL | Login name; not necessarily real name. Lowercase `^[a-z0-9][a-z0-9._-]{2,39}$` (input is lowercased). |
 | display_name | text NOT NULL | Shown in UI. |
 | email 🔒 | text NULL UNIQUE | Optional (many contributors may have none). |
 | phone 🔒 | text NULL | Optional; only if needed for contact. |
@@ -35,11 +35,16 @@ Conventions:
 | granted_by | uuid FK users | |
 | granted_at | timestamptz | |
 | revoked_at | timestamptz NULL | Row kept for history. |
+| revoked_by | uuid FK users NULL | |
 | PK | (user_id, role, granted_at) | Active grants: `revoked_at IS NULL`. |
 
-### `invitations`, `sessions`
-`invitations(id, token_hash 🔒, role, created_by, expires_at, accepted_by NULL, accepted_at NULL)`
-`sessions(id, user_id, token_hash 🔒, created_at, last_seen_at, expires_at, revoked_at NULL, user_agent_hash, ip_hash)` — raw tokens are never stored.
+Partial unique index: one active grant per (user, role, scope).
+
+### `invitations`, `password_resets`, `sessions`, `login_throttle`
+`invitations(id, token_hash 🔒, role, created_by, created_at, expires_at, accepted_by NULL, accepted_at NULL, revoked_at NULL)`
+`password_resets(id, user_id, token_hash 🔒, created_by, created_at, expires_at, used_at NULL)`
+`sessions(id, user_id, token_hash 🔒, created_at, last_seen_at, expires_at, revoked_at NULL, user_agent_hash, ip_hash)` — raw tokens are never stored, only SHA-256 hashes.
+`login_throttle(key_hash PK, failures, window_started_at, locked_until NULL)` — keys are HMACs of the username or client IP hash, never the raw values.
 
 ## 2. Speakers and consent
 
@@ -271,6 +276,9 @@ Queue tables are owned by the job library (Procrastinate) or a minimal `jobs` ta
 ## 7. Audit
 
 ### `audit_events` 🧊
+
+Append-only via the shared `lkd_reject_change()` trigger: UPDATE/DELETE fail unless the session is a member of `app_erasure` **and** has set `lkd.erasure = 'on'` for its transaction. Migration `0001` creates the NOLOGIN roles `app_rw`, `app_erasure`, `app_readonly` and their default privileges (no role gets TRUNCATE).
+
 `id, occurred_at, actor_user_id NULL, actor_type ('user','system','worker'), action, target_type, target_id, request_id, ip_hash, details jsonb 🗂 (no content, no names)`.
 
 Indexed on (target_type, target_id), (actor_user_id, occurred_at), (action, occurred_at).

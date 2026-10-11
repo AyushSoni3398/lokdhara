@@ -28,11 +28,16 @@ Auth column: role(s) required. 🔒 = also audit-logged.
 | POST | `/auth/logout` | any | Revokes current session |
 | GET | `/auth/me` | any | Current user, roles, locale |
 | POST | `/auth/invitations` | admin 🔒 | `{role, expires_in_hours}` → `{invite_url}` (token shown once) |
-| POST | `/auth/invitations/{token}/accept` | public | `{username, display_name, password, locale}` |
-| POST | `/admin/users/{id}/password-reset` | admin 🔒 | Returns one-time reset link |
+| POST | `/auth/invitations/accept` | public 🔒 | `{token, username, display_name, password, locale}` |
+| POST | `/auth/password-reset` | public 🔒 | `{token, password}`; signs the user out of all sessions |
+| POST | `/admin/users/{id}/password-reset` | admin 🔒 | Returns one-time `{reset_url, expires_at}` |
 | POST | `/admin/users/{id}/roles` | admin 🔒 | Grant role |
 | DELETE | `/admin/users/{id}/roles/{role}` | admin 🔒 | Revoke role |
 | POST | `/admin/users/{id}/sessions/revoke` | admin 🔒 | Revoke all sessions |
+
+Invitation and reset tokens travel in the URL **fragment** (`/invite#<token>`, `/reset-password#<token>`), which browsers never send to servers, and then in the request body. They never appear in URL paths or query strings, so they cannot leak into access logs.
+
+Implemented in Milestone 2. Error codes: `invalid_credentials` (401, same response for unknown user, wrong password, and suspended account), `login_locked` (429 with `Retry-After`), `not_authenticated` (401), `csrf_failed` (403), `forbidden` (403), `invitation_invalid` / `reset_invalid` (404, same answer for unknown, used, revoked, and expired), `username_taken` (409), `weak_password` (422), `role_already_granted` / `last_admin` (409).
 
 ## 3. Speakers and consent
 

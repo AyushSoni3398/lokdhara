@@ -26,7 +26,7 @@ def test_upgrade_downgrade_upgrade(scratch_database_factory: Callable[[], str]) 
             ).scalars()
         )
     engine.dispose()
-    assert "audit_events" in tables
+    assert {"users", "user_roles", "sessions", "invitations", "audit_events"} <= tables
 
 
 def _insert_audit_event(engine: Engine) -> None:
@@ -81,4 +81,14 @@ def test_app_readonly_cannot_write(engine: Engine) -> None:
         connection.execute(text("SET ROLE app_readonly"))
         connection.execute(
             text("INSERT INTO audit_events (actor_type, action) VALUES ('system', 'x')")
+        )
+
+
+def test_usernames_are_lowercase_only(engine: Engine) -> None:
+    with engine.connect() as connection, pytest.raises(DBAPIError, match="username_format"):
+        connection.execute(
+            text(
+                "INSERT INTO users (username, display_name, password_hash) "
+                "VALUES ('Asha', 'Asha', 'x')"
+            )
         )
