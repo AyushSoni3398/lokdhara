@@ -26,6 +26,9 @@ dev = [
     "pytest>=9.1.1",
     "ruff>=0.17.0",
 ]
+loadtest = [
+    "locust>=2.46.7",
+]
 
 [tool.uv]
 package = false
@@ -40,6 +43,8 @@ ignore = []
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S105", "S106", "S107"]
+# Simulated users pick tasks at random; nothing there is security-sensitive.
+"loadtest/**" = ["S311"]
 
 [tool.mypy]
 python_version = "3.13"

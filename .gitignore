@@ -53,6 +53,8 @@ service-account*.json
 /consent-evidence/
 /private/
 .local-storage/
+# Load test accounts and results (backend/loadtest/run.sh)
+backend/loadtest/results/
 *.parquet
 *.jsonl
 !docs/**/*.jsonl
