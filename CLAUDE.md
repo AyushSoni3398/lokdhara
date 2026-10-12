@@ -29,7 +29,8 @@ docs/                 # all planning and design docs (source of truth)
 .claude/skills/       # procedures: audio, text, database, privacy, git
 backend/              # FastAPI app/ (main, config, db, errors, security, cli, worker,
                       #   object_store/ (ObjectStore: local + S3),
-                      #   modules/<domain>/{models,schemas,service,router}.py), migrations/, tests/
+                      #   modules/<domain>/{models,schemas,service,router}.py), migrations/, tests/,
+                      #   loadtest/ (Locust, synthetic data only)
 frontend/             # Vite React app: src/{api,auth,drafts,recording,pages,components,i18n}, e2e/
 infra/                # docker-compose.yml (Caddyfile in M8)
 scripts/              # repository checks used by CI
@@ -52,6 +53,7 @@ cd frontend && npm ci && npm run dev                    # SPA :5173 (proxies /ap
 npm run lint && npm run typecheck && npm test && npm run build && npm run size
 npm run e2e                                             # Playwright flow test (needs the db running)
 bash scripts/check-forbidden-files.sh                   # same check CI runs
+bash backend/loadtest/run.sh 50 5m                      # load test, own database (docs/LOAD_TESTING.md)
 ```
 
 Set `LKD_TEST_DATABASE_URL` to run the PostgreSQL integration tests locally (CI always runs them).
