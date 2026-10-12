@@ -1,3 +1,9 @@
+import threading
+import time
+
+import pytest
+
+from app import security
 from app.security import (
     constant_time_equals,
     hash_password,
@@ -37,3 +43,30 @@ def test_keyed_hash_depends_on_key_and_purpose() -> None:
     assert base != keyed_hash("key-one", "ua", "203.0.113.7")
     assert "203.0.113.7" not in base
     assert constant_time_equals(base, keyed_hash("key-one", "ip", "203.0.113.7"))
+
+
+def test_password_checks_wait_for_a_free_slot(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A burst of sign-ins must not run every hash at once (64 MiB each)."""
+    running = 0
+    most = 0
+    lock = threading.Lock()
+
+    class SlowHasher:
+        def verify(self, _hash: str, _password: str) -> bool:
+            nonlocal running, most
+            with lock:
+                running += 1
+                most = max(most, running)
+            time.sleep(0.02)
+            with lock:
+                running -= 1
+            return True
+
+    monkeypatch.setattr(security, "_hasher", SlowHasher())
+    monkeypatch.setattr(security, "_hash_slots", threading.BoundedSemaphore(2))
+    threads = [threading.Thread(target=verify_password, args=("h", "p")) for _ in range(8)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert most == 2

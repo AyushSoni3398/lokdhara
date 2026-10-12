@@ -2,7 +2,9 @@
 
 import hashlib
 import hmac
+import os
 import secrets
+import threading
 
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
@@ -11,18 +13,25 @@ from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatc
 _hasher = PasswordHasher()
 # Verified against when the username is unknown, so response time does not reveal accounts.
 _DUMMY_HASH = _hasher.hash(secrets.token_urlsafe(16))
+# Each hash uses 64 MiB and a core for about 0.25 s. Without a limit, a burst of sign-ins runs
+# one per request thread (40 per API process): gigabytes of memory on a 4 GB server, and no
+# CPU left for other requests. Extra sign-ins wait their turn instead (docs/LOAD_TESTING.md).
+_hash_slots = threading.BoundedSemaphore(os.process_cpu_count() or 1)
 
 PASSWORD_MIN_LENGTH = 10
 PASSWORD_MAX_LENGTH = 256
 
 
 def hash_password(password: str) -> str:
-    return _hasher.hash(password)
+    with _hash_slots:
+        return _hasher.hash(password)
 
 
 def verify_password(password_hash: str | None, password: str) -> bool:
     try:
-        return _hasher.verify(password_hash or _DUMMY_HASH, password) and password_hash is not None
+        with _hash_slots:
+            verified = _hasher.verify(password_hash or _DUMMY_HASH, password)
+        return verified and password_hash is not None
     except (VerifyMismatchError, VerificationError, InvalidHashError):
         return False
 
