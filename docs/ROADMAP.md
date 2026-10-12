@@ -57,10 +57,10 @@ flowchart LR
 - **Tests:** upload security suite (part), consent gating, idempotency, Playwright happy path with fake media stream.
 - **Before moving on:** usability notes from at least 2 test users (team members acting as contributors is acceptable at this stage).
 
-## Load test of the submission flow (after M3, requested by the owner on 2026-10-12)
+## Load test of the submission flow (after M3, requested by the owner on 2026-10-12) *(first run done 2026-10-12, see [LOAD_TESTING.md](LOAD_TESTING.md); the worker part waits for M4's audio handlers)*
 
 - **Deliverables:** a [Locust](https://locust.io/) script in `backend/loadtest/` (development dependency only; it sends nothing outside the machine) that simulates about 50 contributors signing in, creating drafts, and uploading **synthetic, generated** audio; a reviewer browsing scenario is added once the M6 review queue exists. Results go in a short `docs/LOAD_TESTING.md`: requests per second, slowest responses, and the point where the worker queue falls behind.
-- **Dependencies:** M3 (uploads into quarantine); `seed-dev` synthetic users.
+- **Dependencies:** M3 (uploads into quarantine); synthetic accounts, which the script creates in its own `lokdhara_loadtest` database.
 - **How it runs:** against the local Docker Compose stack with synthetic data only, never against staging or production with real data.
 - **Acceptance criteria:** the script runs from a fresh clone with one command; results and the machine they ran on are recorded; any bottleneck found becomes an issue or an ADR before M8.
 

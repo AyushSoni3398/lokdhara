@@ -33,6 +33,7 @@ Production secrets live in the host's secret mechanism (environment file outside
 - Migrations run as a separate step before the new app version starts (`alembic upgrade head` in a one-off container) under the schema-owner role (`LKD_MIGRATION_DATABASE_URL`).
 - The API and worker connect (`LKD_DATABASE_URL`) as a login role that is a member of `app_rw` and is **not** the schema owner or a superuser, e.g. `CREATE ROLE lokdhara_app LOGIN PASSWORD '…' IN ROLE app_rw;`. The withdrawal routine uses a separate member of `app_erasure`.
 - Run uvicorn with `--proxy-headers --forwarded-allow-ips=<Caddy's address>` so the client IP used for per-network sign-in throttling is the real client, not Caddy (otherwise one network limit would apply to everyone).
+- Also run uvicorn with `--timeout-keep-alive 75` and give Caddy's `reverse_proxy` a shorter upstream keep-alive (`transport http { keepalive 60s }`), so uvicorn never closes an idle connection that Caddy is about to reuse. With uvicorn's 5 s default, the load test saw requests fail with "connection reset" ([LOAD_TESTING.md](LOAD_TESTING.md)).
 - The first administrator is created on the server with `uv run python -m app.cli create-admin`; everyone else joins by invitation.
 - CI tests upgrade → downgrade → upgrade on an empty DB.
 
