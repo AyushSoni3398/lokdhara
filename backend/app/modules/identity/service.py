@@ -296,8 +296,12 @@ def login(
     _raise_if_locked(db, list(limits), now)
 
     user = db.scalar(select(User).where(User.username == username))
+    stored_hash = user.password_hash if user else None
+    # End the read before the slow password check (about 0.25 s of CPU), so a burst of
+    # sign-ins cannot hold every pooled connection; the writes below start a new transaction.
+    db.rollback()
     # verify_password runs even for unknown users so timing does not reveal accounts.
-    password_ok = verify_password(user.password_hash if user else None, password)
+    password_ok = verify_password(stored_hash, password)
     if user is None or not password_ok or user.status != "active":
         _record_failure(db, settings, limits, now)
         audit.record(

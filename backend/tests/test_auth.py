@@ -2,11 +2,14 @@
 
 from datetime import timedelta
 
+import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select, update
+from sqlalchemy import Engine, select, update
 from sqlalchemy.orm import Session
 
+from app import security
 from app.modules.audit.models import AuditEvent
+from app.modules.identity import service
 from app.modules.identity.models import User, UserSession
 from tests.conftest import MakeUser, login, requires_postgres
 
@@ -53,6 +56,30 @@ def test_wrong_password_and_unknown_user_look_the_same(
     assert wrong.json() == unknown.json()
     assert wrong.headers["content-type"] == "application/problem+json"
     assert _actions(db) == ["auth.login_failed", "auth.login_failed"]
+
+
+def test_password_check_holds_no_database_connection(
+    client: TestClient, make_user: MakeUser, engine: Engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The check takes about 0.25 s of CPU; holding a pooled connection through it let a burst
+    of sign-ins use up the pool, and other requests failed (docs/LOAD_TESTING.md)."""
+    user = make_user("asha", "contributor")
+    checked_out: list[int] = []
+    check = security.verify_password
+
+    def watched(password_hash: str | None, password: str) -> bool:
+        checked_out.append(engine.pool.checkedout())  # type: ignore[attr-defined]
+        return check(password_hash, password)
+
+    monkeypatch.setattr(service, "verify_password", watched)
+    assert (
+        client.post(LOGIN, json={"username": "asha", "password": "wrong password"}).status_code
+        == 401
+    )
+    assert (
+        client.post(LOGIN, json={"username": "asha", "password": user.password}).status_code == 200
+    )
+    assert checked_out == [0, 0]
 
 
 def test_suspended_user_cannot_sign_in(
