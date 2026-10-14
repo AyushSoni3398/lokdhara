@@ -117,6 +117,22 @@ describe('syncDraft', () => {
     expect(await store.list()).toEqual([])
   })
 
+  it('uploads the audio again when the server deleted it, then submits', async () => {
+    const store = memoryDraftStore()
+    const api = fakeApi()
+    api.submitSubmission.mockRejectedValueOnce(new ApiError(409, 'recording_expired'))
+    const sent = draft({ progress: { submissionId: 'sub1', recordingId: 'rec1' } })
+    sent.texts = sent.texts.map((t) => ({ ...t, serverLayerId: `layer-${t.key}` }))
+    await store.put(sent)
+
+    await syncDraft(sent, store, api)
+
+    expect(api.uploadRecording).toHaveBeenCalledOnce()
+    expect(api.uploadRecording.mock.calls[0]?.[4]).toBe('k1') // same key restores the recording
+    expect(api.submitSubmission).toHaveBeenCalledTimes(2)
+    expect(await store.list()).toEqual([])
+  })
+
   it('keeps the draft and the reason when the server refuses it', async () => {
     const store = memoryDraftStore()
     const api = fakeApi()

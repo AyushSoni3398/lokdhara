@@ -252,6 +252,8 @@
     "upload_rate_limited": "Too many uploads in the last hour. It will try again later.",
     "recording_exists": "This submission already has its recording.",
     "recording_missing": "The uploaded recording was lost. Please record again.",
+    "recording_expired": "The recording waited too long and was removed from the server. Upload it again from this phone.",
+    "recording_changed": "This is not the same recording that was uploaded before.",
     "text_empty": "The text is empty.",
     "text_too_long": "The text is too long for this kind of entry.",
     "disallowed_character": "The text contains a hidden or unusual character that cannot be saved.",

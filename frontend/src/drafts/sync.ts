@@ -3,6 +3,10 @@
  * step (docs/SYSTEM_ARCHITECTURE.md §4.1). Every step is safe to repeat: the draft ID, the
  * upload's Idempotency-Key, and the server's duplicate checks make a retry after a lost
  * response land on the same records instead of creating new ones.
+ *
+ * The server deletes the audio of a draft left unsent for 30 days (docs/ASSUMPTIONS_AND_OPEN_
+ * QUESTIONS.md Q-T7). The phone still has it, so it is uploaded again with the same key, which
+ * restores the same recording, and the draft is submitted again.
  */
 import { ApiError, errorCode } from '../api/client'
 import * as endpoints from '../api/endpoints'
@@ -14,6 +18,9 @@ export type SyncApi = Pick<
   typeof endpoints,
   'createSubmission' | 'uploadRecording' | 'createTextLayer' | 'getSubmission' | 'submitSubmission'
 >
+
+/** The server no longer has the draft's audio. */
+const AUDIO_GONE = new Set(['recording_expired', 'recording_missing'])
 
 export function submissionBody(draft: Draft): SubmissionCreate {
   const d = draft.details
@@ -71,6 +78,15 @@ async function findExistingLayer(api: SyncApi, submissionId: string, body: TextL
   return match
 }
 
+async function submit(api: SyncApi, submissionId: string) {
+  try {
+    await api.submitSubmission(submissionId)
+  } catch (error) {
+    // Already submitted: an earlier attempt succeeded but its answer was lost.
+    if (!(error instanceof ApiError && error.code === 'submission_not_draft')) throw error
+  }
+}
+
 export async function syncDraft(
   input: Draft,
   store: DraftStore,
@@ -89,15 +105,13 @@ export async function syncDraft(
       await save({ progress: { ...draft.progress, submissionId } })
     }
 
+    const uploadAudio = async (id: string, audio: NonNullable<Draft['audio']>) => {
+      const { blob, filename, source } = audio
+      return api.uploadRecording(id, blob, filename, source, draft.uploadKey)
+    }
+
     if (draft.audio && !draft.progress.recordingId) {
-      const { blob, filename, source } = draft.audio
-      const uploaded = await api.uploadRecording(
-        submissionId,
-        blob,
-        filename,
-        source,
-        draft.uploadKey,
-      )
+      const uploaded = await uploadAudio(submissionId, draft.audio)
       await save({ progress: { ...draft.progress, recordingId: uploaded.recording_id } })
     }
 
@@ -117,10 +131,11 @@ export async function syncDraft(
     }
 
     try {
-      await api.submitSubmission(submissionId)
+      await submit(api, submissionId)
     } catch (error) {
-      // Already submitted: an earlier attempt succeeded but its answer was lost.
-      if (!(error instanceof ApiError && error.code === 'submission_not_draft')) throw error
+      if (!(draft.audio && error instanceof ApiError && AUDIO_GONE.has(error.code))) throw error
+      await uploadAudio(submissionId, draft.audio)
+      await submit(api, submissionId)
     }
     // The server has everything now; do not keep the recording on a possibly shared phone.
     await store.remove(draft.clientSubmissionId)
