@@ -5,12 +5,16 @@ happens later in the isolated worker (M4), which promotes the file to originals.
 is chosen once and used in both buckets, so `original_object_key` never has to change: while
 `upload_status` is `quarantined` the bytes are in the quarantine bucket, after promotion in
 originals. Keys contain only the date, the recording ID, and a fixed name (ADR-009).
+
+A draft left unsent for 30 days loses its quarantine copy (`expired`, app.modules.submissions.
+expiry). Uploading the same file again with the same Idempotency-Key puts it back under the same
+key, so the recording and any transcription linked to it stay as they were.
 """
 
 import re
 import uuid
 from datetime import timedelta
-from pathlib import PurePath
+from pathlib import PurePath, PurePosixPath
 from typing import BinaryIO
 
 from sqlalchemy import func, select
@@ -46,6 +50,18 @@ def _check_accepts_audio(db: Session, submission: Submission) -> None:
         # One recording per submission in the MVP; a retake is recorded again on the device
         # before uploading, and a second part is a separate, linked submission.
         raise ApiError(409, "recording_exists", "This submission already has its recording.")
+
+
+def _needs_restore(store: ObjectStore, submission: Submission, recording: Recording) -> bool:
+    if submission.status != "draft":
+        return False
+    if recording.upload_status == "expired":
+        return True
+    # A sweep whose database commit failed after deleting the file leaves it `quarantined`.
+    return (
+        recording.upload_status == "quarantined"
+        and store.head(Bucket.QUARANTINE, recording.original_object_key) is None
+    )
 
 
 def _check_rate(db: Session, settings: Settings, user: AuthenticatedUser) -> None:
@@ -86,13 +102,16 @@ def upload_recording(
 ) -> Recording:
     submission = service.get_owned(db, user, submission_id)
     replay = _existing(db, submission.id, upload_key)
-    if replay is not None:
+    if replay is not None and not _needs_restore(store, submission, replay):
         return replay
-    _check_accepts_audio(db, submission)
+    if replay is None:
+        _check_accepts_audio(db, submission)
     speakers.get_for_action(db, user, submission.speaker_id)
     if consents.active_consent(db, submission.speaker_id) is None:
         raise service.consent_required()
     _check_rate(db, settings, user)
+    if replay is not None:
+        return _restore(db, store, settings, user=user, recording=replay, stream=stream)
 
     container = sniff_audio_container(stream.read(SNIFF_BYTES))
     if container is None:
@@ -142,3 +161,45 @@ def upload_recording(
         store.delete(Bucket.QUARANTINE, key)
         raise
     return recording
+
+
+def _restore(
+    db: Session,
+    store: ObjectStore,
+    settings: Settings,
+    *,
+    user: AuthenticatedUser,
+    recording: Recording,
+    stream: BinaryIO,
+) -> Recording:
+    """Puts the same file back for a draft whose quarantine copy expired."""
+    recording_id, submission_id = recording.id, recording.submission_id
+    key, sha256 = recording.original_object_key, recording.sha256_original
+    content_type = CONTENT_TYPES[PurePosixPath(key).suffix.removeprefix(".")]
+    db.rollback()  # as above: no database connection held while storing
+    try:
+        stored = store.put(
+            Bucket.QUARANTINE,
+            key,
+            stream,
+            content_type=content_type,
+            max_bytes=settings.max_upload_bytes,
+        )
+    except ObjectTooLarge as exc:
+        raise ApiError(413, "too_large", "The recording is larger than allowed.") from exc
+    if stored.sha256 != sha256:
+        store.delete(Bucket.QUARANTINE, key)
+        raise ApiError(
+            409, "recording_changed", "This is not the recording uploaded to this draft before."
+        )
+
+    submission = service.get_owned(db, user, submission_id, for_update=True)
+    restored = db.scalar(select(Recording).where(Recording.id == recording_id).with_for_update())
+    if restored is None:  # erased meanwhile (withdrawal): the bytes must not stay either
+        store.delete(Bucket.QUARANTINE, key)
+        raise ApiError(404, "recording_not_found", "Recording not found.")
+    if submission.status == "draft" and restored.upload_status in ("expired", "quarantined"):
+        restored.upload_status = "quarantined"
+        restored.quarantined_at = submission.updated_at = utcnow()
+    db.commit()
+    return restored

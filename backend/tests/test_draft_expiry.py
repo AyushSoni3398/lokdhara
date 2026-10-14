@@ -1,4 +1,4 @@
-"""Audio of drafts left unsent for 30 days is deleted (Q-T7)."""
+"""Audio of drafts left unsent for 30 days is deleted and can be uploaded again (Q-T7)."""
 
 import uuid
 from datetime import timedelta
@@ -16,6 +16,7 @@ from app.modules.submissions.models import Recording
 from app.object_store import Bucket, ObjectStore
 from tests.conftest import MakeUser, act_as, requires_postgres
 from tests.submission_helpers import (
+    FAKE_WEBM,
     SUBMISSIONS,
     create_draft,
     give_consent,
@@ -111,6 +112,49 @@ def test_newer_uploads_and_submitted_drafts_are_kept(
         recording = _recording(db, recording_id)
         assert recording.upload_status == "quarantined"
         assert _in_quarantine(object_store, recording)
+
+
+def test_uploading_the_same_file_again_restores_the_same_recording(
+    client: TestClient, speaker: str, db: Session, engine: Engine, object_store: ObjectStore
+) -> None:
+    draft, recording_id = _draft_with_audio(client, speaker)
+    _age(db, recording_id, days=31)
+    _sweep(db, engine)
+
+    again = upload(client, draft, key=KEY)
+    assert again.status_code == 202
+    assert again.json() == {"recording_id": str(recording_id), "upload_status": "quarantined"}
+    recording = _recording(db, recording_id)
+    assert _in_quarantine(object_store, recording)
+    _sweep(db, engine)  # the 30 days start again
+    assert _recording(db, recording_id).upload_status == "quarantined"
+    assert client.post(f"{SUBMISSIONS}/{draft}/submit").json()["status"] == "processing"
+
+
+def test_a_different_file_cannot_replace_the_expired_one(
+    client: TestClient, speaker: str, db: Session, engine: Engine, object_store: ObjectStore
+) -> None:
+    draft, recording_id = _draft_with_audio(client, speaker)
+    _age(db, recording_id, days=31)
+    _sweep(db, engine)
+
+    other = upload(client, draft, content=FAKE_WEBM + b"\x00", key=KEY)
+    assert other.json()["code"] == "recording_changed"
+    recording = _recording(db, recording_id)
+    assert recording.upload_status == "expired"
+    assert not _in_quarantine(object_store, recording)
+
+
+def test_a_lost_quarantine_copy_of_a_draft_can_be_uploaded_again(
+    client: TestClient, speaker: str, db: Session, object_store: ObjectStore
+) -> None:
+    draft, recording_id = _draft_with_audio(client, speaker)
+    object_store.delete(Bucket.QUARANTINE, _recording(db, recording_id).original_object_key)
+    assert client.post(f"{SUBMISSIONS}/{draft}/submit").json()["code"] == "recording_missing"
+
+    assert upload(client, draft, key=KEY).status_code == 202
+    assert _in_quarantine(object_store, _recording(db, recording_id))
+    assert client.post(f"{SUBMISSIONS}/{draft}/submit").json()["status"] == "processing"
 
 
 def test_the_sweep_is_queued_once_an_hour(db: Session) -> None:
