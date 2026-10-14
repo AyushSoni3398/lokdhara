@@ -193,6 +193,7 @@ As built (M4):
 - A submission already decided by validation (`rejected_invalid`) is left alone.
 - Admins see failed jobs on the app's **Failed checks** page (`/admin/jobs`) and can run each one again.
 - If updating the submission fails, the job counts as failed with `unexpected_error` and is retried, so a finished check is never lost.
+- A draft's upload that waits in quarantine for 30 days (`LKD_DRAFT_UPLOAD_RETENTION_DAYS`, Q-T7) is deleted by `cleanup.expire_drafts` (`app/modules/submissions/expiry.py`), and the recording becomes `expired`. Workers queue this job every hour between jobs (`app/modules/processing/schedule.py`). Uploading the same file again with the same `Idempotency-Key` restores the recording; the app does that by itself when the server answers `recording_expired`.
 
 ## 4. Client-side (browser) responsibilities
 

@@ -80,7 +80,7 @@ These are assumptions the plan currently relies on. Each one can change the desi
 | Q-T4 | Which object-storage provider meets cost and residency needs? | Compare after Q-L7 | Blocks M8 |
 | Q-T5 | Does near-duplicate audio detection (e.g., Chromaprint) work usefully on speech? | Experiment in M4 | Later |
 | Q-T6 | Which fonts render Nag Mundari acceptably on target phones? | Device test in M3 | Blocks M3 if Nag Mundari is required |
-| Q-T7 | How long may an uploaded file wait in quarantine for its draft to be submitted? The SPA submits right after uploading, but `cleanup.quarantine` must not delete files of drafts still being submitted. | Decide in M4 | Blocks M4 |
+| Q-T7 | How long may an uploaded file wait in quarantine for its draft to be submitted? The SPA submits right after uploading, but `cleanup.quarantine` must not delete files of drafts still being submitted. | Decide in M4 | Answered 2026-10-14 by the project owner: **30 days** (`LKD_DRAFT_UPLOAD_RETENTION_DAYS`). After that an hourly `cleanup.expire_drafts` job deletes the draft's quarantine copy and marks the recording `expired`. The draft stays, and when it is sent the app uploads the recording again from the phone, which restores the same recording. |
 
 ### 2.1 Q-T1 findings: device recording spike (2026-10-11)
 

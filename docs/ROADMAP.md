@@ -64,9 +64,9 @@ flowchart LR
 - **How it runs:** against the local Docker Compose stack with synthetic data only, never against staging or production with real data.
 - **Acceptance criteria:** the script runs from a fresh clone with one command; results and the machine they ran on are recorded; any bottleneck found becomes an issue or an ADR before M8.
 
-## M4 — Audio and text validation pipeline *(in progress since 2026-10-12: validation, promotion to originals, quality flags, derived copies, duplicate flags, text checks, submission status, and the failed checks page done; the quarantine clean-up for unsubmitted drafts waits on Q-T7)*
+## M4 — Audio and text validation pipeline *(built 2026-10-12 to 2026-10-14: validation, promotion to originals, quality flags, derived copies, duplicate flags, text checks, submission status, the failed checks page, and deleting the audio of drafts left unsent for 30 days (Q-T7); still open: Opus playback on an iPhone (Q-T2))*
 
-- **Deliverables:** worker jobs `audio.validate`, `audio.analyze`, `audio.renditions`, `audio.dedupe`, `text.derive`, `cleanup.quarantine`; promotion to originals; quality flags; text safety validation, NFC, script detection; admin failed-jobs page with retry.
+- **Deliverables:** worker jobs `audio.validate`, `audio.analyze`, `audio.renditions`, `audio.dedupe`, `text.derive`, `cleanup.quarantine`, `cleanup.expire_drafts`; promotion to originals; quality flags; text safety validation, NFC, script detection; admin failed-jobs page with retry.
 - **Dependencies:** M3.
 - **Acceptance criteria:** all fixture formats processed; corrupt/disguised files rejected with codes; originals' checksums unchanged after processing; re-running jobs is idempotent; Opus playback verified on target browsers or AAC fallback added (Q-T2).
 - **Tests:** full upload-security and audio suites in [TESTING_STRATEGY.md](TESTING_STRATEGY.md); text property tests; failure/retry tests.

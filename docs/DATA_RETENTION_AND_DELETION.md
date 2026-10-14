@@ -6,7 +6,7 @@ Status: **Proposed.** Retention periods are placeholders until the data steward 
 
 | Data | Retention | Basis |
 |------|-----------|-------|
-| Quarantine uploads not promoted | 24 hours | Operational |
+| Quarantine uploads not promoted | Deleted once validation decides; a draft's upload that is never submitted after **30 days** (Q-T7, `cleanup.expire_drafts`) | Operational |
 | Rejected-invalid recordings | 30 days, then deleted (metadata row kept without object) | Lets contributors contest |
 | Drafts on server never submitted | 90 days, contributor reminded at 60 | Operational |
 | Approved originals and derivatives | For the life of the project/archive while consent stands | Preservation purpose |

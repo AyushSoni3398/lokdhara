@@ -164,7 +164,8 @@ CHECKs: consent before leaving `draft`; `recording_mode` is NULL exactly for `te
 | sample_rate_hz, channels, bit_depth | int | bit_depth NULL for lossy codecs. |
 | duration_ms 🔎 | int | |
 | is_lossy_source | boolean | |
-| upload_status | text CHECK IN ('quarantined','validated','rejected_invalid','promoted') | |
+| upload_status | text CHECK IN ('quarantined','validated','rejected_invalid','promoted','expired') | `expired` (migration `0011`): a draft's quarantine copy deleted after 30 days unsent (Q-T7). |
+| quarantined_at | timestamptz | When the bytes were last stored in quarantine; the 30 days count from here. |
 | validation_errors 🗂 | jsonb NULL | |
 | quality_metrics 🗂 | jsonb NULL | peak_dbfs, rms_dbfs, integrated_lufs, clipping_ratio, silence_ratio, speech_ratio_vad. |
 | quality_flags 🔎 | text[] DEFAULT '{}' | `silent`, `too_short`, `clipping`, `very_quiet`, `possible_duplicate`. |
@@ -268,7 +269,7 @@ Implemented by migration `0003` (ADR-019).
 `id, job_type, payload jsonb (IDs only), target_type, target_id, status ('queued','running','succeeded','failed'), attempts, max_attempts, run_after, dedupe_key NULL, locked_by NULL, lock_expires_at NULL, last_error_code NULL, created_at, finished_at NULL` — partial unique index on `dedupe_key` while queued or running. Finished rows may be purged; history lives in `processing_runs`.
 
 ### `processing_runs` 🧊 (one row per finished attempt)
-`id, job_id (no FK, so jobs can be purged), job_type ('system.ping','audio.validate','audio.analyze','audio.renditions','audio.dedupe','text.derive','dataset.export','cleanup.quarantine'), target_type, target_id, attempt, status ('succeeded','failed'), started_at, finished_at, worker_id, tool_versions jsonb 🗂, input_sha256, output_summary jsonb 🗂, error_code, error_detail (sanitised: for unexpected errors only the exception type is stored)`. A running attempt is visible in `jobs`, so this table never needs updating.
+`id, job_id (no FK, so jobs can be purged), job_type ('system.ping','audio.validate','audio.analyze','audio.renditions','audio.dedupe','text.derive','dataset.export','cleanup.quarantine','cleanup.expire_drafts'), target_type, target_id, attempt, status ('succeeded','failed'), started_at, finished_at, worker_id, tool_versions jsonb 🗂, input_sha256, output_summary jsonb 🗂, error_code, error_detail (sanitised: for unexpected errors only the exception type is stored)`. A running attempt is visible in `jobs`, so this table never needs updating.
 
 ## 6. Datasets
 
