@@ -1,5 +1,5 @@
 """docs/DATABASE_SCHEMA.md §3. Created by migrations 0005 and 0006; 0009 adds upload keys,
-0010 the `accepted` status.
+0010 the `accepted` status, 0011 draft audio expiry.
 
 Prompts, also created by 0005, are in app.modules.prompts.
 """
@@ -114,6 +114,8 @@ class Recording(Base):
     recorded_device_hint: Mapped[str | None] = mapped_column(Text)
     # The Idempotency-Key of the upload that created it (migration 0009).
     upload_key: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    # When the bytes were last stored in quarantine; a draft's audio expires from here (0011).
+    quarantined_at: Mapped[datetime] = now_default()
     created_at: Mapped[datetime] = now_default()
 
 

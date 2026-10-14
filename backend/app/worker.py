@@ -1,7 +1,8 @@
 """Background worker entrypoint. Run with: uv run python -m app.worker
 
 Claims jobs from the PostgreSQL queue (ADR-019) one at a time; run more processes for more
-throughput. Stops cleanly on SIGINT/SIGTERM after the current job.
+throughput. Between jobs it queues periodic jobs that are due (app.modules.processing.schedule).
+Stops cleanly on SIGINT/SIGTERM after the current job.
 """
 
 import argparse
@@ -17,6 +18,7 @@ from app.config import get_settings
 from app.db import get_engine
 from app.modules.processing import handlers  # noqa: F401 - registers job handlers
 from app.modules.processing.queue import process_one
+from app.modules.processing.schedule import Scheduler
 
 logger = logging.getLogger("lokdhara.worker")
 
@@ -70,10 +72,16 @@ def main() -> None:
     signal.signal(signal.SIGTERM, handle_signal)
     engine = get_engine()
     me = worker_id()
+    scheduler = Scheduler(engine)
     logger.info("worker started", extra={"worker_id": me})
+
+    def process() -> bool:
+        scheduler.tick()
+        return process_one(engine, me, settings.worker_lease_seconds)
+
     run(
         stop,
-        lambda: process_one(engine, me, settings.worker_lease_seconds),
+        process,
         settings.worker_poll_seconds,
         max_iterations=1 if args.once else None,
     )

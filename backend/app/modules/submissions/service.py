@@ -260,6 +260,12 @@ def submit(
     if submission.kind in AUDIO_KINDS and not recordings:
         raise ApiError(422, "recording_required", "Upload the recording before submitting.")
     for recording in recordings:
+        if recording.upload_status == "expired":
+            raise ApiError(
+                409,
+                "recording_expired",
+                "The recording was removed after waiting too long. Upload it again.",
+            )
         if store.head(Bucket.QUARANTINE, recording.original_object_key) is None:
             raise ApiError(
                 409, "recording_missing", "The uploaded recording is no longer available."

@@ -1,4 +1,5 @@
-"""Queue and history tables (docs/DATABASE_SCHEMA.md §5). Created by migration 0003."""
+"""Queue and history tables (docs/DATABASE_SCHEMA.md §5). Created by migration 0003; 0011 adds
+`cleanup.expire_drafts`."""
 
 import uuid
 from datetime import datetime
@@ -19,6 +20,7 @@ JOB_TYPES = (
     "text.derive",
     "dataset.export",
     "cleanup.quarantine",
+    "cleanup.expire_drafts",
 )
 JOB_STATUSES = ("queued", "running", "succeeded", "failed")
 

@@ -65,6 +65,9 @@ class Settings(BaseSettings):
     max_sample_rate_hz: int = Field(default=96000, gt=0)
     # Each ffprobe or FFmpeg run is stopped after this; keep it well under the worker lease.
     ffmpeg_timeout_seconds: float = Field(default=300, gt=0)
+    # Audio uploaded to a draft that is never submitted is deleted after this (Q-T7). The
+    # draft stays; the contributor's phone still has the recording and uploads it again.
+    draft_upload_retention_days: int = Field(default=30, gt=0)
 
     # Restricted speaker identity fields (AES-256-GCM). 32 random bytes, base64-encoded.
     # In development and test a key is derived from LKD_SECRET_KEY when this is empty.

@@ -2,6 +2,7 @@
 
 from app.modules.processing.queue import JobContext, JobResult, handler
 from app.modules.submissions import (
+    expiry,  # noqa: F401 - cleanup.expire_drafts
     processing,  # noqa: F401 - audio.*, cleanup.quarantine
     service,  # noqa: F401 - moves submissions on as their jobs settle
     text_processing,  # noqa: F401 - text.derive
