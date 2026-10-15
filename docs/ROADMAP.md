@@ -79,7 +79,7 @@ flowchart LR
 - **Acceptance criteria:** contributor and admin revisions are append-only and attributed; concurrent edit returns 409; a translation is marked stale when the source is revised.
 - **Tests:** revision integrity, concurrency, markup parser, script detection on all supported scripts.
 
-## M6 — Reports, admin hiding, and the researcher catalogue
+## M6 — Reports, admin hiding, and the researcher catalogue *(built 2026-10-15: the effective-access rule in Python and SQL, reports, the admin reports page with hide, dismiss and show again, the catalogue with read-only item pages and playback, and a browser test from report to hidden; still open: who decides culturally restricted content (Q-G3), and the catalogue scenario in the load test)*
 
 Shrunk on 2026-10-14: the professor decided there is no human reviewer ([ADR-021](ARCHITECTURE_DECISIONS.md#adr-021--no-human-reviewer-accept-after-automatic-checks-keep-text-unverified)). Submissions are already `accepted` automatically at the end of M4, so the review queue, approve/reject/request-changes screens and reviewer verification of text are dropped.
 

@@ -138,21 +138,28 @@ Implemented in Milestone 3; the diff in Milestone 5. There are no reviewer revis
 - **Diff** compares by user-perceived characters (grapheme clusters), so a Devanagari consonant keeps its vowel sign. Joining the `equal` and `delete` parts gives the first version, the `equal` and `insert` parts the second.
 - Error codes: `text_layer_not_found` / `text_revision_not_found` (404), `different_layers` (422), `layer_not_allowed` / `layer_link_invalid` / `same_language` (422), `layer_exists` (409), `text_empty` / `text_too_long` / `disallowed_character` (422), `revision_conflict` (409), `submission_not_editable` (409), `forbidden` (403). Invalid UTF-8 cannot reach these checks: the JSON body is refused first (`validation_failed`).
 
-## 7. Review
+## 7. Reports and hiding
+
+There is no reviewer (ADR-021). Anyone who can see an item can report it, and an admin answers the report by hiding the item with a restriction flag or by dismissing the report.
 
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| GET | `/review/queue?content_type=&dialect=&cursor=` | reviewer | Awaiting review, excluding own |
-| POST | `/submissions/{id}/review-events` | reviewer (not own) 🔒 | `{action, reason_code?, restriction?, text_revision_id?, note?}` |
-| GET | `/submissions/{id}/review-events` | reviewer/admin | History |
+| POST | `/submissions/{id}/reports` | anyone who can see the item | `{reason, note?}`; `201` with the report |
+| GET | `/admin/reports?limit=50` | admin | Items with open reports, the longest-waiting first: `{items: [{submission, reports}]}` |
+| POST | `/admin/submissions/{id}/hide` | admin (not own) 🔒 | `{restriction, note}`: adds the flag and closes the item's open reports as `hidden` |
+| POST | `/admin/submissions/{id}/dismiss-reports` | admin (not own) 🔒 | `{note}`: closes the open reports as `dismissed`; the item is unchanged |
+| POST | `/admin/submissions/{id}/unhide` | admin (not own) 🔒 | `{restriction, note}`: removes the flag |
 
-Allowed `action` values match `review_events.action` in [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md). Invalid state transitions → `409 invalid_transition`.
+- `reason` is one of `personal_information`, `third_party_voice`, `culturally_restricted`, `wrong_content`; `note` is up to 1,000 characters and only admins see it. One open report per person and item. Drafts and withdrawn items cannot be reported.
+- `restriction` is one of `sensitive`, `third_party_voice`, `contains_pii`, `culturally_restricted`, `minor`. The admin's `note` (up to 2,000 characters) is required and kept with the reports and as a review event. Every decision is in the audit log; the audit log keeps the report's reason, never its note.
+- Submissions show their `restriction_flags`, so a contributor sees that their item was hidden and why.
+- Error codes: `submission_not_found` (404), `already_reported` / `not_reportable` / `no_open_reports` / `not_restricted` (409), `own_submission` (403: another admin must decide on an admin's own item).
 
 ## 8. Research access and datasets
 
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| GET | `/catalog/items?q=&script=&dialect=&content_type=&has_translation=&min_duration_ms=&cursor=` | researcher/reviewer/admin | Search approved, accessible items |
+| GET | `/catalogue?q=&kind=&content_type=&recording_mode=&dialect=&limit=50&cursor=` | researcher/admin | Search the items effective access allows, newest first (built in M6) |
 | POST | `/datasets` | researcher/admin | Draft release `{slug, purpose, selection_criteria}` |
 | POST | `/datasets/{id}/preview` | researcher/admin | Counts + sample, consent-filtered |
 | PUT | `/datasets/{id}/data-card` | researcher/admin | Markdown data card |
@@ -161,6 +168,8 @@ Allowed `action` values match `review_events.action` in [DATABASE_SCHEMA.md](DAT
 | POST | `/datasets/{id}/exports` | researcher/admin 🔒 | `{purpose_statement}` |
 | POST | `/admin/exports/{id}/approve` | admin 🔒 | |
 | GET | `/exports/{id}` | requester/admin | Status; when ready `{download_url, expires_at, sha256}` (🔒 on fetch) |
+
+**Catalogue.** Lists accepted items whose speaker's consent still allows research, without hidden items, as decided by `app.modules.consents.access` (ADR-012, [ACCESS_CONTROL.md](ACCESS_CONTROL.md) §3). `q` matches the title and the current text of each layer, ignoring case. Each item has its kind, content, mode, language, dialect and coarse region, the recording's `duration_ms` and `quality_flags`, a `text_preview` of up to 200 characters with its `text_script`, and `text_status: "unverified"`. Speaker and contributor identities are not included. An item the catalogue lists can be opened with `GET /submissions/{id}` (`mine: false`), its texts and their history read, and its recording played; it cannot be changed. Contributors get `403 forbidden`.
 
 ## 9. Administration and operations
 

@@ -259,7 +259,23 @@ Implemented by migration `0007`.
 | note | text NULL | Internal; never exported. |
 | created_at | timestamptz | |
 
-`submissions.status` and `restriction_flags` are derived from review events and updated in the same transaction.
+There is no reviewer (ADR-021): admins write `add_restriction` and `remove_restriction` events when they hide or show an item after a report, and `restriction_flags` is updated in the same transaction.
+
+### `reports`
+Implemented by migration `0012`. Never deleted; only the decision columns are written, once.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid PK | |
+| submission_id 🔎 | uuid FK | |
+| reported_by | uuid FK users | One open report per person and item (partial unique index). |
+| reason | text CHECK IN ('personal_information','third_party_voice','culturally_restricted','wrong_content') | |
+| note | text NULL ≤ 1000 | Seen by admins only; not in the audit log. |
+| created_at | timestamptz | |
+| decision | text NULL CHECK IN ('hidden','dismissed') | Set together with `decided_by` and `decided_at`. |
+| decided_by | uuid FK users NULL | |
+| decided_at | timestamptz NULL | |
+| decision_note | text NULL ≤ 2000 | The admin's reason. |
 
 ## 5. Processing
 
@@ -309,7 +325,7 @@ Indexed on (target_type, target_id), (actor_user_id, occurred_at), (action, occu
 
 | Category | Examples | Rule |
 |----------|----------|------|
-| Immutable | originals, renditions, text_revisions, consent_records (except status), review_events, audit_events, release items | Triggers block UPDATE/DELETE; only the withdrawal routine (separate DB role) may delete for erasure. |
+| Immutable | originals, renditions, text_revisions, consent_records (except status), review_events, reports (except the decision), audit_events, release items | Triggers block UPDATE/DELETE; only the withdrawal routine (separate DB role) may delete for erasure. |
 | Versioned | text layers (via revisions), consent (via superseding records), datasets (via SemVer releases), consent forms | New row per change. |
 | Restricted | speaker_identities, contact fields, password/token hashes, consent evidence keys, IP hashes | Admin-only API paths; never exported; encrypted where noted. |
 | Searchable/indexed | status, kind, content_type, dialect_label, region_coarse, language_tag, script_code, quality_flags, restriction_flags, duration, content_nfc (FTS + trigram), speaker_code | B-tree / GIN as appropriate. |
@@ -322,9 +338,9 @@ Indexed on (target_type, target_id), (actor_user_id, occurred_at), (action, occu
 | F1 contribution | submissions, prompts, recordings, text_layers, text_revisions, processing_runs |
 | F2 consent | consent_forms, consent_records, speaker_identities |
 | F3 withdrawal | withdrawal_requests, consent_records, submissions, dataset_release_items, audit_events |
-| F4 review | review_events, text_revisions, submissions.status/restriction_flags |
+| F4 reports and hiding | reports, review_events, submissions.restriction_flags |
 | F5 researcher search | submissions + text_revisions indexes, effective-access view |
 | F6 release/export | dataset_releases, dataset_release_items, export_requests |
 | F7 failed processing | processing_runs, queue tables |
 
-An `effective_access` SQL view (or service function) joins submissions → active consent → restriction flags → status and is the single source of truth for visibility (ADR-012).
+Effective access is one service module, `app.modules.consents.access`, with the same rule as Python (`in_catalogue`) and as a SQL condition (`catalogue_filter`); a shared table of cases checks that they agree (ADR-012).
