@@ -21,6 +21,7 @@ JOB_TYPES = (
     "dataset.export",
     "cleanup.quarantine",
     "cleanup.expire_drafts",
+    "cleanup.expire_exports",
 )
 JOB_STATUSES = ("queued", "running", "succeeded", "failed")
 
