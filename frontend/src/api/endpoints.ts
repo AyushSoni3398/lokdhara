@@ -1,6 +1,8 @@
 /** One function per API call the app makes. */
 import { request } from './client'
 import type {
+  CatalogueItem,
+  CatalogueQuery,
   ConsentAnswers,
   ConsentForm,
   DiffPart,
@@ -118,3 +120,13 @@ export const dismissReports = (id: string, note: string) =>
   request<ReportedItem['submission']>('POST', `/admin/submissions/${id}/dismiss-reports`, {
     json: { note },
   })
+
+export function searchCatalogue(query: CatalogueQuery) {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(query)) if (value) params.set(key, value)
+  const search = params.toString()
+  return request<{ items: CatalogueItem[]; next_cursor: string | null }>(
+    'GET',
+    search ? `/catalogue?${search}` : '/catalogue',
+  )
+}

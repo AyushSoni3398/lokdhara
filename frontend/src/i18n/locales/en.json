@@ -344,7 +344,28 @@
     "sent": "Thank you. An admin will look at it."
   },
   "catalogue": {
-    "back": "← Catalogue"
+    "back": "← Catalogue",
+    "link": "Catalogue",
+    "title": "Catalogue",
+    "intro": "Accepted recordings and texts whose speakers agreed to research use. Texts are written by contributors and not checked by anyone.",
+    "notAllowed": "Only researchers and admins can see the catalogue.",
+    "search": "Words in the title or text",
+    "kind": "Kind",
+    "contentType": "Content",
+    "any": "Any",
+    "find": "Search",
+    "none": "Nothing found.",
+    "more": "Show more",
+    "seconds_one": "{{count}} second",
+    "seconds_other": "{{count}} seconds",
+    "quality": "Audio notes: {{flags}}",
+    "qualityFlags": {
+      "silent": "silent",
+      "too_short": "very short",
+      "clipping": "distorted (too loud)",
+      "very_quiet": "very quiet",
+      "possible_duplicate": "may be a copy of another recording"
+    }
   },
   "reports": {
     "link": "Reports",

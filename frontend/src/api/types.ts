@@ -222,3 +222,29 @@ export interface ReportedItem {
   }
   reports: Report[]
 }
+
+/** One item in the researcher catalogue (docs/API_SPECIFICATION.md §8). */
+export interface CatalogueItem {
+  id: string
+  title: string | null
+  kind: Kind
+  content_type: ContentType
+  recording_mode: RecordingMode | null
+  language_tag: string
+  dialect_label: string | null
+  region_coarse: string | null
+  submitted_at: string | null
+  restriction_flags: Restriction[]
+  duration_ms: number | null
+  quality_flags: string[]
+  text_preview: string | null
+  text_script: Script | null
+  text_status: 'unverified'
+}
+
+export interface CatalogueQuery {
+  q?: string
+  kind?: Kind
+  content_type?: ContentType
+  cursor?: string
+}
