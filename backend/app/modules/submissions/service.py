@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.audio import renditions
 from app.errors import ApiError
+from app.modules.consents import access
 from app.modules.consents import service as consents
 from app.modules.identity.service import AuthenticatedUser, utcnow
 from app.modules.processing import queue
@@ -60,7 +61,7 @@ def consent_required() -> ApiError:
 def visible_to(user: AuthenticatedUser) -> ColumnElement[bool]:
     """Milestone 3 part of the data-level rule (docs/ACCESS_CONTROL.md §3): people see what
     they submitted, facilitators also see what was recorded of speakers they registered, and
-    admins see everything. Reviewer and researcher access arrive with review and datasets."""
+    admins see everything. Researchers read through the catalogue instead (get_visible)."""
     if user.has_role("admin"):
         return true()
     own = Submission.submitted_by == user.id
@@ -70,8 +71,13 @@ def visible_to(user: AuthenticatedUser) -> ColumnElement[bool]:
 
 
 def get_visible(db: Session, user: AuthenticatedUser, submission_id: uuid.UUID) -> Submission:
+    """What visible_to() allows, plus what the researcher catalogue lists for this user. Only
+    reading goes through here; changes need get_owned()."""
     submission = db.scalar(
-        select(Submission).where(Submission.id == submission_id, visible_to(user))
+        select(Submission).where(
+            Submission.id == submission_id,
+            or_(visible_to(user), access.catalogue_filter(access.viewer_for(user))),
+        )
     )
     if submission is None:
         raise _not_found()

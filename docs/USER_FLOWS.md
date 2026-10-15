@@ -94,10 +94,11 @@ Every decision is audit-logged. A contributor whose item was hidden sees that it
 
 ## F5 — Researcher search
 
-1. Researcher signs in and opens *Browse data*. Every transcription and translation is shown as *contributor-provided, unverified*.
-2. Filters: content type, dialect label, script, has transcript, has translation, duration range, quality flags, permitted use.
+1. Researcher signs in and opens *Catalogue*. Every transcription and translation is shown as *contributor-provided, unverified*.
+2. Search words in the title or text; filters for kind and content type (the API also takes recording mode and dialect). Each item shows its length, dialect, a text preview, and audio notes (quality flags). More filters (script, has translation, duration range) can follow when researchers ask for them.
 3. Results show only items where the researcher's access scope **and** the item's effective consent allow viewing.
 4. Playing audio fetches a short-lived signed URL for the *playback* rendition; originals are not available to researchers in the MVP.
+5. A researcher who finds a problem uses *Report a problem* on the item, like anyone else (F4).
 
 ## F6 — Dataset release and export
 

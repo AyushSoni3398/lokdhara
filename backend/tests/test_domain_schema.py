@@ -1,4 +1,4 @@
-"""Database-level rules for the domain tables (migrations 0004 to 0007).
+"""Database-level rules for the domain tables (migrations 0004 to 0007, and 0012 for reports).
 
 The application will enforce these too; the database is the last line of defence.
 """
@@ -9,12 +9,13 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 import pytest
-from sqlalchemy import delete, text, update
+from sqlalchemy import delete, func, text, update
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm import Session
 
 from app.modules.consents.models import ConsentForm, ConsentRecord
 from app.modules.prompts.models import Prompt
+from app.modules.reports.models import Report
 from app.modules.review.models import ReviewEvent
 from app.modules.speakers.models import Speaker
 from app.modules.submissions.models import (
@@ -522,3 +523,34 @@ def test_review_events_are_append_only_and_well_formed(db: Session, world: World
     )
     db.commit()
     _fails(db, update(ReviewEvent).values(note="rewritten"), "append_only")
+
+
+def test_reports_keep_what_was_reported_and_are_decided_completely(
+    db: Session, world: World
+) -> None:
+    submission = _submission(db, world)
+    report = Report(submission_id=submission.id, reported_by=world.reviewer, reason="wrong_content")
+    db.add(report)
+    db.commit()
+    _fails_add(
+        db,
+        Report(submission_id=submission.id, reported_by=world.reviewer, reason="wrong_content"),
+        "uq_reports_open",
+    )
+    _fails_add(
+        db,
+        Report(submission_id=submission.id, reported_by=world.contributor, reason="boring"),
+        "ck_reports_reason",
+    )
+    _fails(db, update(Report).values(decision="dismissed"), "decision_complete")
+    _fails(db, update(Report).values(reason="personal_information"), "immutable_columns")
+    _fails(db, delete(Report), "append_only")
+    db.execute(
+        update(Report).values(
+            decision="dismissed", decided_by=world.reviewer, decided_at=func.now()
+        )
+    )
+    db.commit()
+    # Once decided, the same person can report the item again.
+    db.add(Report(submission_id=submission.id, reported_by=world.reviewer, reason="wrong_content"))
+    db.commit()

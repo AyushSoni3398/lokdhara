@@ -4,17 +4,24 @@ import { Link, useParams } from 'react-router'
 
 import * as api from '../api/endpoints'
 import type { Playback, Recording, SubmissionDetail, TextLayerDetail } from '../api/types'
+import { hasRole, useSession } from '../auth/session'
 import { ErrorMessage } from '../components/ErrorMessage'
+import { AdminUnhide } from './submission/AdminUnhide'
+import { ReportProblem } from './submission/ReportProblem'
 import { AddText, EditText, TRANSLATIONS } from './submission/TextEditor'
 import { TextHistory } from './submission/TextHistory'
 
 // With no reviewer the contributor keeps correcting and translating after acceptance (ADR-021).
 const TEXT_EDITABLE = ['accepted']
 
-/** One sent submission: its status, its recording to listen to, and its texts (ROADMAP M5). */
+/**
+ * One sent submission: its status, its recording to listen to, and its texts (ROADMAP M5).
+ * Researchers open catalogue items here too, read-only; anyone can report a problem (M6).
+ */
 export function SubmissionPage() {
   const { t, i18n } = useTranslation()
   const { submissionId = '' } = useParams()
+  const session = useSession()
   const [submission, setSubmission] = useState<SubmissionDetail | null>(null)
   const [error, setError] = useState<unknown>(null)
 
@@ -31,7 +38,7 @@ export function SubmissionPage() {
   if (!submission) return <ErrorMessage error={error} />
 
   const date = (iso: string) => new Date(iso).toLocaleDateString(i18n.resolvedLanguage)
-  const editable = TEXT_EDITABLE.includes(submission.status)
+  const editable = submission.mine && TEXT_EDITABLE.includes(submission.status)
   const replace = (saved: TextLayerDetail) =>
     setSubmission({
       ...submission,
@@ -53,7 +60,11 @@ export function SubmissionPage() {
   return (
     <section>
       <p>
-        <Link to="/submissions">{t('submission.back')}</Link>
+        {submission.mine ? (
+          <Link to="/submissions">{t('submission.back')}</Link>
+        ) : (
+          <Link to="/catalogue">{t('catalogue.back')}</Link>
+        )}
       </p>
       <h1>{submission.title || t(`kinds.${submission.kind}`)}</h1>
       <span className={`status status-${submission.status}`}>
@@ -62,6 +73,22 @@ export function SubmissionPage() {
       <p className="note">
         {t('submission.sentOn', { date: date(submission.submitted_at ?? submission.created_at) })}
       </p>
+      {submission.restriction_flags.length > 0 && (
+        <p className="status waiting">
+          {t('submission.hidden', {
+            reasons: submission.restriction_flags
+              .map((flag) => t(`restrictions.${flag}`))
+              .join(', '),
+          })}
+        </p>
+      )}
+      {hasRole(session, 'admin') && !submission.mine && submission.restriction_flags.length > 0 && (
+        <AdminUnhide
+          submissionId={submission.id}
+          flags={submission.restriction_flags}
+          onChanged={() => void reload()}
+        />
+      )}
       <ErrorMessage error={error} />
 
       {submission.recordings.map((recording) => (
@@ -105,6 +132,9 @@ export function SubmissionPage() {
             {t('submission.addTranscription')}
           </button>
         ))}
+
+      <h2>{t('report.title')}</h2>
+      <ReportProblem submissionId={submission.id} />
     </section>
   )
 }

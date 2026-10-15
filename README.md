@@ -7,7 +7,7 @@ The first version focuses **only on the Mundari language** (Jharkhand, India): c
 
 ## Project status
 
-**Milestone 1 (application skeleton).** The plan was approved on 2026-10-11. The app does not collect anything yet, and **no community data is stored in this repository — ever** (audio, collected text, consent records, and datasets live only in access-controlled storage).
+**Milestones 1 to 6 are built** (as of 2026-10-15): recording and sending contributions with consent, automatic audio and text checks, corrections and translations after acceptance, reports with admin hiding, and the researcher catalogue. Next is M7 (dataset releases); see the [roadmap](docs/ROADMAP.md). The app has only been tried with synthetic test data; real collection waits on the pilot and its governance answers. **No community data is stored in this repository — ever** (audio, collected text, consent records, and datasets live only in access-controlled storage).
 
 ## Where to start reading
 

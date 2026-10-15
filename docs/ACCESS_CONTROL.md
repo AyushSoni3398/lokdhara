@@ -1,6 +1,6 @@
 # Access Control
 
-Status: **Proposed.** Two layers, both enforced on the server:
+Status: **Accepted; the researcher catalogue rule is built (M6).** Two layers, both enforced on the server:
 
 1. **Role permissions** — what *actions* a user may perform.
 2. **Data-level filtering** — which *items* a user may see, based on effective consent, restriction flags, status, and ownership.
@@ -33,12 +33,14 @@ Roles are additive. Role grants/revocations are audit-logged.
 | View own submissions | ✅ | ✅ | ✅ | — | ✅ |
 | Edit own draft | ✅ | ✅ | ✅ | — | ✅ |
 | Add revision to own submission (before approval) | ✅ | ✅ | ✅ | ❌ | ✅ |
-| See review queue | ❌ | ❌ | ✅ (excl. own) | ❌ | ✅ |
-| Approve / reject / restrict | ❌ | ❌ | ✅ (excl. own) | ❌ | ✅ |
+| See review queue (unused, ADR-021) | ❌ | ❌ | ✅ (excl. own) | ❌ | ✅ |
+| Approve / reject (unused, ADR-021) | ❌ | ❌ | ✅ (excl. own) | ❌ | ✅ |
+| Report an item they can see | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Hide / show / dismiss reports | ❌ | ❌ | ❌ | ❌ | ✅ (excl. own) |
 | Add reviewer revision | ❌ | ❌ | ✅ | ❌ | ✅ |
 | Play playback rendition | 🟡 own | 🟡 own + created | ✅ in queue/restricted per scope | ✅ approved + consent allows research | ✅ |
 | Download original audio | ❌ | ❌ | ❌ | ❌ | ✅ (audited, reason required) |
-| Browse approved data | ❌ | ❌ | ✅ | ✅ | ✅ |
+| Browse the catalogue (accepted, research consent, not hidden) | ❌ | ❌ | ❌ | ✅ | ✅ |
 | Create draft dataset release | ❌ | ❌ | ❌ | ✅ | ✅ |
 | Freeze release | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Request export | ❌ | ❌ | ❌ | ✅ | ✅ |
@@ -47,30 +49,32 @@ Roles are additive. Role grants/revocations are audit-logged.
 | Process withdrawal | ❌ | ❌ | ❌ | ❌ | ✅ |
 | View audit log | ❌ | ❌ | ❌ | ❌ | ✅ |
 
-## 3. Data-level rule (pseudo-code)
+## 3. Data-level rule
+
+Contributors and facilitators see what they sent or what was recorded of speakers they registered; admins see everything (`visible_to` in `app/modules/submissions/service.py`). Researchers and admins also read what the catalogue lists for them, and only read it (`get_visible`). The catalogue rule lives in `app/modules/consents/access.py`:
 
 ```python
-def can_view(user, item) -> bool:
-    if item.status == "withdrawn":
-        return user.is_admin
-    if user.is_admin:
-        return True
-    if item.submitted_by == user.id:
-        return True
-    if user.is_facilitator and item.speaker.created_by == user.id:
-        return True
-    if "culturally_restricted" in item.restriction_flags:
-        return user.has_scope("culturally_restricted")
-    if user.is_reviewer and item.status in REVIEWABLE_STATES:
-        return True
-    if user.is_researcher:
-        return item.status == "approved" \
-            and effective_permissions(item).research \
-            and not (EXCLUDING_FLAGS & set(item.restriction_flags))
-    return False
+HIDING_FLAGS = {"sensitive", "third_party_voice", "contains_pii", "minor"}
+
+def in_catalogue(viewer, item) -> bool:
+    if not (viewer.is_admin or viewer.is_researcher):
+        return False
+    if item.status != "accepted" or item.speaker_withdrawn or item.consent_withdrawn:
+        return False
+    if HIDING_FLAGS & set(item.restriction_flags):
+        return False  # hidden after a report, for everyone, admins included
+    if "culturally_restricted" in item.restriction_flags and not (
+        viewer.is_admin or "culturally_restricted" in viewer.scopes
+    ):
+        return False
+    return research_allowed(item.consent)
 ```
 
-The same rule is implemented as a SQL predicate used by every list/search query, and both versions are tested against a shared table of cases.
+`research_allowed` starts from the consent record the item was sent under and walks every later record of the speaker: a later record can only narrow research use, unless it says it applies to past contributions (CONSENT_AND_DATA_GOVERNANCE §3.3). Accepted is the only listed status: there is no reviewer, so nothing is ever "approved" (ADR-021).
+
+The same rule is the SQL condition `catalogue_filter`, used by every catalogue search, and both are tested against one shared table of cases (`backend/tests/test_effective_access.py`).
+
+Who may be given the `culturally_restricted` scope, and which content it covers, waits on Q-G3. Until then no one holds it, so culturally restricted items are listed for admins only.
 
 ## 4. Technical controls
 

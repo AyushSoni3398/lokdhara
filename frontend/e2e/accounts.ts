@@ -29,6 +29,11 @@ export interface Account {
 const secret = () => randomBytes(12).toString('hex')
 
 export async function newContributor(): Promise<Account> {
+  return (await newAccounts()).contributor
+}
+
+/** A fresh admin and a contributor they invited. */
+export async function newAccounts(): Promise<{ admin: Account; contributor: Account }> {
   backend(['alembic', 'upgrade', 'head'])
   backend(['python', '-m', 'app.cli', 'seed-dev'])
 
@@ -66,5 +71,5 @@ export async function newContributor(): Promise<Account> {
   })
   expect(accepted.ok()).toBe(true)
   await api.dispose()
-  return contributor
+  return { admin, contributor }
 }

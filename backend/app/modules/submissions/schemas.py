@@ -28,6 +28,9 @@ SubmissionStatus = Literal[
     "rejected",
     "withdrawn",
 ]
+Restriction = Literal[
+    "sensitive", "third_party_voice", "contains_pii", "culturally_restricted", "minor"
+]
 DeviceHint = Literal["browser_recorder", "file_upload"]
 LayerType = Literal["standalone", "transcription", "translation"]
 EntryType = Literal["word", "phrase", "sentence", "paragraph", "long_text"]
@@ -224,6 +227,8 @@ class SubmissionOut(BaseModel):
     prompt_id: uuid.UUID | None
     collection_context: CollectionContext
     status: SubmissionStatus
+    # Set by an admin to hide the item after a report; shown so the contributor knows.
+    restriction_flags: list[Restriction]
     has_consent: bool
     created_at: datetime
     submitted_at: datetime | None
@@ -231,6 +236,8 @@ class SubmissionOut(BaseModel):
 
 
 class SubmissionDetailOut(SubmissionOut):
+    # Whether the person asking sent it; only they change it (researchers only read).
+    mine: bool
     recordings: list[RecordingOut]
     text_layers: list[TextLayerOut]
 
