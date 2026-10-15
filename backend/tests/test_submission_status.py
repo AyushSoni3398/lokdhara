@@ -52,7 +52,7 @@ def status(db: Session, submission_id: uuid.UUID) -> str:
     return submission.status
 
 
-def test_a_submission_waits_for_review_once_its_checks_succeed(
+def test_a_submission_is_accepted_once_its_checks_succeed(
     submission_id: uuid.UUID, engine: Engine, db: Session
 ) -> None:
     assert status(db, submission_id) == "processing"
