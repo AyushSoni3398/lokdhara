@@ -204,3 +204,25 @@ def test_culturally_restricted_items_need_the_scope(
     act_as(client, steward)
     [listed] = client.get(CATALOGUE).json()["items"]
     assert listed["restriction_flags"] == ["culturally_restricted"]
+
+
+def test_researchers_open_listed_items_read_only_and_can_report_them(
+    client: TestClient, engine: Engine, speaker: str, researcher: TestUser
+) -> None:
+    item = _accepted(client, engine, speaker, "यह एक परीक्षण वाक्य है।")
+    act_as(client, researcher)
+    detail = client.get(f"{SUBMISSIONS}/{item}")
+    assert detail.status_code == 200, detail.text
+    layer = detail.json()["text_layers"][0]
+    revisions = client.get(f"/api/v1/text-layers/{layer['id']}/revisions")
+    assert revisions.status_code == 200
+    edit = client.post(
+        f"/api/v1/text-layers/{layer['id']}/revisions",
+        json={"base_revision_id": layer["current_revision"]["id"], "content": "बदला हुआ"},
+    )
+    assert edit.json()["code"] in ("forbidden", "text_layer_not_found")
+    assert client.patch(f"{SUBMISSIONS}/{item}", json={"title": "Mine now"}).status_code == 403
+    report = client.post(f"{SUBMISSIONS}/{item}/reports", json={"reason": "wrong_content"})
+    assert report.status_code == 201
+    # Their own list stays their own.
+    assert client.get(SUBMISSIONS).json()["items"] == []
