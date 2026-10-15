@@ -213,6 +213,7 @@ def test_researchers_open_listed_items_read_only_and_can_report_them(
     act_as(client, researcher)
     detail = client.get(f"{SUBMISSIONS}/{item}")
     assert detail.status_code == 200, detail.text
+    assert detail.json()["mine"] is False
     layer = detail.json()["text_layers"][0]
     revisions = client.get(f"/api/v1/text-layers/{layer['id']}/revisions")
     assert revisions.status_code == 200

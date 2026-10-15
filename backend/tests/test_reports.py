@@ -190,6 +190,7 @@ def test_contributors_see_that_their_item_was_hidden(
     act_as(client, admin)
     assert _hide(client, item, restriction="third_party_voice").status_code == 200
     act_as(client, asha)
-    assert client.get(f"{SUBMISSIONS}/{item}").json()["restriction_flags"] == ["third_party_voice"]
+    own = client.get(f"{SUBMISSIONS}/{item}").json()
+    assert (own["mine"], own["restriction_flags"]) == (True, ["third_party_voice"])
     listed = client.get(SUBMISSIONS).json()["items"]
     assert listed[0]["restriction_flags"] == ["third_party_voice"]

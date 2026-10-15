@@ -70,14 +70,17 @@ def _layer_out(view: service.LayerView) -> TextLayerOut:
     )
 
 
-def _detail(db: DbSession, submission: Submission) -> SubmissionDetailOut:
+def _detail(db: DbSession, submission: Submission, user: AuthenticatedUser) -> SubmissionDetailOut:
     recordings = [
         RecordingOut.model_validate(r, from_attributes=True)
         for r in service.recordings_of(db, submission.id)
     ]
     layers = [_layer_out(view) for view in service.text_layers_of(db, submission.id)]
     return SubmissionDetailOut(
-        **_out(submission).model_dump(), recordings=recordings, text_layers=layers
+        **_out(submission).model_dump(),
+        mine=submission.submitted_by == user.id,
+        recordings=recordings,
+        text_layers=layers,
     )
 
 
@@ -86,7 +89,7 @@ def create_submission(
     body: SubmissionCreateRequest, user: Recorder, db: DbSession
 ) -> SubmissionDetailOut:
     """Creates a draft, or returns the existing one for a repeated `client_submission_id`."""
-    return _detail(db, service.create_draft(db, user=user, body=body))
+    return _detail(db, service.create_draft(db, user=user, body=body), user)
 
 
 @router.get("/submissions")
@@ -111,7 +114,7 @@ def list_submissions(
 def get_submission(
     submission_id: uuid.UUID, user: CurrentUser, db: DbSession
 ) -> SubmissionDetailOut:
-    return _detail(db, service.get_visible(db, user, submission_id))
+    return _detail(db, service.get_visible(db, user, submission_id), user)
 
 
 @router.patch("/submissions/{submission_id}")
@@ -119,7 +122,7 @@ def update_submission(
     submission_id: uuid.UUID, body: SubmissionUpdateRequest, user: Recorder, db: DbSession
 ) -> SubmissionDetailOut:
     submission = service.update_draft(db, user=user, submission_id=submission_id, body=body)
-    return _detail(db, submission)
+    return _detail(db, submission, user)
 
 
 @router.post("/submissions/{submission_id}/recordings", status_code=status.HTTP_202_ACCEPTED)
@@ -175,7 +178,7 @@ def submit_submission(
     submission_id: uuid.UUID, user: Recorder, db: DbSession, store: Store
 ) -> SubmissionDetailOut:
     submission = service.submit(db, store, user=user, submission_id=submission_id)
-    return _detail(db, submission)
+    return _detail(db, submission, user)
 
 
 @router.post("/submissions/{submission_id}/text-layers", status_code=status.HTTP_201_CREATED)

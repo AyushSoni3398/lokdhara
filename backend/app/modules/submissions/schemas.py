@@ -236,6 +236,8 @@ class SubmissionOut(BaseModel):
 
 
 class SubmissionDetailOut(SubmissionOut):
+    # Whether the person asking sent it; only they change it (researchers only read).
+    mine: bool
     recordings: list[RecordingOut]
     text_layers: list[TextLayerOut]
 
