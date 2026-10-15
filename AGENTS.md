@@ -47,6 +47,7 @@ uv run python -m app.cli seed-dev                       # synthetic users (print
 uv run python -m app.cli create-admin --username …       # first real admin
 uv run uvicorn app.main:app --reload                    # API :8000 (docs /api/docs)
 uv run python -m app.worker                             # worker
+uv run python -m app.worker --until-idle                # run the due jobs once, then exit
 uv run python -m app.cli ping-worker                    # enqueue a no-op job to test it
 uv run ruff check . && uv run ruff format --check . && uv run mypy app tests && uv run pytest
 cd frontend && npm ci && npm run dev                    # SPA :5173 (proxies /api)

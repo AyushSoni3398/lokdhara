@@ -63,6 +63,8 @@ A controlled list is **pending linguist input (Q-X1)**. Until then: free text, p
 | `culturally_restricted` | Content the community restricts | Excluded from all releases without explicit community approval (Q-G3). |
 | `minor` | Speaker under 18 | Excluded until guardian process confirmed (Q-L4). |
 
+As built (M7): until these rules are confirmed (Q-G3), an item with **any** flag is left out of every dataset release. The narrower per-purpose exclusions above would only ever let more items in, so they wait for that decision.
+
 ### `origin` (text revisions)
 `human_contributor`, `human_reviewer`, `machine`, `imported`, `prompt_text` (reference sentence of a read-speech prompt).
 
