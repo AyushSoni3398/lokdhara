@@ -115,3 +115,9 @@ del { background: #fbe1e1; text-decoration: line-through; }
   border: 1px solid var(--accent); border-radius: 999px; background: #fff; color: var(--accent);
   font: inherit; text-decoration: none; cursor: pointer;
 }
+
+/* Dataset releases */
+label.inline { display: inline-flex; align-items: center; gap: 6px; margin-right: 12px; }
+.checks { list-style: none; padding: 0; }
+.checks li { margin: 4px 0; }
+code { overflow-wrap: anywhere; }
