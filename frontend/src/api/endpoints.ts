@@ -8,6 +8,8 @@ import type {
   Playback,
   Prompt,
   PromptType,
+  Report,
+  ReportReason,
   Revision,
   Script,
   Session,
@@ -89,6 +91,9 @@ export const listRevisions = (layerId: string) =>
 
 export const diffRevisions = (fromId: string, toId: string) =>
   request<{ parts: DiffPart[] }>('GET', `/text-revisions/${fromId}/diff/${toId}`)
+
+export const reportSubmission = (id: string, reason: ReportReason, note?: string) =>
+  request<Report>('POST', `/submissions/${id}/reports`, { json: { reason, note } })
 
 export const submitSubmission = (id: string) =>
   request<Submission>('POST', `/submissions/${id}/submit`)

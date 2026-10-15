@@ -142,6 +142,14 @@ export interface Playback {
   sources: { url: string; content_type: string }[]
 }
 
+/** Set by an admin to hide an item after a report (docs/ROADMAP.md M6). */
+export type Restriction =
+  | 'sensitive'
+  | 'third_party_voice'
+  | 'contains_pii'
+  | 'culturally_restricted'
+  | 'minor'
+
 export interface Submission {
   id: string
   client_submission_id: string
@@ -149,6 +157,7 @@ export interface Submission {
   content_type: ContentType
   title: string | null
   status: string
+  restriction_flags: Restriction[]
   recording_mode: RecordingMode | null
   created_at: string
   submitted_at: string | null
@@ -156,6 +165,8 @@ export interface Submission {
 }
 
 export interface SubmissionDetail extends Submission {
+  /** Sent by the person looking; only they change it. */
+  mine: boolean
   recordings: Recording[]
   text_layers: TextLayerDetail[]
 }
@@ -182,4 +193,18 @@ export interface Job {
   last_error_code: string | null
   created_at: string
   finished_at: string | null
+}
+
+export type ReportReason =
+  | 'personal_information'
+  | 'third_party_voice'
+  | 'culturally_restricted'
+  | 'wrong_content'
+
+export interface Report {
+  id: string
+  submission_id: string
+  reason: ReportReason
+  note: string | null
+  created_at: string
 }

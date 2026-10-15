@@ -260,7 +260,9 @@
     "submission_not_editable": "This submission can no longer be changed.",
     "validation_failed": "Some details are not valid. Please check them.",
     "revision_conflict": "Someone saved a newer version of this text meanwhile. Check it and save again.",
-    "layer_exists": "This text already exists. Reload the page to see it."
+    "layer_exists": "This text already exists. Reload the page to see it.",
+    "already_reported": "You have already reported this. An admin will look at it.",
+    "not_reportable": "This item cannot be reported."
   },
   "jobs": {
     "title": "Failed checks",
@@ -312,6 +314,33 @@
       "show": "Earlier versions",
       "hide": "Hide earlier versions",
       "showChanges": "What changed"
-    }
+    },
+    "hidden": "Hidden by an admin after a report: {{reasons}}. Researchers no longer see it."
+  },
+  "restrictions": {
+    "sensitive": "sensitive content",
+    "third_party_voice": "another person's voice",
+    "contains_pii": "personal information",
+    "culturally_restricted": "culturally restricted",
+    "minor": "a child's voice"
+  },
+  "report": {
+    "title": "Something wrong?",
+    "start": "Report a problem",
+    "why": "What is the problem?",
+    "reasons": {
+      "personal_information": "It has personal information (a name, phone number, address)",
+      "third_party_voice": "Someone else can be heard who did not agree",
+      "culturally_restricted": "It should not be shared outside the community",
+      "wrong_content": "It is not Mundari, or not what it says it is"
+    },
+    "note": "Anything an admin should know? (optional)",
+    "privacy": "Only admins see your report.",
+    "send": "Send report",
+    "cancel": "Cancel",
+    "sent": "Thank you. An admin will look at it."
+  },
+  "catalogue": {
+    "back": "← Catalogue"
   }
 }
