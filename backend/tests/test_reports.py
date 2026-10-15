@@ -182,3 +182,14 @@ def test_decisions_need_a_reason_an_admin_and_someone_else_s_item(
     assert no_reason.status_code == 422
     assert _hide(client, item, restriction="secret").status_code == 422
     assert _hide(client, str(uuid.uuid4())).json()["code"] == "submission_not_found"
+
+
+def test_contributors_see_that_their_item_was_hidden(
+    client: TestClient, item: str, asha: TestUser, admin: TestUser
+) -> None:
+    act_as(client, admin)
+    assert _hide(client, item, restriction="third_party_voice").status_code == 200
+    act_as(client, asha)
+    assert client.get(f"{SUBMISSIONS}/{item}").json()["restriction_flags"] == ["third_party_voice"]
+    listed = client.get(SUBMISSIONS).json()["items"]
+    assert listed[0]["restriction_flags"] == ["third_party_voice"]

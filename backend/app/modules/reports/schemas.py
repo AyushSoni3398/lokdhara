@@ -4,11 +4,9 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.modules.submissions.schemas import Restriction
 from app.text_input import MultiLine
 
-Restriction = Literal[
-    "sensitive", "third_party_voice", "contains_pii", "culturally_restricted", "minor"
-]
 Reason = Literal[
     "personal_information", "third_party_voice", "culturally_restricted", "wrong_content"
 ]
