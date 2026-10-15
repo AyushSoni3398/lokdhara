@@ -6,10 +6,17 @@ import type {
   ConsentAnswers,
   ConsentForm,
   DiffPart,
+  ExportDownload,
+  ExportRequest,
   Job,
   Playback,
   Prompt,
   PromptType,
+  Release,
+  ReleaseCheck,
+  ReleaseCreate,
+  ReleasePreview,
+  ReleaseUpdate,
   Report,
   ReportedItem,
   ReportReason,
@@ -130,3 +137,32 @@ export function searchCatalogue(query: CatalogueQuery) {
     search ? `/catalogue?${search}` : '/catalogue',
   )
 }
+
+export const listReleases = () =>
+  request<{ items: Release[] }>('GET', '/datasets').then((r) => r.items)
+export const createRelease = (body: ReleaseCreate) =>
+  request<Release>('POST', '/datasets', { json: body })
+export const getRelease = (id: string) => request<Release>('GET', `/datasets/${id}`)
+export const updateRelease = (id: string, changes: ReleaseUpdate) =>
+  request<Release>('PATCH', `/datasets/${id}`, { json: changes })
+export const previewRelease = (id: string) =>
+  request<ReleasePreview>('GET', `/datasets/${id}/preview`)
+export const checkRelease = (id: string) =>
+  request<{ passed: boolean; checks: ReleaseCheck[] }>('POST', `/datasets/${id}/checks`)
+export const freezeRelease = (id: string, version: string) =>
+  request<Release>('POST', `/datasets/${id}/freeze`, { json: { version } })
+export const retractRelease = (id: string, note: string) =>
+  request<Release>('POST', `/datasets/${id}/retract`, { json: { note } })
+
+export const requestExport = (releaseId: string, purposeStatement: string) =>
+  request<ExportRequest>('POST', `/datasets/${releaseId}/exports`, {
+    json: { purpose_statement: purposeStatement },
+  })
+export const listExports = () =>
+  request<{ items: ExportRequest[] }>('GET', '/exports').then((r) => r.items)
+export const approveExport = (id: string, note?: string) =>
+  request<ExportRequest>('POST', `/admin/exports/${id}/approve`, { json: { note } })
+export const rejectExport = (id: string, note: string) =>
+  request<ExportRequest>('POST', `/admin/exports/${id}/reject`, { json: { note } })
+export const downloadExport = (id: string) =>
+  request<ExportDownload>('POST', `/exports/${id}/download`)
