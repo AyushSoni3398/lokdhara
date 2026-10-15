@@ -10,6 +10,8 @@ export default defineConfig({
   testDir: 'e2e',
   testMatch: '*.e2e.ts',
   fullyParallel: false,
+  // One at a time: each test migrates and seeds the same development database first.
+  workers: 1,
   forbidOnly: CI,
   retries: CI ? 1 : 0,
   reporter: CI ? [['list'], ['html', { open: 'never' }]] : 'list',
