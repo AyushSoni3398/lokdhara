@@ -104,39 +104,6 @@ def update_draft(
     return release
 
 
-def retract(
-    db: Session,
-    *,
-    admin: AuthenticatedUser,
-    release_id: uuid.UUID,
-    note: str,
-    context: RequestContext,
-) -> DatasetRelease:
-    """Marks a frozen release as no longer to be used (DATASET_VERSIONING §1). The release,
-    its items and its manifest stay for audit; nothing can be exported from it again."""
-    release = get_release(db, release_id, for_update=True)
-    if release.status == "draft":
-        raise ApiError(409, "release_not_frozen", "Only a frozen release can be retracted.")
-    if release.status == "retracted":
-        raise ApiError(409, "release_retracted", "This release is already retracted.")
-    now = utcnow()
-    release.status = "retracted"
-    release.retracted_at = now
-    release.retraction_note = note
-    release.updated_at = now
-    audit.record(
-        db,
-        action="release.retract",
-        context=context,
-        actor_user_id=admin.id,
-        target_type="dataset_release",
-        target_id=release.id,
-        details={"slug": release.slug, "version": release.version},
-    )
-    db.commit()
-    return release
-
-
 # ------------------------------------------------------------------ selection
 
 

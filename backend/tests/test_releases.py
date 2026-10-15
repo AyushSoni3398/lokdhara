@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.modules.audit.models import AuditEvent
+from app.modules.processing.models import Job
 from app.modules.releases import freeze as freeze_module
 from app.modules.releases.models import DatasetRelease, DatasetReleaseItem
 from app.object_store import Bucket, ObjectStore
@@ -232,3 +233,88 @@ def test_admins_retract_a_frozen_release_with_a_note(
     assert retracted["version"] == "0.2.0"  # the record stays for audit
     assert client.post(retract, json=note).json()["code"] == "release_retracted"
     assert db.scalar(select(AuditEvent).where(AuditEvent.action == "release.retract"))
+
+
+# ------------------------------------------------------------------ export requests
+
+PURPOSE = {"purpose_statement": "Train a student's keyword-spotting baseline."}
+
+
+def test_researchers_request_exports_and_another_admin_decides(
+    client: TestClient,
+    items: list[str],
+    researcher: TestUser,
+    admin: TestUser,
+    make_user: MakeUser,
+    db: Session,
+) -> None:
+    act_as(client, researcher)
+    draft = _draft(client)
+    exports_url = f"{DATASETS}/{draft['id']}/exports"
+    assert client.post(exports_url, json=PURPOSE).json()["code"] == "release_not_frozen"
+    release = _frozen(client, admin)
+    exports_url = f"{DATASETS}/{release['id']}/exports"
+
+    act_as(client, researcher)
+    assert client.post(exports_url, json={"purpose_statement": ""}).status_code == 422
+    first = client.post(exports_url, json=PURPOSE)
+    assert first.status_code == 201, first.text
+    request = first.json()
+    assert (request["status"], request["mine"], request["requested_by_name"]) == (
+        "requested",
+        True,
+        "kiran",
+    )
+    second = client.post(exports_url, json=PURPOSE).json()
+    approve = f"/api/v1/admin/exports/{request['id']}/approve"
+    assert client.post(approve, json={}).json()["code"] == "forbidden"
+
+    # Other researchers neither see nor open someone else's request.
+    act_as(client, make_user("sita", "researcher"))
+    assert client.get("/api/v1/exports").json()["items"] == []
+    assert client.get(f"/api/v1/exports/{request['id']}").json()["code"] == "export_not_found"
+
+    act_as(client, admin)
+    assert len(client.get("/api/v1/exports").json()["items"]) == 2
+    approved = client.post(
+        f"/api/v1/admin/exports/{request['id']}/approve", json={"note": "Fits the agreement."}
+    ).json()
+    assert (approved["status"], approved["decision_note"], approved["mine"]) == (
+        "approved",
+        "Fits the agreement.",
+        False,
+    )
+    again = client.post(f"/api/v1/admin/exports/{request['id']}/approve", json={})
+    assert again.json()["code"] == "export_decided"
+    reject = f"/api/v1/admin/exports/{second['id']}/reject"
+    assert client.post(reject, json={"note": ""}).status_code == 422
+    assert client.post(reject, json={"note": "Duplicate."}).json()["status"] == "rejected"
+    job = db.scalar(select(Job).where(Job.job_type == "dataset.export"))
+    assert job is not None
+    assert str(job.target_id) == request["id"]
+
+    # An admin's own request needs another admin.
+    own = client.post(exports_url, json=PURPOSE).json()
+    response = client.post(f"/api/v1/admin/exports/{own['id']}/approve", json={})
+    assert response.json()["code"] == "own_request"
+    actions = set(db.scalars(select(AuditEvent.action).where(AuditEvent.action.like("export.%"))))
+    assert actions == {"export.request", "export.approve", "export.reject"}
+
+
+def test_retracting_a_release_closes_its_export_requests(
+    client: TestClient, items: list[str], researcher: TestUser, admin: TestUser
+) -> None:
+    release = _frozen(client, admin)
+    act_as(client, researcher)
+    request = client.post(f"{DATASETS}/{release['id']}/exports", json=PURPOSE).json()
+    act_as(client, admin)
+    note = {"note": "A speaker raised a consent concern."}
+    client.post(f"{DATASETS}/{release['id']}/retract", json=note)
+    closed = client.get(f"/api/v1/exports/{request['id']}").json()
+    assert (closed["status"], closed["decision_note"]) == (
+        "rejected",
+        "The release was retracted.",
+    )
+    act_as(client, researcher)
+    response = client.post(f"{DATASETS}/{release['id']}/exports", json=PURPOSE)
+    assert response.json()["code"] == "release_retracted"

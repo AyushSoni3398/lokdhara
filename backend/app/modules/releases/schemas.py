@@ -105,3 +105,45 @@ class RetractRequest(BaseModel):
     """Why the release must no longer be used; kept with the release for audit."""
 
     note: MultiLine = Field(min_length=1, max_length=2000)
+
+
+ExportStatus = Literal[
+    "requested", "approved", "building", "ready", "expired", "rejected", "failed"
+]
+
+
+class ExportCreateRequest(BaseModel):
+    """What the package will be used for; the deciding admin reads it."""
+
+    purpose_statement: MultiLine = Field(min_length=1, max_length=2000)
+
+
+class ApproveRequest(BaseModel):
+    note: MultiLine | None = Field(default=None, max_length=2000)
+
+
+class RejectRequest(BaseModel):
+    note: MultiLine = Field(min_length=1, max_length=2000)
+
+
+class ExportOut(BaseModel):
+    id: uuid.UUID
+    release_id: uuid.UUID
+    release_slug: str
+    release_version: str | None
+    requested_by_name: str
+    mine: bool
+    purpose_statement: str
+    status: ExportStatus
+    decision_note: str | None
+    decided_at: datetime | None
+    created_at: datetime
+    ready_at: datetime | None
+    expires_at: datetime | None
+    sha256: str | None
+    size_bytes: int | None
+    download_count: int
+
+
+class ExportListOut(BaseModel):
+    items: list[ExportOut]

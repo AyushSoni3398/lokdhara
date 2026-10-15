@@ -1,20 +1,27 @@
 """Dataset releases (docs/API_SPECIFICATION.md §8)."""
 
 import uuid
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, status
 
 from app.db import DbSession
 from app.modules.identity.deps import AdminUser, Context, SettingsDep, require_roles
+from app.modules.identity.models import User
 from app.modules.identity.service import AuthenticatedUser
-from app.modules.releases import freeze, service
-from app.modules.releases.models import DatasetRelease
+from app.modules.releases import exports, freeze, service
+from app.modules.releases.models import DatasetRelease, ExportRequest
 from app.modules.releases.schemas import (
+    ApproveRequest,
     CheckListOut,
     CheckOut,
+    ExportCreateRequest,
+    ExportListOut,
+    ExportOut,
+    ExportStatus,
     FreezeRequest,
     PreviewOut,
+    RejectRequest,
     ReleaseCreateRequest,
     ReleaseListOut,
     ReleaseOut,
@@ -126,8 +133,85 @@ def freeze_release(
 
 @router.post("/datasets/{release_id}/retract")
 def retract_release(
-    release_id: uuid.UUID, body: RetractRequest, admin: AdminUser, db: DbSession, context: Context
+    release_id: uuid.UUID,
+    body: RetractRequest,
+    admin: AdminUser,
+    db: DbSession,
+    store: Store,
+    context: Context,
 ) -> ReleaseOut:
-    return release_out(
-        service.retract(db, admin=admin, release_id=release_id, note=body.note, context=context)
+    release = exports.retract(
+        db, store, admin=admin, release_id=release_id, note=body.note, context=context
     )
+    return release_out(release)
+
+
+# ------------------------------------------------------------------ exports
+
+
+def export_out(db: DbSession, user: AuthenticatedUser, request: ExportRequest) -> ExportOut:
+    release = db.get_one(DatasetRelease, request.release_id)
+    requester = db.get_one(User, request.requested_by)
+    return ExportOut(
+        id=request.id,
+        release_id=release.id,
+        release_slug=release.slug,
+        release_version=release.version,
+        requested_by_name=requester.display_name,
+        mine=request.requested_by == user.id,
+        purpose_statement=request.purpose_statement,
+        status=cast(ExportStatus, request.status),
+        decision_note=request.decision_note,
+        decided_at=request.decided_at,
+        created_at=request.created_at,
+        ready_at=request.ready_at,
+        expires_at=request.expires_at,
+        sha256=request.sha256,
+        size_bytes=request.size_bytes,
+        download_count=len(request.downloaded_at),
+    )
+
+
+@router.post("/datasets/{release_id}/exports", status_code=status.HTTP_201_CREATED)
+def request_export(
+    release_id: uuid.UUID,
+    body: ExportCreateRequest,
+    user: DataUser,
+    db: DbSession,
+    context: Context,
+) -> ExportOut:
+    request = exports.request_export(
+        db,
+        user=user,
+        release_id=release_id,
+        purpose_statement=body.purpose_statement,
+        context=context,
+    )
+    return export_out(db, user, request)
+
+
+@router.get("/exports")
+def list_exports(user: DataUser, db: DbSession) -> ExportListOut:
+    """Admins see every request; researchers see their own."""
+    return ExportListOut(items=[export_out(db, user, r) for r in exports.visible_exports(db, user)])
+
+
+@router.get("/exports/{export_id}")
+def get_export(export_id: uuid.UUID, user: DataUser, db: DbSession) -> ExportOut:
+    return export_out(db, user, exports.get_export(db, user, export_id))
+
+
+@router.post("/admin/exports/{export_id}/approve")
+def approve_export(
+    export_id: uuid.UUID, body: ApproveRequest, admin: AdminUser, db: DbSession, context: Context
+) -> ExportOut:
+    request = exports.approve(db, admin=admin, export_id=export_id, note=body.note, context=context)
+    return export_out(db, admin, request)
+
+
+@router.post("/admin/exports/{export_id}/reject")
+def reject_export(
+    export_id: uuid.UUID, body: RejectRequest, admin: AdminUser, db: DbSession, context: Context
+) -> ExportOut:
+    request = exports.reject(db, admin=admin, export_id=export_id, note=body.note, context=context)
+    return export_out(db, admin, request)
