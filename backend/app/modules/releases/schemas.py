@@ -99,3 +99,9 @@ class FreezeRequest(BaseModel):
     version: Annotated[
         str, Field(pattern=r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$", max_length=30)
     ]
+
+
+class RetractRequest(BaseModel):
+    """Why the release must no longer be used; kept with the release for audit."""
+
+    note: MultiLine = Field(min_length=1, max_length=2000)

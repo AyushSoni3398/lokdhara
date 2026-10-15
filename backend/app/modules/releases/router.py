@@ -19,6 +19,7 @@ from app.modules.releases.schemas import (
     ReleaseListOut,
     ReleaseOut,
     ReleaseUpdateRequest,
+    RetractRequest,
     SampleItem,
     SelectionCriteria,
 )
@@ -121,3 +122,12 @@ def freeze_release(
         context=context,
     )
     return release_out(release)
+
+
+@router.post("/datasets/{release_id}/retract")
+def retract_release(
+    release_id: uuid.UUID, body: RetractRequest, admin: AdminUser, db: DbSession, context: Context
+) -> ReleaseOut:
+    return release_out(
+        service.retract(db, admin=admin, release_id=release_id, note=body.note, context=context)
+    )

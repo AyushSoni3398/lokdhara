@@ -202,3 +202,33 @@ def test_releases_beyond_internal_research_wait_for_governance(
         json={"licence": "Data-use agreement DUA-TEST", "data_card_markdown": "Test."},
     )
     assert _checks(client, draft["id"])["passed"] is True
+
+
+def _frozen(client: TestClient, admin: TestUser, version: str = "0.1.0") -> dict[str, Any]:
+    act_as(client, admin)
+    draft = _draft(client)
+    response = client.post(f"{DATASETS}/{draft['id']}/freeze", json={"version": version})
+    assert response.status_code == 200, response.text
+    result: dict[str, Any] = response.json()
+    return result
+
+
+def test_admins_retract_a_frozen_release_with_a_note(
+    client: TestClient, items: list[str], admin: TestUser, researcher: TestUser, db: Session
+) -> None:
+    act_as(client, researcher)
+    draft = _draft(client)
+    retract = f"{DATASETS}/{draft['id']}/retract"
+    note = {"note": "A speaker raised a consent concern."}
+    assert client.post(retract, json=note).json()["code"] == "forbidden"
+    act_as(client, admin)
+    assert client.post(retract, json=note).json()["code"] == "release_not_frozen"
+
+    release = _frozen(client, admin, "0.2.0")
+    retract = f"{DATASETS}/{release['id']}/retract"
+    assert client.post(retract, json={"note": ""}).status_code == 422
+    retracted = client.post(retract, json=note).json()
+    assert (retracted["status"], retracted["retraction_note"]) == ("retracted", note["note"])
+    assert retracted["version"] == "0.2.0"  # the record stays for audit
+    assert client.post(retract, json=note).json()["code"] == "release_retracted"
+    assert db.scalar(select(AuditEvent).where(AuditEvent.action == "release.retract"))
