@@ -9,6 +9,7 @@ from app.modules.consents.router import router as consents_router
 from app.modules.identity.router import router as identity_router
 from app.modules.processing.router import router as processing_router
 from app.modules.prompts.router import router as prompts_router
+from app.modules.reports.router import router as reports_router
 from app.modules.speakers.router import router as speakers_router
 from app.modules.submissions.router import router as submissions_router
 from app.object_store.router import router as local_storage_router
@@ -35,6 +36,7 @@ def create_app() -> FastAPI:
     app.include_router(consents_router, prefix=API_PREFIX)
     app.include_router(prompts_router, prefix=API_PREFIX)
     app.include_router(submissions_router, prefix=API_PREFIX)
+    app.include_router(reports_router, prefix=API_PREFIX)
     if settings.storage_backend == "local" and settings.is_local:
         app.include_router(local_storage_router, prefix=API_PREFIX)
     return app
