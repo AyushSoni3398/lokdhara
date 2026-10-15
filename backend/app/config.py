@@ -78,6 +78,17 @@ class Settings(BaseSettings):
     # No minors in the pilot until Q-L4 is answered; the schema already supports guardians.
     allow_minors: bool = False
 
+    # Dataset releases (docs/DATASET_VERSIONING.md). Releases other than internal research
+    # also need governance answers (Q-G1, Q-G5, Q-L5); until they are recorded they cannot be
+    # frozen. Turn this on only once those answers are recorded.
+    external_releases_enabled: bool = False
+    # The data card names speakers whose share of a release's audio is above this (check D9).
+    release_speaker_share_warning: float = Field(default=0.3, gt=0, le=1)
+    # Export packages are deleted this long after they are built.
+    export_retention_days: int = Field(default=7, gt=0)
+    # The code version recorded in each frozen release; set by the deployment.
+    git_commit: str = "unknown"
+
     # Prompt library media made by the team (docs/RECORDING_MODES.md)
     prompt_image_max_bytes: int = Field(default=5 * 1024 * 1024, gt=0)
     prompt_audio_max_bytes: int = Field(default=10 * 1024 * 1024, gt=0)
