@@ -1,5 +1,6 @@
-"""Effective access: who may find an item in the researcher catalogue (ADR-012,
-docs/ACCESS_CONTROL.md §3, docs/CONSENT_AND_DATA_GOVERNANCE.md §3.3).
+"""Effective access: who may find an item in the researcher catalogue, and which items a dataset
+release may hold (ADR-012, docs/ACCESS_CONTROL.md §3, docs/CONSENT_AND_DATA_GOVERNANCE.md §3.3,
+docs/DATASET_VERSIONING.md §3).
 
 The rule is written twice, as plain Python for reasoning and tests, and as a SQL condition for
 searching, and one shared table of cases checks that both agree (tests/test_effective_access.py).
@@ -19,6 +20,7 @@ from sqlalchemy import (
     cast,
     exists,
     false,
+    func,
     literal,
     not_,
     select,
@@ -40,24 +42,40 @@ CULTURALLY_RESTRICTED = "culturally_restricted"
 HIDING_FLAGS = frozenset({"sensitive", "third_party_voice", "contains_pii", "minor"})
 
 
+# The consent answer each release purpose needs (DATASET_VERSIONING §3).
+PURPOSE_PERMISSIONS = {
+    "internal_research": "allow_research",
+    "external_research": "allow_research",
+    "public": "allow_public_access",
+    "ai_training": "allow_ai_training",
+}
+
+
 @dataclass(frozen=True)
 class ConsentStep:
-    """One consent record of the speaker, as far as research use is concerned."""
+    """One consent record of the speaker: the uses it allows."""
 
     allow_research: bool
     applies_to_past: bool = False
+    allow_public_access: bool = False
+    allow_ai_training: bool = False
 
 
-def research_allowed(steps: Sequence[ConsentStep]) -> bool:
+def use_allowed(steps: Sequence[ConsentStep], permission: str) -> bool:
     """`steps` are the record in force when the item was sent, then every later record of the
     same speaker, oldest first. A later record can only narrow what was agreed, unless the
     speaker said it applies to past contributions too."""
     if not steps:
         return False
-    allowed = steps[0].allow_research
+    allowed: bool = getattr(steps[0], permission)
     for step in steps[1:]:
-        allowed = step.allow_research if step.applies_to_past else allowed and step.allow_research
+        answer: bool = getattr(step, permission)
+        allowed = answer if step.applies_to_past else allowed and answer
     return allowed
+
+
+def research_allowed(steps: Sequence[ConsentStep]) -> bool:
+    return use_allowed(steps, "allow_research")
 
 
 @dataclass(frozen=True)
@@ -90,12 +108,22 @@ def in_catalogue(viewer: Viewer, item: Item) -> bool:
     return research_allowed(item.consent)
 
 
+def in_release(purpose: str, item: Item) -> bool:
+    """Releases are stricter than the catalogue: any restriction flag keeps an item out,
+    including `culturally_restricted` until the community approves it (Q-G3)."""
+    if item.status not in CATALOGUE_STATUSES or item.speaker_withdrawn or item.consent_withdrawn:
+        return False
+    if item.restriction_flags:
+        return False
+    return use_allowed(item.consent, PURPOSE_PERMISSIONS[purpose])
+
+
 # ------------------------------------------------------------------ the same rule in SQL
 
 
-def _research_allowed_sql() -> ColumnElement[bool]:
-    """research_allowed() for Submission rows: refused when some record from the one the item
-    was sent under onwards says no, and no later record widened it again for past items."""
+def _use_allowed_sql(permission: str) -> ColumnElement[bool]:
+    """use_allowed() for Submission rows: refused when some record from the one the item was
+    sent under onwards says no, and no later record widened it again for past items."""
     base = aliased(ConsentRecord)
     refusing = aliased(ConsentRecord)
     widening = aliased(ConsentRecord)
@@ -106,28 +134,20 @@ def _research_allowed_sql() -> ColumnElement[bool]:
         .where(
             refusing.speaker_id == base.speaker_id,
             order >= tuple_(base.obtained_at, base.id),
-            not_(refusing.allow_research),
+            not_(getattr(refusing, permission)),
             ~exists().where(
                 widening.speaker_id == refusing.speaker_id,
                 tuple_(widening.obtained_at, widening.id) > order,
                 widening.applies_to_past_contributions,
-                widening.allow_research,
+                getattr(widening, permission),
             ),
         )
     )
     return and_(Submission.consent_record_id.is_not(None), ~exists(refused))
 
 
-def catalogue_filter(viewer: Viewer) -> ColumnElement[bool]:
-    """in_catalogue() as a condition on Submission, for searches."""
-    if not (viewer.is_admin or viewer.is_researcher):
-        return false()
+def _accepted_and_not_withdrawn() -> ColumnElement[bool]:
     withdrawn_consent = aliased(ConsentRecord)
-    culture_ok = (
-        true()
-        if viewer.is_admin or CULTURALLY_RESTRICTED in viewer.scopes
-        else not_(literal(CULTURALLY_RESTRICTED, Text) == any_(Submission.restriction_flags))
-    )
     return and_(
         Submission.status.in_(CATALOGUE_STATUSES),
         ~exists().where(Speaker.id == Submission.speaker_id, Speaker.status == "withdrawn"),
@@ -135,13 +155,36 @@ def catalogue_filter(viewer: Viewer) -> ColumnElement[bool]:
             withdrawn_consent.speaker_id == Submission.speaker_id,
             withdrawn_consent.status == "withdrawn",
         ),
+    )
+
+
+def catalogue_filter(viewer: Viewer) -> ColumnElement[bool]:
+    """in_catalogue() as a condition on Submission, for searches."""
+    if not (viewer.is_admin or viewer.is_researcher):
+        return false()
+    culture_ok = (
+        true()
+        if viewer.is_admin or CULTURALLY_RESTRICTED in viewer.scopes
+        else not_(literal(CULTURALLY_RESTRICTED, Text) == any_(Submission.restriction_flags))
+    )
+    return and_(
+        _accepted_and_not_withdrawn(),
         not_(
             Submission.restriction_flags.op("&&", return_type=Boolean)(
                 cast(sorted(HIDING_FLAGS), ARRAY(Text))
             )
         ),
         culture_ok,
-        _research_allowed_sql(),
+        _use_allowed_sql("allow_research"),
+    )
+
+
+def release_filter(purpose: str) -> ColumnElement[bool]:
+    """in_release() as a condition on Submission."""
+    return and_(
+        _accepted_and_not_withdrawn(),
+        func.cardinality(Submission.restriction_flags) == 0,
+        _use_allowed_sql(PURPOSE_PERMISSIONS[purpose]),
     )
 
 

@@ -1,4 +1,5 @@
-"""Who may find an item in the catalogue (docs/ACCESS_CONTROL.md §3, ADR-012).
+"""Who may find an item in the catalogue, and what a release may hold (docs/ACCESS_CONTROL.md
+§3, docs/DATASET_VERSIONING.md §3, ADR-012).
 
 One table of cases is run against both the Python rule and the SQL condition, so the two can
 never disagree. All people and records are synthetic.
@@ -19,6 +20,8 @@ from app.modules.consents.access import (
     Viewer,
     catalogue_filter,
     in_catalogue,
+    in_release,
+    release_filter,
     research_allowed,
 )
 from app.modules.consents.models import ConsentForm, ConsentRecord
@@ -101,6 +104,44 @@ CASES = [
 ]
 IDS = [case[0] for case in CASES]
 
+EVERYTHING = ConsentStep(allow_research=True, allow_public_access=True, allow_ai_training=True)
+
+# (case, purpose, item, expected)
+RELEASE_CASES = [
+    ("research", "internal_research", LISTED, True),
+    ("external research", "external_research", LISTED, True),
+    ("public needs public consent", "public", LISTED, False),
+    ("public with consent", "public", replace(LISTED, consent=(EVERYTHING,)), True),
+    ("ai training needs its consent", "ai_training", LISTED, False),
+    ("ai training with consent", "ai_training", replace(LISTED, consent=(EVERYTHING,)), True),
+    (
+        "public narrowed later",
+        "public",
+        replace(LISTED, consent=(EVERYTHING, ConsentStep(allow_research=True))),
+        False,
+    ),
+    *[
+        (
+            f"never with {flag}",
+            "internal_research",
+            replace(LISTED, restriction_flags=(flag,)),
+            False,
+        )
+        for flag in (
+            "sensitive",
+            "third_party_voice",
+            "contains_pii",
+            "minor",
+            "culturally_restricted",
+        )
+    ],
+    ("not processing", "internal_research", replace(LISTED, status="processing"), False),
+    ("not withdrawn", "internal_research", replace(LISTED, status="withdrawn"), False),
+    ("speaker withdrew", "internal_research", replace(LISTED, speaker_withdrawn=True), False),
+    ("consent withdrawn", "internal_research", replace(LISTED, consent_withdrawn=True), False),
+]
+RELEASE_IDS = [case[0] for case in RELEASE_CASES]
+
 
 def test_no_consent_record_means_no_research() -> None:
     assert research_allowed([]) is False
@@ -109,6 +150,11 @@ def test_no_consent_record_means_no_research() -> None:
 @pytest.mark.parametrize(("case", "viewer", "item", "expected"), CASES, ids=IDS)
 def test_python_rule(case: str, viewer: Viewer, item: Item, expected: bool) -> None:
     assert in_catalogue(viewer, item) is expected
+
+
+@pytest.mark.parametrize(("case", "purpose", "item", "expected"), RELEASE_CASES, ids=RELEASE_IDS)
+def test_python_release_rule(case: str, purpose: str, item: Item, expected: bool) -> None:
+    assert in_release(purpose, item) is expected
 
 
 def _store(db: Session, owner: uuid.UUID, item: Item) -> uuid.UUID:
@@ -137,6 +183,8 @@ def _store(db: Session, owner: uuid.UUID, item: Item) -> uuid.UUID:
             guardian_involved=False,
             allow_store_and_review=True,
             allow_research=step.allow_research,
+            allow_public_access=step.allow_public_access,
+            allow_ai_training=step.allow_ai_training,
             applies_to_past_contributions=step.applies_to_past,
         )
         db.add(record)
@@ -168,5 +216,22 @@ def test_sql_condition_agrees_with_the_python_rule(db: Session, make_user: MakeU
     for submission_id, case, viewer, expected in stored:
         found = db.scalar(
             select(Submission.id).where(Submission.id == submission_id, catalogue_filter(viewer))
+        )
+        assert (found is not None) is expected, case
+
+
+@requires_postgres
+def test_sql_release_condition_agrees_with_the_python_rule(
+    db: Session, make_user: MakeUser
+) -> None:
+    owner = make_user("owner", "contributor").id
+    stored = [
+        (_store(db, owner, item), case, purpose, expected)
+        for case, purpose, item, expected in RELEASE_CASES
+    ]
+    db.commit()
+    for submission_id, case, purpose, expected in stored:
+        found = db.scalar(
+            select(Submission.id).where(Submission.id == submission_id, release_filter(purpose))
         )
         assert (found is not None) is expected, case
