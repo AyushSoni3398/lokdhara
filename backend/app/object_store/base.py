@@ -125,7 +125,8 @@ class ObjectStore(ABC):
 
     @abstractmethod
     def delete(self, bucket: Bucket, key: str) -> None:
-        """Only quarantine cleanup and the erasure routine call this. Missing keys are ignored."""
+        """Only quarantine and export cleanup and the erasure routine call this. Missing keys are
+        ignored."""
 
     @abstractmethod
     def signed_url(self, bucket: Bucket, key: str, *, ttl_seconds: int, content_type: str) -> str:

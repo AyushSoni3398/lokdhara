@@ -25,3 +25,13 @@ def test_worker_survives_a_failing_iteration() -> None:
         raise ConnectionError("database restarting")
 
     assert run(threading.Event(), process, poll_seconds=0.01, max_iterations=2) == 2
+
+
+def test_worker_can_stop_once_the_queue_is_empty() -> None:
+    due = [True, True, False, True]
+
+    def process() -> bool:
+        return due.pop(0)
+
+    assert run(threading.Event(), process, poll_seconds=0.01, until_idle=True) == 3
+    assert due == [True]

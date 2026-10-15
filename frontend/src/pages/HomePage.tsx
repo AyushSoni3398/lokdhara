@@ -26,6 +26,11 @@ export function HomePage() {
             <span aria-hidden="true">🔎</span> {t('catalogue.link')}
           </Link>
         )}
+        {hasRole(session, 'researcher', 'admin') && (
+          <Link to="/datasets" className="action">
+            <span aria-hidden="true">📦</span> {t('releases.link')}
+          </Link>
+        )}
         {hasRole(session, 'admin') && (
           <Link to="/admin/jobs" className="action">
             <span aria-hidden="true">🛠️</span> {t('jobs.link')}

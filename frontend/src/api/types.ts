@@ -248,3 +248,103 @@ export interface CatalogueQuery {
   content_type?: ContentType
   cursor?: string
 }
+
+/** What a dataset release may be used for; each needs its own consent answer. */
+export type ReleasePurpose = 'internal_research' | 'external_research' | 'public' | 'ai_training'
+export type ReleaseStatus = 'draft' | 'frozen' | 'retracted'
+
+/** Which accepted items a draft release takes (docs/DATASET_VERSIONING.md). Empty means any. */
+export interface SelectionCriteria {
+  kinds: Kind[]
+  content_types: ContentType[]
+  recording_modes: RecordingMode[]
+  dialect_labels: string[]
+  needs_audio: boolean
+  needs_transcription: boolean
+}
+
+export interface Release {
+  id: string
+  slug: string
+  version: string | null
+  purpose: ReleasePurpose
+  selection_criteria: SelectionCriteria
+  status: ReleaseStatus
+  licence: string | null
+  data_card_markdown: string
+  manifest_sha256: string | null
+  created_at: string
+  updated_at: string
+  frozen_at: string | null
+  retracted_at: string | null
+  retraction_note: string | null
+}
+
+export interface ReleaseCreate {
+  slug: string
+  purpose: ReleasePurpose
+}
+
+export type ReleaseUpdate = Partial<
+  Pick<Release, 'purpose' | 'selection_criteria' | 'licence' | 'data_card_markdown'>
+>
+
+export interface ReleasePreview {
+  item_count: number
+  total_duration_ms: number
+  left_out_count: number
+  by_content_type: Record<string, number>
+  by_dialect_label: Record<string, number>
+  by_kind: Record<string, number>
+  sample: {
+    id: string
+    title: string | null
+    content_type: ContentType
+    duration_ms: number | null
+  }[]
+}
+
+/** One pre-freeze check, D1 to D9 (docs/DATA_QUALITY_AND_VALIDATION.md §4). */
+export interface ReleaseCheck {
+  code: string
+  passed: boolean
+  blocking: boolean
+  message: string
+}
+
+export type ExportStatus =
+  | 'requested'
+  | 'approved'
+  | 'building'
+  | 'ready'
+  | 'expired'
+  | 'rejected'
+  | 'failed'
+
+export interface ExportRequest {
+  id: string
+  release_id: string
+  release_slug: string
+  release_version: string | null
+  requested_by_name: string
+  mine: boolean
+  purpose_statement: string
+  status: ExportStatus
+  decision_note: string | null
+  decided_at: string | null
+  created_at: string
+  ready_at: string | null
+  expires_at: string | null
+  sha256: string | null
+  size_bytes: number | null
+  download_count: number
+}
+
+/** A short-lived link to a ready package. */
+export interface ExportDownload {
+  download_url: string
+  file_name: string
+  sha256: string
+  size_bytes: number
+  expires_at: string
+}

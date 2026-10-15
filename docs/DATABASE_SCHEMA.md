@@ -285,7 +285,7 @@ Implemented by migration `0003` (ADR-019).
 `id, job_type, payload jsonb (IDs only), target_type, target_id, status ('queued','running','succeeded','failed'), attempts, max_attempts, run_after, dedupe_key NULL, locked_by NULL, lock_expires_at NULL, last_error_code NULL, created_at, finished_at NULL` — partial unique index on `dedupe_key` while queued or running. Finished rows may be purged; history lives in `processing_runs`.
 
 ### `processing_runs` 🧊 (one row per finished attempt)
-`id, job_id (no FK, so jobs can be purged), job_type ('system.ping','audio.validate','audio.analyze','audio.renditions','audio.dedupe','text.derive','dataset.export','cleanup.quarantine','cleanup.expire_drafts'), target_type, target_id, attempt, status ('succeeded','failed'), started_at, finished_at, worker_id, tool_versions jsonb 🗂, input_sha256, output_summary jsonb 🗂, error_code, error_detail (sanitised: for unexpected errors only the exception type is stored)`. A running attempt is visible in `jobs`, so this table never needs updating.
+`id, job_id (no FK, so jobs can be purged), job_type ('system.ping','audio.validate','audio.analyze','audio.renditions','audio.dedupe','text.derive','dataset.export','cleanup.quarantine','cleanup.expire_drafts','cleanup.expire_exports'), target_type, target_id, attempt, status ('succeeded','failed'), started_at, finished_at, worker_id, tool_versions jsonb 🗂, input_sha256, output_summary jsonb 🗂, error_code, error_detail (sanitised: for unexpected errors only the exception type is stored)`. A running attempt is visible in `jobs`, so this table never needs updating.
 
 ## 6. Datasets
 
@@ -294,22 +294,25 @@ Implemented by migration `0003` (ADR-019).
 |--------|------|-------|
 | id | uuid PK | |
 | slug | text | e.g., `mundari-speech-pilot` |
-| version | text | SemVer, e.g., `0.1.0`. UNIQUE (slug, version). |
+| version | text NULL | SemVer, e.g., `0.1.0`, set on freeze (NULL while a draft). UNIQUE (slug, version). |
 | purpose 🔎 | text CHECK IN ('internal_research','external_research','public','ai_training') | Determines which consent flag is required. |
 | selection_criteria 🗂 | jsonb | The filter used. |
 | status | text CHECK IN ('draft','frozen','retracted') | |
-| licence | text NULL | Required before `frozen` for external/public purposes (Q-L5). |
-| data_card_markdown | text | |
-| manifest_object_key, manifest_sha256 | text NULL | Set on freeze. |
-| created_by, approved_by | uuid FK users | approved_by must be admin. |
-| frozen_at, retracted_at | timestamptz NULL | |
+| licence | text NULL | Required before `frozen` for external/public purposes (Q-L5). At most 200 characters. |
+| data_card_markdown | text | At most 50 000 characters; included in the package README. |
+| manifest_object_key, manifest_sha256 | text NULL | Set on freeze. The package's text files are kept next to the manifest in the `exports` bucket for as long as the release. |
+| code_version | text NULL | Git commit of the code that froze it (`LKD_GIT_COMMIT`). |
+| created_by, approved_by | uuid FK users | approved_by is the admin who froze it. |
+| created_at, updated_at, frozen_at, retracted_at | timestamptz | |
 | retraction_note | text NULL | |
 
+Migration `0013`. `ck_dataset_releases_frozen_complete` ties the status to its fields (a draft has no version, manifest or approver; a retracted release has its date and note). The `lkd_release_guard` trigger lets a draft change freely, a frozen release change only to `retracted`, and nothing change after that; only drafts can be deleted.
+
 ### `dataset_release_items` 🧊
-`release_id FK, submission_id FK, recording_id FK NULL, rendition_id FK NULL, text_revision_ids uuid[], consent_record_id FK, consent_snapshot jsonb, item_sha256s jsonb, withdrawn_after_release_at timestamptz NULL` — PK (release_id, submission_id). `withdrawn_after_release_at` is the only field set after insert (via withdrawal routine).
+`release_id FK, submission_id FK, recording_id FK NULL, rendition_id FK NULL (the analysis FLAC), text_revision_ids uuid[], consent_record_id FK, consent_snapshot jsonb (the four uses as computed at freezing), item_sha256s jsonb, withdrawn_after_release_at timestamptz NULL` — PK (release_id, submission_id). `withdrawn_after_release_at` is the only field set after insert (via withdrawal routine).
 
 ### `export_requests`
-`id, release_id FK, requested_by, purpose_statement, approved_by NULL, status ('requested','approved','building','ready','expired','rejected','failed'), object_key NULL, sha256 NULL, expires_at NULL, downloaded_at[]`.
+`id, release_id FK, requested_by FK, purpose_statement (1–2000 characters), status ('requested','approved','building','ready','expired','rejected','failed'), decided_by FK NULL, decided_at NULL, decision_note NULL, object_key NULL, sha256 NULL, size_bytes NULL, created_at, ready_at NULL, expires_at NULL, downloaded_at timestamptz[]`. A decided request has `decided_by` and `decided_at`; a ready one has its object, checksum and expiry. `id, release_id, requested_by, purpose_statement, created_at` cannot change (`lkd_freeze_columns`).
 
 ## 7. Audit
 

@@ -4,7 +4,6 @@ Which consent and flag combinations are listed is covered case by case in
 test_effective_access.py; these tests check the search on top of it.
 """
 
-import json
 from typing import Any
 
 import pytest
@@ -12,16 +11,18 @@ from fastapi.testclient import TestClient
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
-from app.config import Settings
-from app.modules.consents import service as consents
 from app.modules.identity.models import UserRole
 from app.modules.identity.service import utcnow
 from app.modules.processing import (
     handlers,  # noqa: F401 - registers text.derive
-    queue,
 )
 from tests.conftest import MakeUser, TestUser, act_as, requires_postgres
-from tests.submission_helpers import SUBMISSIONS, create_draft, own_speaker
+from tests.submission_helpers import (
+    SUBMISSIONS,
+    accepted_text_item,
+    give_consent,
+    own_speaker,
+)
 
 pytestmark = requires_postgres
 
@@ -38,48 +39,15 @@ def researcher(make_user: MakeUser) -> TestUser:
     return make_user("kiran", "researcher")
 
 
-def _consent(client: TestClient, db: Session, speaker_id: str, research: bool) -> None:
-    consents.ensure_dev_forms(db)
-    db.commit()
-    form = consents.current_form(db, Settings(_env_file=None, env="test"), "hi")
-    answers = {
-        "consent_form_id": str(form.id),
-        "method": "in_app",
-        "allow_store_and_review": True,
-        "allow_research": research,
-    }
-    response = client.post(
-        f"/api/v1/speakers/{speaker_id}/consents", data={"consent": json.dumps(answers)}
-    )
-    assert response.status_code == 201, response.text
-
-
 @pytest.fixture
 def speaker(client: TestClient, asha: TestUser, db: Session) -> str:
     act_as(client, asha)
     speaker_id = own_speaker(client)
-    _consent(client, db, speaker_id, research=True)
+    give_consent(client, db, speaker_id, allow_research=True)
     return speaker_id
 
 
-def _accepted(
-    client: TestClient, engine: Engine, speaker_id: str, content: str, **fields: Any
-) -> str:
-    draft = create_draft(client, speaker_id, kind="text", recording_mode=None, **fields)
-    layer = {
-        "layer_type": "standalone",
-        "entry_type": "sentence",
-        "language_tag": "unr",
-        "script_code": "Deva",
-        "content": content,
-    }
-    url = f"{SUBMISSIONS}/{draft['id']}"
-    assert client.post(f"{url}/text-layers", json=layer).status_code == 201
-    assert client.post(f"{url}/submit").status_code == 200
-    while queue.process_one(engine, "test-worker", 60):
-        pass
-    assert client.get(url).json()["status"] == "accepted"
-    return str(draft["id"])
+_accepted = accepted_text_item
 
 
 def _ids(client: TestClient, **params: Any) -> list[str]:
@@ -116,7 +84,7 @@ def test_items_without_research_consent_or_hidden_are_not_listed(
     hidden = _accepted(client, engine, speaker, "दूसरा वाक्य")
     act_as(client, make_user("ravi", "contributor"))
     no_research = own_speaker(client)
-    _consent(client, db, no_research, research=False)
+    give_consent(client, db, no_research)
     private = _accepted(client, engine, no_research, "तीसरा वाक्य")
 
     act_as(client, make_user("meera", "admin"))
@@ -142,7 +110,7 @@ def test_a_later_no_to_research_takes_items_out(
     act_as(client, researcher)
     assert _ids(client) == [item]
     act_as(client, asha)
-    _consent(client, db, speaker, research=False)
+    give_consent(client, db, speaker)
     act_as(client, researcher)
     assert _ids(client) == []
 

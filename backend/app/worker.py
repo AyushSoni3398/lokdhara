@@ -28,8 +28,10 @@ def run(
     process: Callable[[], bool],
     poll_seconds: float,
     max_iterations: int | None = None,
+    until_idle: bool = False,
 ) -> int:
-    """Processes jobs until `stop` is set, sleeping when the queue is empty.
+    """Processes jobs until `stop` is set, sleeping when the queue is empty. With
+    `until_idle` it returns instead, the first time no job is due.
 
     Returns the number of loop iterations (each either ran one job or found none).
     """
@@ -44,6 +46,8 @@ def run(
             did_work = False
         if max_iterations is not None and iterations >= max_iterations:
             break
+        if until_idle and not did_work:
+            break
         if not did_work:
             stop.wait(poll_seconds)
     return iterations
@@ -56,6 +60,11 @@ def worker_id() -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Lokdhara background worker")
     parser.add_argument("--once", action="store_true", help="run one iteration and exit")
+    parser.add_argument(
+        "--until-idle",
+        action="store_true",
+        help="run the jobs that are due, then exit (for development and browser tests)",
+    )
     args = parser.parse_args()
 
     settings = get_settings()
@@ -84,6 +93,7 @@ def main() -> None:
         process,
         settings.worker_poll_seconds,
         max_iterations=1 if args.once else None,
+        until_idle=args.until_idle,
     )
 
 

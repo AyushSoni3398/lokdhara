@@ -1,6 +1,6 @@
 # Dataset Versioning and Export Format
 
-Status: **Proposed.** Datasets are **never** stored in Git (ADR-013, ADR-017).
+Status: **Built in M7** (releases, checks, freezing, retraction, export packages); the withdrawal workflow (§2) follows in M7 part 2. Datasets are **never** stored in Git (ADR-013, ADR-017).
 
 ## 1. Concepts
 
@@ -29,7 +29,11 @@ A withdrawal therefore produces a new **PATCH** release that excludes the item; 
 | `public` | `allow_public_access` | Community + institutional approval recorded (Q-G1); licence set. |
 | `ai_training` | `allow_ai_training` (and `allow_commercial_use` if the use is commercial) | Separate governance approval. |
 
-Items with restriction flags are excluded according to [DATA_DICTIONARY.md §2](DATA_DICTIONARY.md#2-controlled-vocabularies).
+Items with restriction flags are excluded according to [DATA_DICTIONARY.md §2](DATA_DICTIONARY.md#2-controlled-vocabularies). Until the community decides on Q-G3, an item with **any** restriction flag is left out of every release, `culturally_restricted` included. The rule lives in `app.modules.consents.access` (`in_release` and `release_filter`), with one table of test cases for both.
+
+Releases other than `internal_research` also need `LKD_EXTERNAL_RELEASES_ENABLED=true`, which is set only once those governance answers are recorded; until then check D7 fails for them.
+
+**How a release is made.** A researcher or admin starts a draft (`slug`, `purpose`, selection criteria: kinds, content types, recording modes, dialect labels, only items with audio, only items with text) and previews it. `POST /datasets/{id}/checks` runs D1–D9 ([DATA_QUALITY_AND_VALIDATION.md §4](DATA_QUALITY_AND_VALIDATION.md)). An admin freezes it with a version: the checks run again, consent is re-computed, one `dataset_release_items` row records each item's revisions, audio copy and consent, and the package's text files (items.jsonl, README.md, datacard.json, LICENSE.txt, manifest.json) are stored. Exports are asked for with a purpose statement, approved by another admin, and built by the `dataset.export` job from those stored files plus the audio copies, each checked against the manifest. Packages expire after `LKD_EXPORT_RETENTION_DAYS` (`cleanup.expire_exports`, hourly).
 
 ## 4. Export package layout (v1)
 
@@ -60,20 +64,23 @@ Originals are **not** included by default (privacy, size); a release may include
   "recording_mode": "prompted",
   "prompt": {"id": "…", "key": "img-farming-012", "version": 2, "type": "image"},
   "recorded_on": "2027-01-15",
-  "audio": {"path": "audio/0192f1c4-….flac", "duration_ms": 61234, "sample_rate_hz": 16000, "is_lossy_source": true, "sha256": "…"},
-  "transcription": {"revision_id": "…", "script": "Deva", "text": "…", "origin": "prompt_text", "verification_status": "unverified", "uncertainty_markup": false},
-  "translations": [{"language": "hi", "revision_id": "…", "text": "…", "origin": "human_contributor", "verification_status": "unverified"}],
+  "audio": {"path": "audio/0192f1c4-….flac", "duration_ms": 61234, "sample_rate_hz": 16000, "is_lossy_source": true, "sha256": "…", "bytes": 1960000},
+  "transcription": {"revision_id": "…", "language": "unr", "script": "Deva", "text": "…", "origin": "prompt_text", "verification_status": "unverified", "uncertainty_markup": false},
+  "text": null,
+  "translations": [{"language": "hi", "script": "Deva", "revision_id": "…", "source_revision_id": "…", "text": "…", "origin": "human_contributor", "verification_status": "unverified", "uncertainty_markup": false}],
   "quality_flags": [],
   "consent_permissions": {"research": true, "public": false, "ai_training": false, "commercial": false},
   "speaker": {"age_band": "45-59"}
 }
 ```
 
-Fields are produced from an **explicit allow-list** in code; anything not in the allow-list is never exported (contacts, names, review notes, `collection_context.notes`, object keys, user IDs).
+`transcription` is what is said in a recording; `text` is a text-only item (a standalone text layer); either may be `null`. `speaker` is `{}` unless the speaker agreed to share demographics. Items are sorted by `item_id`.
+
+Fields are produced from an **explicit allow-list** in code (`app.modules.releases.package`); anything not in the allow-list is never exported (contacts, names, review notes, `collection_context.notes`, object keys, user IDs).
 
 ### `manifest.json` (v1)
 
-`release_slug, version, purpose, licence, frozen_at, frozen_by_role, item_count, total_duration_ms, export_format_version: "1", lokdhara_git_commit, tool_versions, files: [{path, sha256, bytes}]`.
+`release_slug, version, purpose, licence, frozen_at, frozen_by_role, item_count, total_duration_ms, export_format_version: "1", lokdhara_git_commit, files: [{path, sha256, bytes}]` (every file except `manifest.json` and `checksums.sha256`; `checksums.sha256` also lists the manifest). Without a licence, LICENSE.txt says the data is for internal research within the project only.
 
 ### Data card contents
 

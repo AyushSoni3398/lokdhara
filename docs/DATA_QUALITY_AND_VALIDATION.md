@@ -58,6 +58,8 @@ There is no reviewer in the MVP (ADR-021). Quality rests on:
 | D8 | Summary statistics (counts by dialect label, script, content type, duration) generated and included in the data card. |
 | D9 | No speaker contributes more than a configurable share of total duration without a note in the data card (bias awareness, not a block). |
 
+Built in M7 (`app.modules.releases.freeze`). D3 leaves out an item with any restriction flag until Q-G3 is answered. D7 also fails for every purpose but internal research until `LKD_EXTERNAL_RELEASES_ENABLED=true`. D9's share is `LKD_RELEASE_SPEAKER_SHARE_WARNING` (default 0.3); the data card names the speaker codes above it. `POST /datasets/{id}/checks` shows the results before freezing.
+
 ## 5. Data integrity monitoring (scheduled jobs)
 
 | Job | Frequency | Action on failure |

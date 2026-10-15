@@ -1,4 +1,5 @@
-"""Database-level rules for the domain tables (migrations 0004 to 0007, and 0012 for reports).
+"""Database-level rules for the domain tables (migrations 0004 to 0007, 0012 for reports, and
+0013 for dataset releases).
 
 The application will enforce these too; the database is the last line of defence.
 """
@@ -15,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.consents.models import ConsentForm, ConsentRecord
 from app.modules.prompts.models import Prompt
+from app.modules.releases.models import DatasetRelease, DatasetReleaseItem, ExportRequest
 from app.modules.reports.models import Report
 from app.modules.review.models import ReviewEvent
 from app.modules.speakers.models import Speaker
@@ -554,3 +556,98 @@ def test_reports_keep_what_was_reported_and_are_decided_completely(
     # Once decided, the same person can report the item again.
     db.add(Report(submission_id=submission.id, reported_by=world.reviewer, reason="wrong_content"))
     db.commit()
+
+
+def _release(db: Session, world: World, **extra: object) -> DatasetRelease:
+    release = DatasetRelease(
+        slug="mundari-speech-pilot", purpose="internal_research", created_by=world.reviewer, **extra
+    )
+    db.add(release)
+    db.flush()
+    return release
+
+
+def test_releases_freeze_completely_and_then_only_retract(db: Session, world: World) -> None:
+    _fails_add(
+        db,
+        DatasetRelease(slug="Bad Slug", purpose="internal_research", created_by=world.reviewer),
+        "ck_dataset_releases_slug",
+    )
+    _fails_add(
+        db,
+        DatasetRelease(slug="pilot", purpose="marketing", created_by=world.reviewer),
+        "ck_dataset_releases_purpose",
+    )
+    release = _release(db, world)
+    db.commit()
+    # A half-frozen release is refused: version, freezer, time and manifest go together.
+    _fails(db, update(DatasetRelease).values(status="frozen", version="0.1.0"), "frozen_complete")
+    frozen = {
+        "status": "frozen",
+        "version": "0.1.0",
+        "approved_by": world.reviewer,
+        "frozen_at": func.now(),
+        "manifest_sha256": SHA,
+    }
+    bad_version = {**frozen, "version": "1.0"}
+    _fails(db, update(DatasetRelease).values(**bad_version), "ck_dataset_releases_version")
+    db.execute(update(DatasetRelease).values(**frozen))
+    db.commit()
+
+    _fails(db, update(DatasetRelease).values(data_card_markdown="changed"), "only be retracted")
+    _fails(db, delete(DatasetRelease), "cannot be deleted")
+    db.execute(
+        update(DatasetRelease).values(
+            status="retracted", retracted_at=func.now(), retraction_note="Consent issue."
+        )
+    )
+    db.commit()
+    _fails(db, update(DatasetRelease).values(retraction_note="Rewritten."), "only be retracted")
+    # The same slug and version cannot be frozen twice.
+    _fails_add(
+        db,
+        DatasetRelease(
+            slug=release.slug,
+            purpose="internal_research",
+            created_by=world.reviewer,
+            **{k: v for k, v in frozen.items() if k != "frozen_at"},
+            frozen_at=release.frozen_at,
+        ),
+        "uq_dataset_releases_slug_version",
+    )
+
+
+def test_release_items_only_get_a_withdrawal_mark(db: Session, world: World) -> None:
+    submission = _submission(db, world)
+    release = _release(db, world)
+    db.add(
+        DatasetReleaseItem(
+            release_id=release.id,
+            submission_id=submission.id,
+            consent_record_id=world.consent.id,
+            consent_snapshot={"allow_research": True},
+        )
+    )
+    db.commit()
+    _fails(db, update(DatasetReleaseItem).values(consent_snapshot={}), "immutable_columns")
+    _fails(db, delete(DatasetReleaseItem), "append_only")
+    db.execute(update(DatasetReleaseItem).values(withdrawn_after_release_at=func.now()))
+    db.commit()
+
+
+def test_export_requests_keep_who_asked_and_why(db: Session, world: World) -> None:
+    release = _release(db, world)
+    request = ExportRequest(
+        release_id=release.id, requested_by=world.reviewer, purpose_statement="Thesis analysis."
+    )
+    db.add(request)
+    db.commit()
+    _fails(db, update(ExportRequest).values(purpose_statement="Other"), "immutable_columns")
+    _fails(db, update(ExportRequest).values(status="approved"), "ck_export_requests_decided")
+    _fails(
+        db,
+        update(ExportRequest).values(
+            status="ready", decided_by=world.reviewer, decided_at=func.now()
+        ),
+        "ck_export_requests_ready",
+    )

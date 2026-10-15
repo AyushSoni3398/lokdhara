@@ -160,14 +160,20 @@ There is no reviewer (ADR-021). Anyone who can see an item can report it, and an
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
 | GET | `/catalogue?q=&kind=&content_type=&recording_mode=&dialect=&limit=50&cursor=` | researcher/admin | Search the items effective access allows, newest first (built in M6) |
-| POST | `/datasets` | researcher/admin | Draft release `{slug, purpose, selection_criteria}` |
-| POST | `/datasets/{id}/preview` | researcher/admin | Counts + sample, consent-filtered |
-| PUT | `/datasets/{id}/data-card` | researcher/admin | Markdown data card |
-| POST | `/datasets/{id}/freeze` | admin 🔒 | Runs pre-freeze checks D1–D9; `version` required |
-| POST | `/datasets/{id}/retract` | admin 🔒 | With note |
+| POST | `/datasets` | researcher/admin | Draft release `{slug, purpose, selection_criteria?, licence?, data_card_markdown?}` (built in M7) |
+| GET | `/datasets`, `/datasets/{id}` | researcher/admin | Releases, newest first |
+| PATCH | `/datasets/{id}` | the draft's starter or an admin | Change a draft's `purpose`, `selection_criteria`, `licence` or `data_card_markdown`; `409 release_frozen` once frozen |
+| GET | `/datasets/{id}/preview` | researcher/admin | Counts by content, dialect and kind, total duration, how many accepted items consent or flags leave out, and a sample of 5 |
+| POST | `/datasets/{id}/checks` | researcher/admin | Runs the pre-freeze checks D1–D9 without freezing: `{passed, checks: [{code, passed, blocking, message}]}` |
+| POST | `/datasets/{id}/freeze` | admin 🔒 | `{version}` (SemVer). Runs D1–D9 again; `422 prefreeze_checks_failed` names the failed ones |
+| POST | `/datasets/{id}/retract` | admin 🔒 | `{note}`. Open export requests are rejected and built packages deleted |
 | POST | `/datasets/{id}/exports` | researcher/admin 🔒 | `{purpose_statement}` |
-| POST | `/admin/exports/{id}/approve` | admin 🔒 | |
-| GET | `/exports/{id}` | requester/admin | Status; when ready `{download_url, expires_at, sha256}` (🔒 on fetch) |
+| GET | `/exports`, `/exports/{id}` | requester/admin | Admins see every request, researchers their own |
+| POST | `/admin/exports/{id}/approve` | admin 🔒 | `{note?}`; another admin than the requester (`403 own_request`). Queues `dataset.export` |
+| POST | `/admin/exports/{id}/reject` | admin 🔒 | `{note}` |
+| POST | `/exports/{id}/download` | requester 🔒 | `{download_url, file_name, sha256, size_bytes, expires_at}`; the link lasts `LKD_SIGNED_URL_TTL_SECONDS`. Every call is recorded (`downloaded_at`, audit `export.download`) |
+
+**Releases.** A release takes the accepted items whose speaker's consent allows its purpose (`allow_research` for research, `allow_public_access` for public, `allow_ai_training` for AI training), without any restriction flag, as decided by `release_filter` in `app.modules.consents.access`. Releases other than internal research cannot be frozen until `LKD_EXTERNAL_RELEASES_ENABLED=true` (set only once Q-G1, Q-G5 and Q-L5 are answered) and a licence and data card are present (check D7). Packages are built by the worker from the files stored at freezing and expire after `LKD_EXPORT_RETENTION_DAYS` (default 7). A package is never built or downloaded from a retracted release, or from one an item was withdrawn from after it was frozen. Error codes: `release_not_found`, `export_not_found` (404); `release_frozen`, `release_not_frozen`, `release_retracted`, `release_has_withdrawn_items`, `version_exists`, `export_decided`, `export_not_ready`, `export_expired` (409); `own_request` (403); `prefreeze_checks_failed` (422).
 
 **Catalogue.** Lists accepted items whose speaker's consent still allows research, without hidden items, as decided by `app.modules.consents.access` (ADR-012, [ACCESS_CONTROL.md](ACCESS_CONTROL.md) §3). `q` matches the title and the current text of each layer, ignoring case. Each item has its kind, content, mode, language, dialect and coarse region, the recording's `duration_ms` and `quality_flags`, a `text_preview` of up to 200 characters with its `text_script`, and `text_status: "unverified"`. Speaker and contributor identities are not included. An item the catalogue lists can be opened with `GET /submissions/{id}` (`mine: false`), its texts and their history read, and its recording played; it cannot be changed. Contributors get `403 forbidden`.
 
