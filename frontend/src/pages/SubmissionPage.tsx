@@ -4,7 +4,9 @@ import { Link, useParams } from 'react-router'
 
 import * as api from '../api/endpoints'
 import type { Playback, Recording, SubmissionDetail, TextLayerDetail } from '../api/types'
+import { hasRole, useSession } from '../auth/session'
 import { ErrorMessage } from '../components/ErrorMessage'
+import { AdminUnhide } from './submission/AdminUnhide'
 import { ReportProblem } from './submission/ReportProblem'
 import { AddText, EditText, TRANSLATIONS } from './submission/TextEditor'
 import { TextHistory } from './submission/TextHistory'
@@ -19,6 +21,7 @@ const TEXT_EDITABLE = ['accepted']
 export function SubmissionPage() {
   const { t, i18n } = useTranslation()
   const { submissionId = '' } = useParams()
+  const session = useSession()
   const [submission, setSubmission] = useState<SubmissionDetail | null>(null)
   const [error, setError] = useState<unknown>(null)
 
@@ -78,6 +81,13 @@ export function SubmissionPage() {
               .join(', '),
           })}
         </p>
+      )}
+      {hasRole(session, 'admin') && !submission.mine && submission.restriction_flags.length > 0 && (
+        <AdminUnhide
+          submissionId={submission.id}
+          flags={submission.restriction_flags}
+          onChanged={() => void reload()}
+        />
       )}
       <ErrorMessage error={error} />
 

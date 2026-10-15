@@ -12,6 +12,7 @@ import { MySubmissionsPage } from './pages/MySubmissionsPage'
 import { SubmissionPage } from './pages/SubmissionPage'
 import { NewSubmissionPage } from './pages/NewSubmissionPage'
 import { NotFoundPage } from './pages/NotFoundPage'
+import { ReportsPage } from './pages/ReportsPage'
 
 const signedIn = (page: ReactNode) => <RequireAuth>{page}</RequireAuth>
 
@@ -29,6 +30,7 @@ export const routes: RouteObject[] = [
       { path: 'submissions', element: signedIn(<MySubmissionsPage />) },
       { path: 'submissions/:submissionId', element: signedIn(<SubmissionPage />) },
       { path: 'admin/jobs', element: signedIn(<FailedJobsPage />) },
+      { path: 'admin/reports', element: signedIn(<ReportsPage />) },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

@@ -262,7 +262,10 @@
     "revision_conflict": "Someone saved a newer version of this text meanwhile. Check it and save again.",
     "layer_exists": "This text already exists. Reload the page to see it.",
     "already_reported": "You have already reported this. An admin will look at it.",
-    "not_reportable": "This item cannot be reported."
+    "not_reportable": "This item cannot be reported.",
+    "own_submission": "Another admin must decide on your own submission.",
+    "no_open_reports": "This item has no open reports.",
+    "not_restricted": "This item is not hidden for that reason."
   },
   "jobs": {
     "title": "Failed checks",
@@ -342,5 +345,17 @@
   },
   "catalogue": {
     "back": "← Catalogue"
+  },
+  "reports": {
+    "link": "Reports",
+    "title": "Reports",
+    "intro": "Items someone reported. Listen or read first, then hide the item or dismiss the reports. Write down why: the reason is kept.",
+    "none": "No open reports.",
+    "alreadyHidden": "Already hidden: {{reasons}}",
+    "restriction": "Hide because of",
+    "note": "Your reason",
+    "hide": "Hide",
+    "dismiss": "Dismiss reports",
+    "unhide": "Show again ({{reason}})"
   }
 }

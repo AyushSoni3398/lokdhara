@@ -9,7 +9,9 @@ import type {
   Prompt,
   PromptType,
   Report,
+  ReportedItem,
   ReportReason,
+  Restriction,
   Revision,
   Script,
   Session,
@@ -101,3 +103,18 @@ export const submitSubmission = (id: string) =>
 export const listFailedJobs = () =>
   request<{ items: Job[] }>('GET', '/admin/jobs?status=failed').then((r) => r.items)
 export const retryJob = (id: string) => request<Job>('POST', `/admin/jobs/${id}/retry`)
+
+export const listOpenReports = () =>
+  request<{ items: ReportedItem[] }>('GET', '/admin/reports').then((r) => r.items)
+export const hideSubmission = (id: string, restriction: Restriction, note: string) =>
+  request<ReportedItem['submission']>('POST', `/admin/submissions/${id}/hide`, {
+    json: { restriction, note },
+  })
+export const unhideSubmission = (id: string, restriction: Restriction, note: string) =>
+  request<ReportedItem['submission']>('POST', `/admin/submissions/${id}/unhide`, {
+    json: { restriction, note },
+  })
+export const dismissReports = (id: string, note: string) =>
+  request<ReportedItem['submission']>('POST', `/admin/submissions/${id}/dismiss-reports`, {
+    json: { note },
+  })

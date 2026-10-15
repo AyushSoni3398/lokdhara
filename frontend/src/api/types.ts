@@ -208,3 +208,17 @@ export interface Report {
   note: string | null
   created_at: string
 }
+
+/** An item with open reports, as admins see it (docs/API_SPECIFICATION.md §7). */
+export interface ReportedItem {
+  submission: {
+    id: string
+    title: string | null
+    kind: Kind
+    content_type: ContentType
+    status: string
+    restriction_flags: Restriction[]
+    submitted_at: string | null
+  }
+  reports: Report[]
+}
