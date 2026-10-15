@@ -8,15 +8,17 @@ import io
 import uuid
 import zipfile
 from collections.abc import Iterator
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, select
+from sqlalchemy import Engine, select, update
 from sqlalchemy.orm import Session
 
 from app.config import Settings
+from app.modules.audit.models import AuditEvent
 from app.modules.processing import queue
 from app.modules.processing.models import Job
 from app.modules.releases import export_job, freeze
@@ -191,3 +193,65 @@ def test_a_package_of_a_retracted_release_is_deleted(
     assert client.post(f"{DATASETS}/{release['id']}/retract", json=note).status_code == 200
     assert client.get(f"/api/v1/exports/{export_id}").json()["status"] == "expired"
     assert object_store.head(Bucket.EXPORTS, key) is None
+
+
+def test_only_the_requester_downloads_and_every_download_is_recorded(
+    client: TestClient,
+    engine: Engine,
+    db: Session,
+    release: dict[str, Any],
+    researcher: TestUser,
+    admin: TestUser,
+) -> None:
+    export_id = _approved(client, release, researcher, admin)
+    download = f"/api/v1/exports/{export_id}/download"
+    act_as(client, researcher)
+    assert client.post(download).json()["code"] == "export_not_ready"
+    run_jobs(engine)
+
+    first = client.post(download)
+    assert first.status_code == 200, first.text
+    link = first.json()
+    assert link["file_name"] == "mundari-pilot-0.1.0.zip"
+    fetched = client.get(link["download_url"])
+    assert hashlib.sha256(fetched.content).hexdigest() == link["sha256"]
+    client.post(download)
+    assert client.get(f"/api/v1/exports/{export_id}").json()["download_count"] == 2
+    events = db.scalars(select(AuditEvent).where(AuditEvent.action == "export.download")).all()
+    assert len(events) == 2
+
+    act_as(client, admin)
+    assert client.post(download).json()["code"] == "forbidden"
+
+
+def test_packages_are_deleted_when_they_expire(
+    client: TestClient,
+    engine: Engine,
+    db: Session,
+    object_store: ObjectStore,
+    release: dict[str, Any],
+    researcher: TestUser,
+    admin: TestUser,
+) -> None:
+    export_id = _approved(client, release, researcher, admin)
+    run_jobs(engine)
+    key = db.get_one(ExportRequest, uuid.UUID(export_id)).object_key or ""
+    queue.enqueue(db, "cleanup.expire_exports")
+    db.commit()
+    run_jobs(engine)
+    assert object_store.head(Bucket.EXPORTS, key) is not None  # not due yet
+
+    db.execute(
+        update(ExportRequest)
+        .where(ExportRequest.id == uuid.UUID(export_id))
+        .values(expires_at=queue.utcnow() - timedelta(minutes=1))
+    )
+    queue.enqueue(db, "cleanup.expire_exports")
+    db.commit()
+    act_as(client, researcher)
+    download = f"/api/v1/exports/{export_id}/download"
+    assert client.post(download).json()["code"] == "export_expired"
+    run_jobs(engine)
+    assert object_store.head(Bucket.EXPORTS, key) is None
+    assert client.get(f"/api/v1/exports/{export_id}").json()["status"] == "expired"
+    assert client.post(download).json()["code"] == "export_expired"

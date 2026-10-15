@@ -8,13 +8,14 @@ from fastapi import APIRouter, Depends, status
 from app.db import DbSession
 from app.modules.identity.deps import AdminUser, Context, SettingsDep, require_roles
 from app.modules.identity.models import User
-from app.modules.identity.service import AuthenticatedUser
+from app.modules.identity.service import AuthenticatedUser, utcnow
 from app.modules.releases import exports, freeze, service
 from app.modules.releases.models import DatasetRelease, ExportRequest
 from app.modules.releases.schemas import (
     ApproveRequest,
     CheckListOut,
     CheckOut,
+    DownloadOut,
     ExportCreateRequest,
     ExportListOut,
     ExportOut,
@@ -215,3 +216,29 @@ def reject_export(
 ) -> ExportOut:
     request = exports.reject(db, admin=admin, export_id=export_id, note=body.note, context=context)
     return export_out(db, admin, request)
+
+
+@router.post("/exports/{export_id}/download")
+def download_export(
+    export_id: uuid.UUID,
+    user: DataUser,
+    db: DbSession,
+    store: Store,
+    settings: SettingsDep,
+    context: Context,
+) -> DownloadOut:
+    request, url = exports.download(
+        db,
+        store,
+        user=user,
+        export_id=export_id,
+        ttl_seconds=settings.signed_url_ttl_seconds,
+        context=context,
+    )
+    return DownloadOut(
+        download_url=url,
+        file_name=(request.object_key or "").rsplit("/", 1)[-1],
+        sha256=request.sha256 or "",
+        size_bytes=request.size_bytes or 0,
+        expires_at=request.expires_at or utcnow(),
+    )

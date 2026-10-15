@@ -229,3 +229,42 @@ def close_for_retraction(
         request.decided_at = now
         request.decision_note = "The release was retracted."
     return len(requests)
+
+
+def download(
+    db: Session,
+    store: ObjectStore,
+    *,
+    user: AuthenticatedUser,
+    export_id: uuid.UUID,
+    ttl_seconds: int,
+    context: RequestContext,
+) -> tuple[ExportRequest, str]:
+    """A short-lived link to the package, for the person who asked for it. Every download is
+    recorded with the request and in the audit log."""
+    request = get_export(db, user, export_id, for_update=True)
+    if request.requested_by != user.id:
+        raise ApiError(403, "forbidden", "Only the person who asked for it can download it.")
+    now = utcnow()
+    if request.status == "expired" or (
+        request.status == "ready" and request.expires_at and request.expires_at <= now
+    ):
+        raise ApiError(409, "export_expired", "This package has expired; ask for a new one.")
+    if request.status != "ready" or request.object_key is None:
+        raise ApiError(409, "export_not_ready", "This package is not ready.")
+    exportable(db, service.get_release(db, request.release_id))
+    request.downloaded_at = [*request.downloaded_at, now]
+    audit.record(
+        db,
+        action="export.download",
+        context=context,
+        actor_user_id=user.id,
+        target_type="export_request",
+        target_id=request.id,
+        details={"release_id": str(request.release_id), "sha256": request.sha256},
+    )
+    url = store.signed_url(
+        Bucket.EXPORTS, request.object_key, ttl_seconds=ttl_seconds, content_type="application/zip"
+    )
+    db.commit()
+    return request, url

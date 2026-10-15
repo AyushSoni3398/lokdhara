@@ -1,7 +1,7 @@
 """Job handlers. Importing this module registers every handler with the queue."""
 
 from app.modules.processing.queue import JobContext, JobResult, handler
-from app.modules.releases import export_job  # noqa: F401 - dataset.export
+from app.modules.releases import export_job  # noqa: F401 - dataset.export, cleanup.expire_exports
 from app.modules.submissions import (
     expiry,  # noqa: F401 - cleanup.expire_drafts
     processing,  # noqa: F401 - audio.*, cleanup.quarantine

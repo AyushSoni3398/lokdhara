@@ -157,14 +157,15 @@ def test_a_lost_quarantine_copy_of_a_draft_can_be_uploaded_again(
     assert client.post(f"{SUBMISSIONS}/{draft}/submit").json()["status"] == "processing"
 
 
-def test_the_sweep_is_queued_once_an_hour(db: Session) -> None:
+def test_the_sweeps_are_queued_once_an_hour(db: Session) -> None:
+    sweeps = ["cleanup.expire_drafts", "cleanup.expire_exports"]
     now = queue.utcnow()
-    assert schedule.enqueue_due(db, now) == ["cleanup.expire_drafts"]
+    assert schedule.enqueue_due(db, now) == sweeps
     assert schedule.enqueue_due(db, now) == []  # still pending
     db.execute(text("UPDATE jobs SET status = 'succeeded'"))
     db.commit()
     assert schedule.enqueue_due(db, now + timedelta(minutes=59)) == []
-    assert schedule.enqueue_due(db, now + timedelta(minutes=61)) == ["cleanup.expire_drafts"]
+    assert schedule.enqueue_due(db, now + timedelta(minutes=61)) == sweeps
 
 
 def test_the_scheduler_checks_at_most_once_a_minute(engine: Engine, db: Session) -> None:
@@ -178,4 +179,5 @@ def test_the_scheduler_checks_at_most_once_a_minute(engine: Engine, db: Session)
     assert db.scalars(select(Job)).all() == []
     clock[0] = 60
     scheduler.tick()
-    assert [job.job_type for job in db.scalars(select(Job))] == ["cleanup.expire_drafts"]
+    queued = sorted(job.job_type for job in db.scalars(select(Job)))
+    assert queued == sorted(schedule.PERIODIC)

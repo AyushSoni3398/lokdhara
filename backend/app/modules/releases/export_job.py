@@ -1,5 +1,6 @@
-"""The `dataset.export` job: builds an approved request's package (docs/DATASET_VERSIONING.md §4,
-§5).
+"""The export jobs: `dataset.export` builds an approved request's package
+(docs/DATASET_VERSIONING.md §4, §5) and `cleanup.expire_exports` deletes packages once they
+expire.
 
 The package is rebuilt from what the release stored when it was frozen (the text files and the
 manifest) and the audio copies its items point to. Every file is checked against the manifest
@@ -33,6 +34,9 @@ from app.modules.releases.freeze import stored_file_key
 from app.modules.releases.models import DatasetRelease, DatasetReleaseItem, ExportRequest
 from app.modules.submissions.models import Rendition
 from app.object_store import Bucket, ObjectNotFound, ObjectStore, get_object_store
+
+# Per run; anything left over is picked up by the next hourly run.
+EXPIRY_BATCH_SIZE = 500
 
 
 def export_key(request: ExportRequest, release: DatasetRelease) -> str:
@@ -142,6 +146,24 @@ def build_export(context: JobContext) -> JobResult:
         tool_versions={"export_format_version": package.EXPORT_FORMAT_VERSION},
         input_sha256=release.manifest_sha256,
     )
+
+
+@handler("cleanup.expire_exports")
+def expire_exports(context: JobContext) -> JobResult:
+    """Deletes packages past their `expires_at`. The release, its manifest and the request
+    stay, so the same package can be asked for and rebuilt later (§5)."""
+    store, db = get_object_store(), context.db
+    due = db.scalars(
+        select(ExportRequest)
+        .where(ExportRequest.status == "ready", ExportRequest.expires_at <= utcnow())
+        .order_by(ExportRequest.expires_at)
+        .limit(EXPIRY_BATCH_SIZE)
+        .with_for_update(skip_locked=True)
+    ).all()
+    for request in due:
+        store.delete(Bucket.EXPORTS, request.object_key or "")
+        request.status = "expired"
+    return JobResult(output_summary={"expired": len(due)})
 
 
 @on_job_changed

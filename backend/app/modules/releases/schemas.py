@@ -147,3 +147,11 @@ class ExportOut(BaseModel):
 
 class ExportListOut(BaseModel):
     items: list[ExportOut]
+
+
+class DownloadOut(BaseModel):
+    download_url: str
+    file_name: str
+    sha256: str
+    size_bytes: int
+    expires_at: datetime
