@@ -81,3 +81,21 @@ class PreviewOut(BaseModel):
     by_dialect_label: dict[str, int]
     by_kind: dict[str, int]
     sample: list[SampleItem]
+
+
+class CheckOut(BaseModel):
+    code: str
+    passed: bool
+    blocking: bool
+    message: str
+
+
+class CheckListOut(BaseModel):
+    passed: bool
+    checks: list[CheckOut]
+
+
+class FreezeRequest(BaseModel):
+    version: Annotated[
+        str, Field(pattern=r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$", max_length=30)
+    ]

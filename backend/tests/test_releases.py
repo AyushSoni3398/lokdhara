@@ -1,12 +1,20 @@
 """Dataset releases (docs/DATASET_VERSIONING.md, ROADMAP M7). Synthetic data only."""
 
+import hashlib
+import json
+import uuid
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine
+from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
+from app.config import Settings
+from app.modules.audit.models import AuditEvent
+from app.modules.releases import freeze as freeze_module
+from app.modules.releases.models import DatasetRelease, DatasetReleaseItem
+from app.object_store import Bucket, ObjectStore
 from tests.conftest import MakeUser, TestUser, act_as, requires_postgres
 from tests.submission_helpers import accepted_text_item, give_consent, own_speaker
 
@@ -100,3 +108,97 @@ def test_only_project_data_users_see_releases_and_only_the_starter_or_an_admin_e
     )
     act_as(client, make_user("asha", "contributor"))
     assert client.get(DATASETS).json()["code"] == "forbidden"
+
+
+# ------------------------------------------------------------------ checks and freezing
+
+
+@pytest.fixture
+def admin(make_user: MakeUser) -> TestUser:
+    return make_user("meera", "admin")
+
+
+def _checks(client: TestClient, release_id: str) -> dict[str, Any]:
+    response = client.post(f"{DATASETS}/{release_id}/checks")
+    assert response.status_code == 200, response.text
+    return {c["code"]: c for c in response.json()["checks"]} | {"passed": response.json()["passed"]}
+
+
+def test_admins_freeze_a_checked_release_with_its_files_and_items(
+    client: TestClient,
+    items: list[str],
+    researcher: TestUser,
+    admin: TestUser,
+    db: Session,
+    object_store: ObjectStore,
+) -> None:
+    act_as(client, researcher)
+    draft = _draft(client, data_card_markdown="Synthetic test release.")
+    checks = _checks(client, draft["id"])
+    assert checks["passed"] is True
+    assert checks["D1"]["message"].startswith("2 accepted items")
+    assert checks["D5"]["message"] == "2 of 2 texts are marked unverified."
+    freeze = f"{DATASETS}/{draft['id']}/freeze"
+    assert client.post(freeze, json={"version": "0.1.0"}).json()["code"] == "forbidden"
+
+    act_as(client, admin)
+    assert client.post(freeze, json={"version": "1.0"}).status_code == 422
+    frozen = client.post(freeze, json={"version": "0.1.0"})
+    assert frozen.status_code == 200, frozen.text
+    release = frozen.json()
+    assert (release["status"], release["version"]) == ("frozen", "0.1.0")
+    assert client.post(freeze, json={"version": "0.2.0"}).json()["code"] == "release_frozen"
+    edit = client.patch(f"{DATASETS}/{draft['id']}", json={"licence": "CC-BY-4.0"})
+    assert edit.json()["code"] == "release_frozen"
+
+    rows = db.scalars(select(DatasetReleaseItem)).all()
+    assert sorted(str(r.submission_id) for r in rows) == sorted(items)
+    assert all(r.consent_snapshot["research"] is True for r in rows)
+    assert all(len(r.text_revision_ids) == 1 for r in rows)
+
+    stored = db.get_one(DatasetRelease, uuid.UUID(draft["id"]))
+    manifest_bytes = b"".join(object_store.open(Bucket.EXPORTS, stored.manifest_object_key or ""))
+    assert hashlib.sha256(manifest_bytes).hexdigest() == release["manifest_sha256"]
+    manifest = json.loads(manifest_bytes)
+    assert manifest["item_count"] == 2
+    readme = b"".join(
+        object_store.open(Bucket.EXPORTS, freeze_module.stored_file_key(stored.id, "README.md"))
+    ).decode()
+    assert "Synthetic test release." in readme
+    assert "**not checked by anyone**" in readme
+
+    # The same slug and version cannot be frozen twice.
+    again = _draft(client)
+    response = client.post(f"{DATASETS}/{again['id']}/freeze", json={"version": "0.1.0"})
+    assert response.json()["code"] == "version_exists"
+    event = db.scalar(select(AuditEvent).where(AuditEvent.action == "release.freeze"))
+    assert event is not None
+    assert event.details["item_count"] == 2
+
+
+def test_an_empty_release_is_not_frozen(
+    client: TestClient, items: list[str], admin: TestUser
+) -> None:
+    act_as(client, admin)
+    draft = _draft(client, selection_criteria={"content_types": ["vocabulary"]})
+    response = client.post(f"{DATASETS}/{draft['id']}/freeze", json={"version": "0.1.0"})
+    assert response.json()["code"] == "prefreeze_checks_failed"
+    assert "D1" in response.json()["detail"]
+
+
+def test_releases_beyond_internal_research_wait_for_governance(
+    client: TestClient, items: list[str], admin: TestUser, settings: Settings
+) -> None:
+    act_as(client, admin)
+    draft = _draft(client, purpose="external_research")
+    d7 = _checks(client, draft["id"])["D7"]
+    assert d7["passed"] is False
+    assert "governance approval is not recorded yet" in d7["message"]
+    assert "a licence is needed" in d7["message"]
+
+    settings.external_releases_enabled = True
+    client.patch(
+        f"{DATASETS}/{draft['id']}",
+        json={"licence": "Data-use agreement DUA-TEST", "data_card_markdown": "Test."},
+    )
+    assert _checks(client, draft["id"])["passed"] is True

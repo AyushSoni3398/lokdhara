@@ -6,11 +6,14 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, status
 
 from app.db import DbSession
-from app.modules.identity.deps import Context, require_roles
+from app.modules.identity.deps import AdminUser, Context, SettingsDep, require_roles
 from app.modules.identity.service import AuthenticatedUser
-from app.modules.releases import service
+from app.modules.releases import freeze, service
 from app.modules.releases.models import DatasetRelease
 from app.modules.releases.schemas import (
+    CheckListOut,
+    CheckOut,
+    FreezeRequest,
     PreviewOut,
     ReleaseCreateRequest,
     ReleaseListOut,
@@ -19,8 +22,10 @@ from app.modules.releases.schemas import (
     SampleItem,
     SelectionCriteria,
 )
+from app.object_store import ObjectStore, get_object_store
 
 router = APIRouter(tags=["releases"])
+Store = Annotated[ObjectStore, Depends(get_object_store)]
 
 # Project members who work with the data; contributors never see releases.
 DataUser = Annotated[AuthenticatedUser, Depends(require_roles("researcher", "admin"))]
@@ -79,3 +84,40 @@ def preview_release(release_id: uuid.UUID, _user: DataUser, db: DbSession) -> Pr
             for submission, duration in result.sample
         ],
     )
+
+
+@router.post("/datasets/{release_id}/checks")
+def check_release(
+    release_id: uuid.UUID, _user: DataUser, db: DbSession, store: Store, settings: SettingsDep
+) -> CheckListOut:
+    """Runs the pre-freeze checks D1 to D9 without freezing."""
+    run = freeze.run_checks(db, store, settings, service.get_release(db, release_id))
+    return CheckListOut(
+        passed=run.passed,
+        checks=[
+            CheckOut(code=c.code, passed=c.passed, blocking=c.blocking, message=c.message)
+            for c in run.checks
+        ],
+    )
+
+
+@router.post("/datasets/{release_id}/freeze")
+def freeze_release(
+    release_id: uuid.UUID,
+    body: FreezeRequest,
+    admin: AdminUser,
+    db: DbSession,
+    store: Store,
+    settings: SettingsDep,
+    context: Context,
+) -> ReleaseOut:
+    release = freeze.freeze(
+        db,
+        store,
+        settings,
+        admin=admin,
+        release_id=release_id,
+        version=body.version,
+        context=context,
+    )
+    return release_out(release)

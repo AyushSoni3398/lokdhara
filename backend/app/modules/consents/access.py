@@ -59,6 +59,7 @@ class ConsentStep:
     applies_to_past: bool = False
     allow_public_access: bool = False
     allow_ai_training: bool = False
+    allow_commercial_use: bool = False
 
 
 def use_allowed(steps: Sequence[ConsentStep], permission: str) -> bool:
