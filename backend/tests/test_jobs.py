@@ -29,6 +29,13 @@ def _job(db: Session, job_id: object) -> Job:
     return job
 
 
+@pytest.fixture
+def unhandled(monkeypatch: pytest.MonkeyPatch) -> str:
+    """A job type whose handler is taken away for the test."""
+    monkeypatch.delitem(queue._handlers, "dataset.export")
+    return "dataset.export"
+
+
 def _runs(db: Session) -> list[ProcessingRun]:
     return list(db.scalars(select(ProcessingRun).order_by(ProcessingRun.finished_at)))
 
@@ -181,8 +188,8 @@ def test_handler_writes_roll_back_on_failure(
     assert db.scalar(select(Job).where(Job.job_type == "system.ping")) is None
 
 
-def test_job_without_handler_fails(engine: Engine, db: Session) -> None:
-    job_id = enqueue(db, "dataset.export")
+def test_job_without_handler_fails(engine: Engine, db: Session, unhandled: str) -> None:
+    job_id = enqueue(db, unhandled)
     db.commit()
     process_one(engine, "w1", LEASE)
     job = _job(db, job_id)
@@ -243,9 +250,9 @@ def test_unknown_job_types_are_rejected(db: Session) -> None:
 
 
 def test_admin_lists_and_retries_failed_jobs(
-    client: TestClient, make_user: MakeUser, engine: Engine, db: Session
+    client: TestClient, make_user: MakeUser, engine: Engine, db: Session, unhandled: str
 ) -> None:
-    job_id = enqueue(db, "dataset.export")  # no handler yet, so it fails
+    job_id = enqueue(db, unhandled)  # fails for want of a handler
     db.commit()
     process_one(engine, "w1", LEASE)
     headers = {"X-CSRF-Token": login(client, make_user("admin1", "admin"))}
