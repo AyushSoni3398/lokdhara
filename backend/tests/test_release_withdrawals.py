@@ -113,3 +113,26 @@ def test_a_withdrawn_item_is_marked_and_its_release_no_longer_exported(
         )
         == 0
     )
+
+
+def test_narrower_consent_marks_only_the_releases_it_no_longer_allows(
+    client: TestClient,
+    db: Session,
+    items: dict[str, str],
+    admin: TestUser,
+) -> None:
+    release = frozen_release(client, admin)
+    act_as(client, admin)
+    # Same answers again: nothing is narrowed.
+    give_consent(client, db, items["asha"], allow_research=True)
+    assert marked(db, release["id"]) == set()
+
+    give_consent(client, db, items["asha"], allow_research=False)
+    assert marked(db, release["id"]) == {items["story"], items["song"]}
+    event = db.scalar(select(AuditEvent).where(AuditEvent.action == "release.items_withdrawn"))
+    assert event is not None
+    assert event.details["reason"] == "consent_narrowed"
+
+    # Agreeing again later, even for past items, does not unmark a frozen release.
+    give_consent(client, db, items["asha"], allow_research=True, applies_to_past_contributions=True)
+    assert marked(db, release["id"]) == {items["story"], items["song"]}

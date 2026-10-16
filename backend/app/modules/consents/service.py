@@ -21,6 +21,7 @@ from app.modules.consents.dev_forms import DEV_FORMS, FORM_CODE, VERSION
 from app.modules.consents.models import PERMISSIONS, ConsentForm, ConsentRecord
 from app.modules.consents.schemas import ConsentRequest
 from app.modules.identity.service import AuthenticatedUser, utcnow
+from app.modules.releases import withdrawals as releases_withdrawals
 from app.modules.speakers import service as speakers
 from app.object_store import Bucket, ObjectStore, ObjectTooLarge, new_key
 
@@ -197,6 +198,18 @@ def record_consent(
         )
         db.add(record)
         speakers.set_demographics_consent(speaker, body.demographics_consented)
+        if previous is not None:
+            db.flush()
+            # A narrower answer reaches releases that were already frozen (§3 of
+            # docs/DATA_RETENTION_AND_DELETION.md).
+            releases_withdrawals.mark_consent_narrowed(
+                db,
+                store,
+                speaker_id=speaker.id,
+                actor_id=actor.id,
+                now=utcnow(),
+                context=context,
+            )
         audit.record(
             db,
             action="consent.record",
