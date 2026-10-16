@@ -14,6 +14,7 @@ from app.modules.releases.router import router as releases_router
 from app.modules.reports.router import router as reports_router
 from app.modules.speakers.router import router as speakers_router
 from app.modules.submissions.router import router as submissions_router
+from app.modules.withdrawals.router import router as withdrawals_router
 from app.object_store.router import router as local_storage_router
 
 API_PREFIX = "/api/v1"
@@ -41,6 +42,7 @@ def create_app() -> FastAPI:
     app.include_router(reports_router, prefix=API_PREFIX)
     app.include_router(catalogue_router, prefix=API_PREFIX)
     app.include_router(releases_router, prefix=API_PREFIX)
+    app.include_router(withdrawals_router, prefix=API_PREFIX)
     if settings.storage_backend == "local" and settings.is_local:
         app.include_router(local_storage_router, prefix=API_PREFIX)
     return app

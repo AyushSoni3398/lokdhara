@@ -52,9 +52,11 @@ Implemented in Milestone 2. Error codes: `invalid_credentials` (401, same respon
 | GET | `/consent-forms/current?language=hi` | any | Current form text + version |
 | POST | `/speakers/{id}/consents` | facilitator (creator)/self/admin 🔒 | Multipart: answers as JSON in field `consent`; `evidence` audio file for `oral_recorded`. Supersedes the active record |
 | GET | `/speakers/{id}/consents` | owner/facilitator/admin | History |
-| POST | `/withdrawal-requests` | any (self) / facilitator / admin 🔒 | Log request |
-| GET | `/admin/withdrawal-requests` | admin | Queue |
-| POST | `/admin/withdrawal-requests/{id}/verify` · `/complete` | admin 🔒 | Process |
+| POST | `/withdrawal-requests` | self / facilitator (creator) / admin 🔒 | Log a request: `{scope, speaker_id?, submission_id?, received_via?, note?}` |
+| GET | `/withdrawal-requests` | any | Requests I logged and requests about my own speaker profile |
+| GET | `/withdrawal-requests/{id}` | the person who logged it / the speaker / admin | One request |
+| GET | `/admin/withdrawal-requests?open=true` | admin | Queue: open requests oldest first (`open=false`: all, newest first) |
+| POST | `/admin/withdrawal-requests/{id}/verify` · `/reject` · `/complete` | admin 🔒 | Process (see below) |
 
 Consent answers, sent as the JSON value of the `consent` form field (example):
 
@@ -74,7 +76,11 @@ Consent answers, sent as the JSON value of the `consent` form field (example):
 }
 ```
 
-Speakers and consent (except withdrawal requests, which come with the withdrawal workflow) are implemented in Milestone 3. Error codes: `speaker_not_found` (404, also when the speaker exists but is not yours), `self_speaker_exists` (409), `speaker_withdrawn` (409), `demographics_not_consented` (422), `minors_not_enabled` (422, until Q-L4), `consent_form_not_found` (404), `consent_form_invalid` / `test_form_not_allowed` (422), `store_consent_required` (422), `evidence_required` / `evidence_not_expected` / `evidence_not_audio` (422), `evidence_too_large` (413). Responses never include identity values except from the identity endpoints, nor the consent evidence key or paper reference.
+Speakers and consent are implemented in Milestone 3, withdrawal requests in Milestone 7. Error codes: `speaker_not_found` (404, also when the speaker exists but is not yours), `self_speaker_exists` (409), `speaker_withdrawn` (409), `demographics_not_consented` (422), `minors_not_enabled` (422, until Q-L4), `consent_form_not_found` (404), `consent_form_invalid` / `test_form_not_allowed` (422), `store_consent_required` (422), `evidence_required` / `evidence_not_expected` / `evidence_not_audio` (422), `evidence_too_large` (413). Responses never include identity values except from the identity endpoints, nor the consent evidence key or paper reference.
+
+### Withdrawal requests
+
+A request is `full` (everything of a speaker; names `speaker_id`), `narrow` (some consent answers; names `speaker_id`), or `specific_items` (one submission; names `submission_id`). Whoever may act for the speaker can log one: the speaker in the app (`received_via` = `in_app`), the facilitator who registered them (`facilitator`), the person who sent that submission, or an admin, who says how it arrived (`phone`, `in_person`, `email`, …). Researchers cannot withdraw items they only read in the catalogue. `note` (at most 1,000 characters) is kept with the request; only admins see `actions_taken`, the record of what was done. Error codes: `speaker_not_found` / `submission_not_found` (404, also when it is not yours), `forbidden` (403), `already_withdrawn` / `speaker_withdrawn` (409), `already_requested` (409, one waiting request per speaker, item and scope), `withdrawal_not_found` (404).
 
 ## 4. Submissions
 
@@ -87,9 +93,8 @@ Speakers and consent (except withdrawal requests, which come with the withdrawal
 | POST | `/submissions/{id}/recordings` | owner | Multipart `file`; `Idempotency-Key`; → `202 {recording_id, upload_status: "quarantined"}` |
 | POST | `/submissions/{id}/text-layers` | owner (draft or accepted) | Create layer + first revision: `{layer_type, recording_id?, source_layer_id?, entry_type?, language_tag, script_code, content}` |
 | POST | `/submissions/{id}/submit` | owner | Draft → processing; checks consent and required parts |
-| POST | `/submissions/{id}/withdraw` | owner/admin 🔒 | Withdraw a single submission |
 
-Implemented in Milestone 3: create, list, read, edit, upload, text layers, and submit (withdrawal follows).
+Implemented in Milestone 3: create, list, read, edit, upload, text layers, and submit. A single submission is withdrawn with a withdrawal request (§3, scope `specific_items`).
 
 - **Create** takes the body above plus optional `title`; `collection_context` accepts only the keys in [DATA_DICTIONARY.md](DATA_DICTIONARY.md) §3. Sending the same `client_submission_id` again returns the same draft (`201`). `collection_method` must fit: `self_recorded` only for your own speaker profile, `facilitator_field` / `facilitator_remote` only for someone else's (facilitators and admins), `imported_archive` only for admins. A prompt must be approved and fit the mode (image or situation for `prompted`, read sentence for `read`).
 - **List** is newest first, `limit` 1–100 (default 50), with `next_cursor`. `mine=true` (default) lists what you created; `mine=false` adds what you may see under the access rule (facilitators: their speakers' submissions; admins: all).
