@@ -19,6 +19,7 @@ from app.modules.audit.service import RequestContext
 from app.modules.consents import service as consents
 from app.modules.consents.models import ConsentRecord, WithdrawalRequest
 from app.modules.identity.service import AuthenticatedUser, utcnow
+from app.modules.processing import queue
 from app.modules.releases import withdrawals as releases
 from app.modules.speakers import service as speakers
 from app.modules.speakers.models import Speaker
@@ -238,6 +239,14 @@ def verify(
             withdrawn = _withdraw_item(db, request.submission_id, now)
         marked = releases.mark_withdrawn(
             db, store, submission_ids=withdrawn, actor_id=admin.id, now=now, context=context
+        )
+        # The files and text are deleted by the worker (app.modules.withdrawals.erasure).
+        queue.enqueue(
+            db,
+            "withdrawal.erase",
+            target_type="withdrawal_request",
+            target_id=request.id,
+            dedupe_key=f"withdrawal.erase:{request.id}",
         )
     request.status = "verified"
     request.verified_by = admin.id

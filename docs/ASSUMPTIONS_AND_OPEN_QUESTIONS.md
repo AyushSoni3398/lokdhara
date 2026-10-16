@@ -47,6 +47,7 @@ These are assumptions the plan currently relies on. Each one can change the desi
 | Q-G4 | In field practice, is consent captured before or after recording? | Facilitators + ethics | Blocks M3 | *Provisional for development (2026-10-12):* the app asks for consent first, but a draft may be recorded before consent; it cannot be submitted until consent is attached (enforced by the database). |
 | Q-G5 | How are export holders bound to withdrawal requests (data use agreement)? | Professor + institution | Blocks M7 | — |
 | Q-G7 | Who approves images and situation prompts as culturally appropriate? | Community representatives | Blocks M3 | *Provisional for development (2026-10-12):* reviewers and admins draft prompts and only an admin approves them; a community reviewer still has to be named before real collection. |
+| Q-G8 | After a withdrawal, must proof of consent and of the withdrawal be kept (the oral consent recording, the consent record, the request), and for how long? | Professor + institution (ethics committee) | Blocks the pilot (M8) | *Provisional (2026-10-16):* the deletion routine keeps the consent records, the request and the oral consent recording (`LKD_WITHDRAWAL_KEEP_CONSENT_EVIDENCE=true`); it deletes the recordings, the text, the identity details and the consent notes. Setting it to false also deletes the oral consent recording. |
 | Q-G6 | How is benefit returned to the community (access to materials, educational outputs)? | Professor + community | Later | — |
 
 ### Linguistic
