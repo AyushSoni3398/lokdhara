@@ -3,7 +3,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.db import DbSession
@@ -13,12 +13,15 @@ from app.modules.identity.service import AuthenticatedUser
 from app.modules.speakers.models import Speaker
 from app.modules.withdrawals import service
 from app.modules.withdrawals.schemas import (
+    DecisionRequest,
     WithdrawalCreateRequest,
     WithdrawalListOut,
     WithdrawalOut,
 )
+from app.object_store import ObjectStore, get_object_store
 
 router = APIRouter(tags=["withdrawals"])
+Store = Annotated[ObjectStore, Depends(get_object_store)]
 
 
 def _out(db: Session, user: AuthenticatedUser, request: WithdrawalRequest) -> WithdrawalOut:
@@ -60,3 +63,29 @@ def withdrawal_queue(
     return WithdrawalListOut(
         items=[_out(db, admin, r) for r in service.list_all(db, open_only=open_only)]
     )
+
+
+@router.post("/admin/withdrawal-requests/{request_id}/verify")
+def verify_withdrawal(
+    request_id: uuid.UUID,
+    body: DecisionRequest,
+    admin: AdminUser,
+    db: DbSession,
+    store: Store,
+    context: Context,
+) -> WithdrawalOut:
+    """`note`: how the requester was confirmed as the speaker or their representative."""
+    request = service.verify(
+        db, store, admin=admin, request_id=request_id, note=body.note, context=context
+    )
+    return _out(db, admin, request)
+
+
+@router.post("/admin/withdrawal-requests/{request_id}/reject")
+def reject_withdrawal(
+    request_id: uuid.UUID, body: DecisionRequest, admin: AdminUser, db: DbSession, context: Context
+) -> WithdrawalOut:
+    request = service.reject(
+        db, admin=admin, request_id=request_id, note=body.note, context=context
+    )
+    return _out(db, admin, request)
