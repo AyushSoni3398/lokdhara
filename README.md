@@ -7,7 +7,7 @@ The first version focuses **only on the Mundari language** (Jharkhand, India): c
 
 ## Project status
 
-**Milestones 1 to 6 are built, and most of M7** (as of 2026-10-15): recording and sending contributions with consent, automatic audio and text checks, corrections and translations after acceptance, reports with admin hiding, the researcher catalogue, and dataset releases (draft, checks, freeze, retract, and export packages that another admin approves). Still to come in M7 is the withdrawal workflow; see the [roadmap](docs/ROADMAP.md). The app has only been tried with synthetic test data; real collection waits on the pilot and its governance answers. **No community data is stored in this repository — ever** (audio, collected text, consent records, and datasets live only in access-controlled storage).
+**Milestones 1 to 7 are built** (as of 2026-10-16): recording and sending contributions with consent, automatic audio and text checks, corrections and translations after acceptance, reports with admin hiding, the researcher catalogue, dataset releases (draft, checks, freeze, retract, and export packages that another admin approves), and withdrawals (a speaker takes back one item or everything; an admin accepts, the files and text are deleted, and affected releases get a replacement release). Next is M8, hardening and the pilot; see the [roadmap](docs/ROADMAP.md). The app has only been tried with synthetic test data; real collection waits on the pilot and its governance answers. **No community data is stored in this repository — ever** (audio, collected text, consent records, and datasets live only in access-controlled storage).
 
 ## Where to start reading
 
