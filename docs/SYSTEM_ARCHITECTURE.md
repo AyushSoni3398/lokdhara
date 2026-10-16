@@ -38,7 +38,8 @@ Inside the monolith, code is organised by **domain module**, each with its own m
 |--------|-------------|-------------|
 | `identity` | users, user_roles, sessions, invitations | sign-in, role checks |
 | `speakers` | speakers, speaker_identities | create speaker, restricted identity access |
-| `consents` | consent_forms, consent_records, withdrawal_requests | capture consent, compute effective permissions, process withdrawal |
+| `consents` | consent_forms, consent_records | capture consent, compute effective permissions |
+| `withdrawals` | withdrawal_requests | log, accept, refuse and close requests; deletion job as `app_erasure` (ADR-022) |
 | `submissions` | submissions, recordings, renditions, text_layers, text_revisions | create draft, accept upload, add revisions |
 | `prompts` | prompts | prompt library for prompted and read speech (ADR-018): pick next prompt, versioned editing, approval |
 | `processing` | processing_runs (+ queue tables) | enqueue, run, retry, record tool versions |

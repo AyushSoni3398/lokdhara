@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 
 import * as api from '../api/endpoints'
 import type {
@@ -78,7 +78,8 @@ function Draft({ release, onChange }: { release: Release; onChange: (r: Release)
   const [dataCard, setDataCard] = useState(release.data_card_markdown)
   const [preview, setPreview] = useState<ReleasePreview | null>(null)
   const [checks, setChecks] = useState<ReleaseCheck[] | null>(null)
-  const [version, setVersion] = useState('0.1.0')
+  const [version, setVersion] = useState(release.next_version ?? '0.1.0')
+  const patch = release.replaces_id !== null
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<unknown>(null)
 
@@ -120,6 +121,12 @@ function Draft({ release, onChange }: { release: Release; onChange: (r: Release)
 
   return (
     <>
+      {patch && (
+        <p className="note">
+          {t('releases.patchDraft')}{' '}
+          <Link to={`/datasets/${release.replaces_id}`}>{t('releases.replacedRelease')}</Link>
+        </p>
+      )}
       <form
         className="step"
         onSubmit={(event) => {
@@ -130,7 +137,11 @@ function Draft({ release, onChange }: { release: Release; onChange: (r: Release)
         <h2>{t('releases.selection')}</h2>
         <label>
           {t('releases.purpose')}
-          <select value={purpose} onChange={(e) => setPurpose(e.target.value as ReleasePurpose)}>
+          <select
+            value={purpose}
+            disabled={patch}
+            onChange={(e) => setPurpose(e.target.value as ReleasePurpose)}
+          >
             {PURPOSES.map((value) => (
               <option key={value} value={value}>
                 {t(`releases.purposes.${value}`)}
@@ -263,6 +274,7 @@ function Draft({ release, onChange }: { release: Release; onChange: (r: Release)
 
 function Frozen({ release, onChange }: { release: Release; onChange: (r: Release) => void }) {
   const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
   const isAdmin = hasRole(useSession(), 'admin')
   const [purposeStatement, setPurposeStatement] = useState('')
   const [note, setNote] = useState('')
@@ -298,40 +310,60 @@ function Frozen({ release, onChange }: { release: Release; onChange: (r: Release
         </div>
       ) : (
         <>
-          <form
-            className="step"
-            onSubmit={(event) => {
-              event.preventDefault()
-              void run(async () => {
-                await api.requestExport(release.id, purposeStatement.trim())
-                setPurposeStatement('')
-                setRequested(true)
-              })
-            }}
-          >
-            <h2>{t('exports.request')}</h2>
-            <label>
-              {t('exports.purposeStatement')}
-              <textarea
-                rows={3}
-                maxLength={2000}
-                value={purposeStatement}
-                onChange={(e) => setPurposeStatement(e.target.value)}
-              />
-            </label>
-            <button
-              type="submit"
-              className="small-action"
-              disabled={busy || !purposeStatement.trim()}
+          {release.withdrawn_item_count > 0 ? (
+            <div className="problem">
+              <p>{t('releases.withdrawn', { count: release.withdrawn_item_count })}</p>
+              <button
+                type="button"
+                className="small-action"
+                disabled={busy}
+                onClick={() =>
+                  void run(async () => {
+                    const draft = await api.startPatchRelease(release.id)
+                    onChange(draft)
+                    void navigate(`/datasets/${draft.id}`)
+                  })
+                }
+              >
+                {t('releases.startPatch')}
+              </button>
+            </div>
+          ) : (
+            <form
+              className="step"
+              onSubmit={(event) => {
+                event.preventDefault()
+                void run(async () => {
+                  await api.requestExport(release.id, purposeStatement.trim())
+                  setPurposeStatement('')
+                  setRequested(true)
+                })
+              }}
             >
-              {t('exports.send')}
-            </button>
-            {requested && (
-              <p className="note" role="status">
-                {t('exports.requested')} <Link to="/exports">{t('exports.link')}</Link>
-              </p>
-            )}
-          </form>
+              <h2>{t('exports.request')}</h2>
+              <label>
+                {t('exports.purposeStatement')}
+                <textarea
+                  rows={3}
+                  maxLength={2000}
+                  value={purposeStatement}
+                  onChange={(e) => setPurposeStatement(e.target.value)}
+                />
+              </label>
+              <button
+                type="submit"
+                className="small-action"
+                disabled={busy || !purposeStatement.trim()}
+              >
+                {t('exports.send')}
+              </button>
+              {requested && (
+                <p className="note" role="status">
+                  {t('exports.requested')} <Link to="/exports">{t('exports.link')}</Link>
+                </p>
+              )}
+            </form>
+          )}
           {isAdmin && (
             <form
               className="step"

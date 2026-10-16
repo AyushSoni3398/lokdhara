@@ -311,6 +311,7 @@ def freeze(
     release = service.get_release(db, release_id, for_update=True)
     if release.status != "draft":
         raise ApiError(409, "release_frozen", "This release is already frozen.")
+    service.check_patch_version(db, release, version)
     taken = db.scalar(
         select(DatasetRelease.id).where(
             DatasetRelease.slug == release.slug, DatasetRelease.version == version

@@ -192,7 +192,14 @@ def retract(
     release.retracted_at = now
     release.retraction_note = note
     release.updated_at = now
-    closed = close_for_retraction(db, store, admin, release.id, now)
+    closed = close_exports(
+        db,
+        store,
+        actor_id=admin.id,
+        release_id=release.id,
+        now=now,
+        note="The release was retracted.",
+    )
     audit.record(
         db,
         action="release.retract",
@@ -206,11 +213,18 @@ def retract(
     return release
 
 
-def close_for_retraction(
-    db: Session, store: ObjectStore, admin: AuthenticatedUser, release_id: uuid.UUID, now: datetime
+def close_exports(
+    db: Session,
+    store: ObjectStore,
+    *,
+    actor_id: uuid.UUID,
+    release_id: uuid.UUID,
+    now: datetime,
+    note: str,
 ) -> int:
-    """Called in the retraction's transaction: open requests are rejected and built packages
-    deleted, so nothing of a retracted release can still be downloaded."""
+    """Called in the transaction that retracts a release or marks one of its items withdrawn:
+    open requests are rejected with `note` and built packages deleted, so nothing of the
+    release can still be downloaded."""
     requests = db.scalars(
         select(ExportRequest)
         .where(
@@ -225,9 +239,9 @@ def close_for_retraction(
             request.status = "expired"
             continue
         request.status = "rejected"
-        request.decided_by = admin.id
+        request.decided_by = actor_id
         request.decided_at = now
-        request.decision_note = "The release was retracted."
+        request.decision_note = note
     return len(requests)
 
 

@@ -35,7 +35,7 @@ flowchart LR
 | Stage reached | Action |
 |---------------|--------|
 | 1 (device only) | Contributor deletes draft; nothing on server. |
-| 2–5 | Submission → `withdrawn`; excluded from all views except admin; deletion of originals and derivatives scheduled per [DATA_RETENTION_AND_DELETION.md](DATA_RETENTION_AND_DELETION.md). |
+| 2–5 | Submission → `withdrawn`; excluded from all views except admin; originals, derivatives and text deleted right after an admin accepts the request, per [DATA_RETENTION_AND_DELETION.md](DATA_RETENTION_AND_DELETION.md) (ADR-022). |
 | 6–7 | As above, plus `dataset_release_items.withdrawn_after_release_at` set, release annotated, future versions exclude it, export holders notified per data-use agreement (Q-G5). Already-distributed copies cannot be technically recalled; this limitation must be explained during consent. |
 
 ## Invariants (tested)

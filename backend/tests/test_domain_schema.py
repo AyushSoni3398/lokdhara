@@ -1,5 +1,5 @@
-"""Database-level rules for the domain tables (migrations 0004 to 0007, 0012 for reports, and
-0013 for dataset releases).
+"""Database-level rules for the domain tables (migrations 0004 to 0007, 0012 for reports,
+0013 for dataset releases, and 0014 for withdrawal requests).
 
 The application will enforce these too; the database is the last line of defence.
 """
@@ -14,7 +14,7 @@ from sqlalchemy import delete, func, text, update
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm import Session
 
-from app.modules.consents.models import ConsentForm, ConsentRecord
+from app.modules.consents.models import ConsentForm, ConsentRecord, WithdrawalRequest
 from app.modules.prompts.models import Prompt
 from app.modules.releases.models import DatasetRelease, DatasetReleaseItem, ExportRequest
 from app.modules.reports.models import Report
@@ -651,3 +651,56 @@ def test_export_requests_keep_who_asked_and_why(db: Session, world: World) -> No
         ),
         "ck_export_requests_ready",
     )
+
+
+# ------------------------------------------------------------------ withdrawals
+
+
+def _withdrawal(world: World, **extra: object) -> WithdrawalRequest:
+    values: dict[str, object] = {
+        "speaker_id": world.speaker.id,
+        "received_via": "in_app",
+        "recorded_by": world.contributor,
+        "requested_scope": "full",
+    }
+    values.update(extra)
+    return WithdrawalRequest(**values)
+
+
+def test_withdrawal_requests_name_their_speaker_and_item(db: Session, world: World) -> None:
+    submission = _submission(db, world)
+    db.commit()
+    _fails_add(db, _withdrawal(world, speaker_id=None), "speaker_id")
+    _fails_add(db, _withdrawal(world, submission_id=submission.id), "item_scope")
+    _fails_add(db, _withdrawal(world, requested_scope="specific_items"), "item_scope")
+    db.add(_withdrawal(world, requested_scope="specific_items", submission_id=submission.id))
+    db.add(_withdrawal(world))
+    db.commit()
+    _fails_add(db, _withdrawal(world), "uq_withdrawal_requests_waiting")
+
+
+def test_withdrawal_requests_keep_what_was_asked(db: Session, world: World) -> None:
+    db.add(_withdrawal(world, note="Asked by phone."))
+    db.commit()
+    for change in ({"requested_scope": "narrow"}, {"note": "Changed"}, {"recorded_by": None}):
+        _fails(db, update(WithdrawalRequest).values(**change), "immutable_columns")
+    _fails(db, delete(WithdrawalRequest), "append_only")
+    _fails(
+        db, update(WithdrawalRequest).values(status="verified"), "ck_withdrawal_requests_verified"
+    )
+    _fails(
+        db, update(WithdrawalRequest).values(status="rejected"), "ck_withdrawal_requests_completed"
+    )
+    _fails(
+        db,
+        update(WithdrawalRequest).values(erased_at=func.now()),
+        "ck_withdrawal_requests_erased_after_verified",
+    )
+    db.execute(
+        update(WithdrawalRequest).values(
+            status="verified", verified_by=world.reviewer, verified_at=func.now()
+        )
+    )
+    db.execute(update(WithdrawalRequest).values(erased_at=func.now()))
+    db.execute(update(WithdrawalRequest).values(status="completed", completed_at=func.now()))
+    db.commit()

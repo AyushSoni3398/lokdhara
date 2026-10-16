@@ -1,4 +1,5 @@
-"""docs/DATABASE_SCHEMA.md §2 and ADR-012. Created by migration 0004."""
+"""docs/DATABASE_SCHEMA.md §2 and ADR-012. Created by migration 0004; 0014 extends
+withdrawal_requests."""
 
 import uuid
 from datetime import datetime
@@ -68,6 +69,8 @@ class ConsentRecord(Base):
 
 
 class WithdrawalRequest(Base):
+    """What was asked, by whom, and when never changes; the rest records how it was handled."""
+
     __tablename__ = "withdrawal_requests"
 
     id: Mapped[uuid.UUID] = uuid_pk()
@@ -81,4 +84,8 @@ class WithdrawalRequest(Base):
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(Text, server_default="received")
     actions_taken: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, server_default="[]")
+    # Set when the request is closed, whether completed or rejected.
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Migration 0014: a note from whoever logged it, and when the deletion routine finished.
+    note: Mapped[str | None] = mapped_column(Text)
+    erased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

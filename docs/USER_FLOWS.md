@@ -76,6 +76,8 @@ flowchart TD
     J --> K
 ```
 
+As built (M7 part 2): a contributor asks from an item's page or from *Take recordings back*; an admin logs other requests on *Withdrawal requests*. Accepting (step C) hides and deletes at once (ADR-022). For narrowing, the new consent is recorded on the consent page first. Affected frozen releases show their withdrawn-item count and offer *Start the replacement release* (a PATCH release). Notifying export holders waits for Q-G5.
+
 ## F4 — Reports and hiding
 
 There is no reviewer ([ADR-021](ARCHITECTURE_DECISIONS.md#adr-021--no-human-reviewer-accept-after-automatic-checks-keep-text-unverified)); a submission is `accepted` once its automatic checks pass. People clean up afterwards when something is wrong:

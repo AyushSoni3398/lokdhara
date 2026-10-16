@@ -31,6 +31,9 @@ const DRAFT = {
   frozen_at: null,
   retracted_at: null,
   retraction_note: null,
+  replaces_id: null,
+  next_version: null,
+  withdrawn_item_count: 0,
 }
 const FROZEN = {
   ...DRAFT,
@@ -161,6 +164,51 @@ describe('dataset releases', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Retract this release' }))
     expect(await screen.findByText('A consent concern.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Send request' })).toBeNull()
+  })
+
+  it('starts a replacement release when items were taken back', async () => {
+    const patch = {
+      ...DRAFT,
+      id: 'rel2',
+      replaces_id: 'rel1',
+      next_version: '0.1.1',
+      data_card_markdown: 'This release replaces mundari-speech-pilot 0.1.0.',
+    }
+    const { requests } = fakeServer({
+      'GET /auth/me': () => ({ body: RESEARCHER }),
+      'GET /datasets/rel1': () => ({ body: { ...FROZEN, withdrawn_item_count: 2 } }),
+      'POST /datasets/rel1/patch': () => ({ status: 201, body: patch }),
+      'GET /datasets/rel2': () => ({ body: patch }),
+      'GET /datasets/rel2/preview': () => ({ body: PREVIEW }),
+    })
+    renderApp('/datasets/rel1')
+
+    expect(await screen.findByText(/2 items of this release were taken back/)).toBeInTheDocument()
+    // Exports of this release are refused, so none is offered.
+    expect(screen.queryByRole('button', { name: 'Send request' })).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'Start the replacement release' }))
+
+    expect(await screen.findByText(/This draft replaces a frozen release/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open the release it replaces' })).toHaveAttribute(
+      'href',
+      '/datasets/rel1',
+    )
+    expect(screen.getByLabelText('Purpose')).toBeDisabled()
+    expect(requests.some((r) => r.method === 'POST' && r.path === '/datasets/rel1/patch')).toBe(
+      true,
+    )
+  })
+
+  it('suggests the next PATCH version when freezing a replacement', async () => {
+    fakeServer({
+      'GET /auth/me': () => ({ body: ADMIN }),
+      'GET /datasets/rel2': () => ({
+        body: { ...DRAFT, id: 'rel2', replaces_id: 'rel1', next_version: '0.1.1' },
+      }),
+      'GET /datasets/rel2/preview': () => ({ body: PREVIEW }),
+    })
+    renderApp('/datasets/rel2')
+    expect(await screen.findByLabelText('Version')).toHaveValue('0.1.1')
   })
 
   it('is not for contributors', async () => {

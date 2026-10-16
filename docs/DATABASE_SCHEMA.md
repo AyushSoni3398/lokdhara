@@ -1,6 +1,6 @@
 # Database Schema
 
-Status: **Implemented except datasets.** §1–§5 and §7 are implemented by migrations `0001`–`0009` in `backend/migrations/`; §6 (datasets) is the logical schema for the dataset milestone. Where the migrations refine this document, ADR-020 records why. Field meanings are in [DATA_DICTIONARY.md](DATA_DICTIONARY.md).
+Status: **Implemented** by migrations `0001`–`0014` in `backend/migrations/`. Where the migrations refine this document, ADR-020 records why. Field meanings are in [DATA_DICTIONARY.md](DATA_DICTIONARY.md).
 
 Conventions:
 
@@ -119,7 +119,9 @@ CHECK: `text_sha256` equals the SHA-256 of `body_markdown`. Only `retired_at` ma
 Partial unique index: one `active` record per speaker. CHECKs: `allow_store_and_review` is true; `oral_recorded` needs `evidence_object_key`; `paper_reference` needs `paper_reference`; `guardian_relationship` only with `guardian_involved`. Only `status` may change.
 
 ### `withdrawal_requests`
-`id, speaker_id NULL, submission_id NULL (at least one set), received_via ('in_app','facilitator','phone','in_person','email'), received_at, recorded_by, requested_scope ('full','narrow','specific_items'), verified_by NULL, verified_at NULL, status ('received','verified','in_progress','completed','rejected'), actions_taken jsonb 🗂, completed_at NULL`
+`id, speaker_id, submission_id NULL, received_via ('in_app','facilitator','phone','in_person','email'), received_at, recorded_by, requested_scope ('full','narrow','specific_items'), note NULL (at most 1,000 characters, admins only), verified_by NULL, verified_at NULL, status ('received','verified','in_progress','completed','rejected'), actions_taken jsonb 🗂, erased_at NULL, completed_at NULL`
+
+Migration `0014` makes `speaker_id` required and adds `note` and `erased_at`. A request for one item (`specific_items`) names its submission; the other scopes do not. A verified request has `verified_by` and `verified_at`; a closed one (completed or rejected) has `completed_at`; `erased_at` is set by the deletion routine. One waiting (`received`) request per speaker, item and scope (`uq_withdrawal_requests_waiting`). What was asked, by whom and when (`id, speaker_id, submission_id, received_via, received_at, recorded_by, requested_scope, note`) cannot change (`lkd_freeze_columns`). `in_progress` is allowed but not used yet.
 
 ## 3. Submissions, audio, text
 
@@ -164,7 +166,7 @@ CHECKs: consent before leaving `draft`; `recording_mode` is NULL exactly for `te
 | sample_rate_hz, channels, bit_depth | int | bit_depth NULL for lossy codecs. |
 | duration_ms 🔎 | int | |
 | is_lossy_source | boolean | |
-| upload_status | text CHECK IN ('quarantined','validated','rejected_invalid','promoted','expired') | `expired` (migration `0011`): a draft's quarantine copy deleted after 30 days unsent (Q-T7). |
+| upload_status | text CHECK IN ('quarantined','validated','rejected_invalid','promoted','expired','erased') | `expired` (migration `0011`): a draft's quarantine copy deleted after 30 days unsent (Q-T7). `erased` (migration `0014`): the speaker withdrew it and the deletion routine removed its files; the row stays so release manifests stay readable. |
 | quarantined_at | timestamptz | When the bytes were last stored in quarantine; the 30 days count from here. |
 | validation_errors 🗂 | jsonb NULL | |
 | quality_metrics 🗂 | jsonb NULL | peak_dbfs, rms_dbfs, integrated_lufs, clipping_ratio, silence_ratio, speech_ratio_vad. |
@@ -285,7 +287,7 @@ Implemented by migration `0003` (ADR-019).
 `id, job_type, payload jsonb (IDs only), target_type, target_id, status ('queued','running','succeeded','failed'), attempts, max_attempts, run_after, dedupe_key NULL, locked_by NULL, lock_expires_at NULL, last_error_code NULL, created_at, finished_at NULL` — partial unique index on `dedupe_key` while queued or running. Finished rows may be purged; history lives in `processing_runs`.
 
 ### `processing_runs` 🧊 (one row per finished attempt)
-`id, job_id (no FK, so jobs can be purged), job_type ('system.ping','audio.validate','audio.analyze','audio.renditions','audio.dedupe','text.derive','dataset.export','cleanup.quarantine','cleanup.expire_drafts','cleanup.expire_exports'), target_type, target_id, attempt, status ('succeeded','failed'), started_at, finished_at, worker_id, tool_versions jsonb 🗂, input_sha256, output_summary jsonb 🗂, error_code, error_detail (sanitised: for unexpected errors only the exception type is stored)`. A running attempt is visible in `jobs`, so this table never needs updating.
+`id, job_id (no FK, so jobs can be purged), job_type ('system.ping','audio.validate','audio.analyze','audio.renditions','audio.dedupe','text.derive','dataset.export','cleanup.quarantine','cleanup.expire_drafts','cleanup.expire_exports','withdrawal.erase'), target_type, target_id, attempt, status ('succeeded','failed'), started_at, finished_at, worker_id, tool_versions jsonb 🗂, input_sha256, output_summary jsonb 🗂, error_code, error_detail (sanitised: for unexpected errors only the exception type is stored)`. A running attempt is visible in `jobs`, so this table never needs updating.
 
 ## 6. Datasets
 
@@ -305,6 +307,7 @@ Implemented by migration `0003` (ADR-019).
 | created_by, approved_by | uuid FK users | approved_by is the admin who froze it. |
 | created_at, updated_at, frozen_at, retracted_at | timestamptz | |
 | retraction_note | text NULL | |
+| replaces_id | uuid FK dataset_releases NULL | Migration `0014`: set on a PATCH draft started from a release that had items withdrawn; the draft can only take items of that release. |
 
 Migration `0013`. `ck_dataset_releases_frozen_complete` ties the status to its fields (a draft has no version, manifest or approver; a retracted release has its date and note). The `lkd_release_guard` trigger lets a draft change freely, a frozen release change only to `retracted`, and nothing change after that; only drafts can be deleted.
 

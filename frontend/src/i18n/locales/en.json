@@ -277,7 +277,17 @@
     "export_decided": "This request has already been decided.",
     "own_request": "Another admin must decide on your own request.",
     "export_not_ready": "This package is not ready yet.",
-    "export_expired": "This package has expired. Ask for a new one."
+    "export_expired": "This package has expired. Ask for a new one.",
+    "already_withdrawn": "This has already been taken back.",
+    "already_requested": "A request for this is already waiting for an admin.",
+    "withdrawal_not_found": "This request could not be found.",
+    "withdrawal_decided": "This request has already been decided.",
+    "withdrawal_not_verified": "Accept the request before closing it.",
+    "erasure_pending": "The files are still being deleted. Try again a little later.",
+    "consent_not_changed": "Record the speaker's new consent first, then accept the request.",
+    "version_not_patch": "A replacement release keeps the first two numbers of the release it replaces and raises the last one, for example 0.1.1.",
+    "patch_purpose_fixed": "A replacement release keeps the purpose of the release it replaces.",
+    "submission_not_found": "This item could not be found. It may have been taken back."
   },
   "jobs": {
     "title": "Failed checks",
@@ -437,7 +447,12 @@
     "retract": "Retract",
     "retractIntro": "Retract a release that must no longer be used, for example after a consent problem. Its packages are deleted; the record stays.",
     "retractButton": "Retract this release",
-    "retractedOn": "Retracted on {{date}}:"
+    "retractedOn": "Retracted on {{date}}:",
+    "withdrawn_one": "{{count}} item of this release was taken back by its speaker, or its speaker no longer allows this use. The release can no longer be exported. Start a replacement release without it.",
+    "withdrawn_other": "{{count}} items of this release were taken back by their speakers, or their speakers no longer allow this use. The release can no longer be exported. Start a replacement release without them.",
+    "startPatch": "Start the replacement release",
+    "patchDraft": "This draft replaces a frozen release. It can only take items of that release, so items that were taken back stay out.",
+    "replacedRelease": "Open the release it replaces"
   },
   "exports": {
     "link": "Export requests",
@@ -468,5 +483,77 @@
     "getLink": "Get download link",
     "save": "Save {{name}}",
     "checksum": "SHA-256:"
+  },
+  "withdrawal": {
+    "link": "Take recordings back",
+    "title": "Taking recordings back",
+    "intro": "You can take back one item you sent, or everything of a person you record for. An admin checks that the request really comes from that person. Then the items are hidden at once and their recordings and texts are deleted.",
+    "none": "No requests yet.",
+    "myRequests": "Your requests",
+    "myself": "you",
+    "everythingOf": "Everything from {{who}}",
+    "fullIntro": "This takes back every item, and no new recordings can be made for this person. Their details are deleted too. It cannot be undone.",
+    "fullStart": "Take back everything from {{who}}",
+    "changeConsent": "Or keep the recordings and change what they may be used for",
+    "itemTitle": "Take this back",
+    "itemIntro": "If you no longer want this item in Lokdhara, ask for it to be taken back. An admin checks the request first.",
+    "itemStart": "Ask to take this back",
+    "copies": "Copies that researchers already downloaded cannot be deleted from here, but no new copies are given out. Backups of the server keep it for up to a year before it is gone everywhere.",
+    "note": "Anything the admin should know (optional)",
+    "send": "Send request",
+    "cancel": "Cancel",
+    "sent": "Request sent. An admin will check it.",
+    "scopes": {
+      "full": "Everything",
+      "narrow": "Fewer uses",
+      "specific_items": "One item"
+    },
+    "states": {
+      "received": "Waiting for an admin",
+      "verified": "Done",
+      "in_progress": "Being carried out",
+      "deleting": "Hidden, being deleted",
+      "deleted": "Hidden and deleted",
+      "completed": "Done",
+      "rejected": "Not carried out"
+    }
+  },
+  "adminWithdrawals": {
+    "link": "Withdrawal requests",
+    "title": "Withdrawal requests",
+    "intro": "Requests to take recordings back. First make sure the request really comes from the speaker or someone who may speak for them. Accepting hides the items at once and deletes their recordings and texts; it cannot be undone. Frozen releases with these items can no longer be exported.",
+    "none": "No requests.",
+    "showClosed": "Show closed requests too",
+    "log": "Log a request",
+    "logIntro": "For a request that came by phone, in person, by email or through a facilitator.",
+    "scope": "What is asked",
+    "speaker": "Speaker",
+    "chooseSpeaker": "Choose a speaker",
+    "submissionId": "Item number (from the address of the item's page)",
+    "receivedVia": "How it came",
+    "via": {
+      "in_app": "in the app",
+      "facilitator": "through a facilitator",
+      "phone": "by phone",
+      "in_person": "in person",
+      "email": "by email"
+    },
+    "logButton": "Log request",
+    "received": "Received {{date}}, {{via}}",
+    "openItem": "Open the item",
+    "actions": {
+      "verified": "Accepted",
+      "rejected": "Refused",
+      "erased": "Files and texts deleted",
+      "completed": "Closed"
+    },
+    "narrowFirst": "For fewer uses, record the speaker's new answers first, then accept here:",
+    "consentPage": "consent page",
+    "checkNote": "How you checked who asked, or why you refuse",
+    "closeNote": "How you told the person it is done",
+    "verify": "Accept and carry out",
+    "verifyConfirm": "This hides the items at once and deletes their recordings and texts for good. Continue?",
+    "reject": "Refuse",
+    "complete": "Close request"
   }
 }

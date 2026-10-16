@@ -7,6 +7,9 @@ quarantine copy, `audio.analyze` measures a promoted original and flags it for r
 `audio.renditions` makes the derived listening and research copies, and `audio.dedupe` links
 recordings that are the same file or the same sound.
 No database transaction stays open while files are copied, decoded, or measured.
+
+A recording the speaker withdrew is `erased` by app.modules.withdrawals.erasure. These jobs then
+skip it, and a file one of them made while the routine ran is deleted again.
 """
 
 import hashlib
@@ -33,6 +36,8 @@ from app.object_store import (
     ObjectStore,
     get_object_store,
 )
+
+ERASED = "erased"
 
 
 def limits(settings: Settings) -> Limits:
@@ -121,6 +126,8 @@ def validate_recording(context: JobContext) -> JobResult:
 
     recording = _recording(db, context.target_id, lock=True)
     if recording.upload_status != "quarantined":
+        if recording.upload_status == ERASED and isinstance(verdict, AudioInfo):
+            store.erase(Bucket.ORIGINALS, key)  # withdrawn meanwhile: keep no copy
         return JobResult(output_summary={"skipped": recording.upload_status})
     recording.detected_container = found.format_name if found else None
     recording.duration_ms = duration_ms
@@ -184,6 +191,8 @@ def analyze_recording(context: JobContext) -> JobResult:
     """Measures the original and sets the reviewer flags. Re-running replaces both."""
     settings, store, db = get_settings(), get_object_store(), context.db
     recording = _recording(db, context.target_id)
+    if recording.upload_status == ERASED:
+        return JobResult(output_summary={"skipped": ERASED})
     if recording.upload_status != "promoted" or recording.duration_ms is None:
         raise JobError("not_promoted", retryable=False)
     key, sha256, duration_ms = (
@@ -212,6 +221,8 @@ def analyze_recording(context: JobContext) -> JobResult:
     found = quality.flags(metrics, duration_ms, settings.min_audio_seconds)
 
     recording = _recording(db, context.target_id, lock=True)
+    if recording.upload_status == ERASED:
+        return JobResult(output_summary={"skipped": ERASED})
     recording.quality_metrics = metrics.as_json()
     # Keep flags set by other jobs (possible_duplicate); replace this job's own.
     recording.quality_flags = sorted(
@@ -239,6 +250,8 @@ def make_renditions(context: JobContext) -> JobResult:
     """
     settings, store, db = get_settings(), get_object_store(), context.db
     recording = _recording(db, context.target_id)
+    if recording.upload_status == ERASED:
+        return JobResult(output_summary={"skipped": ERASED})
     if recording.upload_status != "promoted":
         raise JobError("not_promoted", retryable=False)
     key, sha256 = recording.original_object_key, recording.sha256_original
@@ -278,6 +291,10 @@ def make_renditions(context: JobContext) -> JobResult:
             derived = renditions.derived_key(key, kind)
             made.append((kind, derived, *_store_file(store, out, derived, kind.content_type)))
 
+    if _recording(db, context.target_id, lock=True).upload_status == ERASED:
+        for _kind, derived, *_ in made:  # withdrawn meanwhile: keep no copy
+            store.erase(Bucket.DERIVED, derived)
+        return JobResult(output_summary={"skipped": ERASED})
     versions = ffmpeg.versions()
     for kind, derived, file_sha256, size in made:
         # Added, not inserted at once: the run row it points to is written with the job's result.
@@ -315,6 +332,8 @@ def find_duplicates(context: JobContext) -> JobResult:
     their submissions. Nothing is ever deleted: a reviewer decides (docs/DATA_LIFECYCLE.md)."""
     settings, store, db = get_settings(), get_object_store(), context.db
     recording = _recording(db, context.target_id)
+    if recording.upload_status == ERASED:
+        return JobResult(output_summary={"skipped": ERASED})
     if recording.upload_status != "promoted":
         raise JobError("not_promoted", retryable=False)
     recording_id, key, sha256 = (

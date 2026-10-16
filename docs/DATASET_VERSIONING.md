@@ -1,6 +1,6 @@
 # Dataset Versioning and Export Format
 
-Status: **Built in M7** (releases, checks, freezing, retraction, export packages); the withdrawal workflow (§2) follows in M7 part 2. Datasets are **never** stored in Git (ADR-013, ADR-017).
+Status: **Built in M7** (releases, checks, freezing, retraction, export packages, and in part 2 the withdrawal workflow and PATCH releases of §2, [ADR-022](ARCHITECTURE_DECISIONS.md#adr-022--withdrawals-deletion-right-after-acceptance-patch-releases-from-the-replaced-release)). Datasets are **never** stored in Git (ADR-013, ADR-017).
 
 ## 1. Concepts
 
@@ -19,6 +19,8 @@ Status: **Built in M7** (releases, checks, freezing, retraction, export packages
 - **PATCH**: corrections — revised transcripts, removed withdrawn items, metadata fixes.
 
 A withdrawal therefore produces a new **PATCH** release that excludes the item; the old release is annotated (`withdrawn_after_release_at`) and its data card updated with a notice. Old frozen manifests are kept for reproducibility of published results, but **export of old releases with withdrawn items is blocked**.
+
+*As built:* frozen releases never change, so the "notice" is the release's withdrawn-item count (shown on its page) and the PATCH draft's data card, which starts by naming the release it replaces and how many items were taken out. *Start the replacement release* creates a draft with `replaces_id`; it can only take items of the replaced release, keeps its purpose, and must be frozen as the same MAJOR.MINOR with a higher PATCH (`next_version` suggests it). The withdrawn items' text in the old release's stored `items.jsonl` is deleted; its `manifest.json` stays.
 
 ## 3. Purpose gates
 

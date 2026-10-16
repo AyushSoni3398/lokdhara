@@ -10,6 +10,7 @@ import { AdminUnhide } from './submission/AdminUnhide'
 import { ReportProblem } from './submission/ReportProblem'
 import { AddText, EditText, TRANSLATIONS } from './submission/TextEditor'
 import { TextHistory } from './submission/TextHistory'
+import { WithdrawItem } from './submission/WithdrawItem'
 
 // With no reviewer the contributor keeps correcting and translating after acceptance (ADR-021).
 const TEXT_EDITABLE = ['accepted']
@@ -135,6 +136,13 @@ export function SubmissionPage() {
 
       <h2>{t('report.title')}</h2>
       <ReportProblem submissionId={submission.id} />
+
+      {submission.mine && submission.status !== 'withdrawn' && (
+        <>
+          <h2>{t('withdrawal.itemTitle')}</h2>
+          <WithdrawItem submissionId={submission.id} />
+        </>
+      )}
     </section>
   )
 }

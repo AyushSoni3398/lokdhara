@@ -130,7 +130,7 @@ jobs:
       - name: Install Chromium
         working-directory: frontend
         run: npx playwright install --with-deps chromium
-      - name: Contributor, report and release flows (synthetic data, fake microphone)
+      - name: Contributor, report, release and withdrawal flows (synthetic data, fake microphone)
         working-directory: frontend
         run: npm run e2e
       - name: Keep the report when it fails

@@ -8,6 +8,7 @@ from app.modules.submissions import (
     service,  # noqa: F401 - moves submissions on as their jobs settle
     text_processing,  # noqa: F401 - text.derive
 )
+from app.modules.withdrawals import erasure  # noqa: F401 - withdrawal.erase
 
 
 @handler("system.ping")

@@ -31,6 +31,8 @@ import type {
   TextLayer,
   TextLayerCreate,
   TextLayerDetail,
+  Withdrawal,
+  WithdrawalCreate,
 } from './types'
 
 export const login = (username: string, password: string) =>
@@ -43,6 +45,23 @@ export const listSpeakers = () =>
 export const createSpeaker = (forSelf: boolean) =>
   request<Speaker>('POST', '/speakers', { json: { for_self: forSelf } })
 export const getSpeaker = (id: string) => request<Speaker>('GET', `/speakers/${id}`)
+/** Admins: every speaker, for logging a request someone made by phone or in person. */
+export const listAllSpeakers = () =>
+  request<{ items: Speaker[] }>('GET', '/speakers?mine=false').then((r) => r.items)
+
+export const requestWithdrawal = (body: WithdrawalCreate) =>
+  request<Withdrawal>('POST', '/withdrawal-requests', { json: body })
+export const listMyWithdrawals = () =>
+  request<{ items: Withdrawal[] }>('GET', '/withdrawal-requests').then((r) => r.items)
+export const listWithdrawalQueue = (open: boolean) =>
+  request<{ items: Withdrawal[] }>('GET', `/admin/withdrawal-requests?open=${open}`).then(
+    (r) => r.items,
+  )
+export const decideWithdrawal = (
+  id: string,
+  decision: 'verify' | 'reject' | 'complete',
+  note: string,
+) => request<Withdrawal>('POST', `/admin/withdrawal-requests/${id}/${decision}`, { json: { note } })
 
 export const currentConsentForm = (language: string) =>
   request<ConsentForm>('GET', `/consent-forms/current?language=${encodeURIComponent(language)}`)
@@ -153,6 +172,7 @@ export const freezeRelease = (id: string, version: string) =>
   request<Release>('POST', `/datasets/${id}/freeze`, { json: { version } })
 export const retractRelease = (id: string, note: string) =>
   request<Release>('POST', `/datasets/${id}/retract`, { json: { note } })
+export const startPatchRelease = (id: string) => request<Release>('POST', `/datasets/${id}/patch`)
 
 export const requestExport = (releaseId: string, purposeStatement: string) =>
   request<ExportRequest>('POST', `/datasets/${releaseId}/exports`, {
