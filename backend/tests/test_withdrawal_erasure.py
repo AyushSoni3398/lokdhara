@@ -313,3 +313,59 @@ def test_only_an_app_erasure_login_runs_the_routine(
         assert erasure.erase(eraser, object_store, request_id) is not None
     db.expire_all()
     assert db.get_one(WithdrawalRequest, request_id).erased_at is not None
+
+
+# ------------------------------------------------------------------ withdrawn while being checked
+
+
+def stored_files(tmp_path: Path) -> list[Path]:
+    return [p for p in (tmp_path / "objects").rglob("*") if p.is_file()]
+
+
+@pytest.fixture
+def sent_recording(
+    client: TestClient, db: Session, make_user: MakeUser, tmp_path: Path
+) -> dict[str, str]:
+    """A recording that was sent but whose checks have not run yet."""
+    act_as(client, make_user("asha", "contributor"))
+    speaker = own_speaker(client)
+    give_consent(client, db, speaker, allow_research=True)
+    draft = create_draft(client, speaker)
+    assert upload(client, draft["id"], make_audio(tmp_path / "a", seconds=2)).status_code == 202
+    assert client.post(f"{SUBMISSIONS}/{draft['id']}/submit").status_code == 200
+    return {"speaker": speaker, "submission": draft["id"]}
+
+
+def test_an_item_withdrawn_while_being_checked_leaves_no_files(
+    client: TestClient,
+    engine: Engine,
+    db: Session,
+    admin: TestUser,
+    sent_recording: dict[str, str],
+    tmp_path: Path,
+) -> None:
+    verified(client, admin, scope="specific_items", submission_id=sent_recording["submission"])
+    run_jobs(engine)
+    assert stored_files(tmp_path) == []
+    failed = db.scalars(text("SELECT job_type FROM jobs WHERE status = 'failed'")).all()
+    assert failed == []
+
+
+def test_a_copy_made_while_the_routine_ran_is_deleted_again(
+    client: TestClient,
+    engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+    sent_recording: dict[str, str],
+    tmp_path: Path,
+) -> None:
+    promote = processing._promote
+
+    def promote_then_erased(store: ObjectStore, key: str, sha256: str) -> None:
+        promote(store, key, sha256)
+        with engine.begin() as connection:  # the deletion routine finishes meanwhile
+            connection.execute(text("UPDATE recordings SET upload_status = 'erased'"))
+
+    monkeypatch.setattr(processing, "_promote", promote_then_erased)
+    run_jobs(engine)
+    buckets = {p.relative_to(tmp_path / "objects").parts[0] for p in stored_files(tmp_path)}
+    assert "test-originals" not in buckets
