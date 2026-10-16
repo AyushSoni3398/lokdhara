@@ -89,3 +89,14 @@ def reject_withdrawal(
         db, admin=admin, request_id=request_id, note=body.note, context=context
     )
     return _out(db, admin, request)
+
+
+@router.post("/admin/withdrawal-requests/{request_id}/complete")
+def complete_withdrawal(
+    request_id: uuid.UUID, body: DecisionRequest, admin: AdminUser, db: DbSession, context: Context
+) -> WithdrawalOut:
+    """`note`: how the requester was told that their request was carried out."""
+    request = service.complete(
+        db, admin=admin, request_id=request_id, note=body.note, context=context
+    )
+    return _out(db, admin, request)

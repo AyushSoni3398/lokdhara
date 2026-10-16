@@ -296,3 +296,43 @@ def reject(
     )
     db.commit()
     return request
+
+
+def complete(
+    db: Session,
+    *,
+    admin: AuthenticatedUser,
+    request_id: uuid.UUID,
+    note: str,
+    context: RequestContext,
+) -> WithdrawalRequest:
+    """Closes a verified request once everything is done, with a note on how the requester
+    was told (§2.7). Items must have been deleted first."""
+    request = db.scalar(
+        select(WithdrawalRequest).where(WithdrawalRequest.id == request_id).with_for_update()
+    )
+    if request is None:
+        raise _not_found()
+    if request.status == "received":
+        raise ApiError(409, "withdrawal_not_verified", "Verify the request first.")
+    if request.status != "verified":
+        raise ApiError(409, "withdrawal_decided", "This request has already been closed.")
+    if request.requested_scope != "narrow" and request.erased_at is None:
+        raise ApiError(
+            409, "erasure_pending", "The recordings are still being deleted. Try again later."
+        )
+    now = utcnow()
+    request.status = "completed"
+    request.completed_at = now
+    _record_action(request, "completed", admin, now, note=note)
+    audit.record(
+        db,
+        action="withdrawal.complete",
+        context=context,
+        actor_user_id=admin.id,
+        target_type="withdrawal_request",
+        target_id=request.id,
+        details={"scope": request.requested_scope},
+    )
+    db.commit()
+    return request

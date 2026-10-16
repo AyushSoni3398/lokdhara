@@ -226,6 +226,9 @@ def test_a_narrower_consent_is_recorded_before_the_request_is_verified(
     assert verified["status"] == "verified"
     assert client.get(f"/api/v1/speakers/{items['speaker']}").json()["status"] == "active"
     assert client.get(f"/api/v1/submissions/{items['story']}").json()["status"] == "accepted"
+    # Nothing is deleted for a narrower consent, so it can be closed straight away.
+    done = client.post(f"{QUEUE}/{request['id']}/complete", json={"note": "Told by phone."})
+    assert done.json()["status"] == "completed"
 
 
 def test_a_request_that_cannot_be_confirmed_is_rejected(
@@ -243,3 +246,6 @@ def test_a_request_that_cannot_be_confirmed_is_rejected(
     assert client.get(f"/api/v1/speakers/{items['speaker']}").json()["status"] == "active"
     assert client.get(QUEUE).json()["items"] == []
     assert len(client.get(f"{QUEUE}?open=false").json()["items"]) == 1
+    other = ask(client, scope="narrow", speaker_id=items["speaker"]).json()
+    response = client.post(f"{QUEUE}/{other['id']}/complete", json={"note": "Done."})
+    assert response.json()["code"] == "withdrawal_not_verified"

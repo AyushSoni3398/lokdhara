@@ -211,6 +211,22 @@ def test_a_full_withdrawal_deletes_the_speakers_files_and_words(
     assert len(db.get_one(WithdrawalRequest, request.id).actions_taken) == 2
 
 
+def test_a_request_is_completed_once_its_items_are_deleted(
+    client: TestClient, engine: Engine, db: Session, world: dict[str, Any], admin: TestUser
+) -> None:
+    request_id = verified(client, admin, scope="specific_items", submission_id=world["audio"])
+    complete = f"{QUEUE}/{request_id}/complete"
+    told = {"note": "Told the speaker by phone that the recording was deleted."}
+    assert client.post(complete, json=told).json()["code"] == "erasure_pending"
+    run_jobs(engine)
+    done = client.post(complete, json=told).json()
+    assert (done["status"], done["actions_taken"][-1]["note"]) == ("completed", told["note"])
+    assert done["completed_at"] is not None
+    assert client.post(complete, json=told).json()["code"] == "withdrawal_decided"
+    assert client.get(QUEUE).json()["items"] == []
+    assert db.scalar(select(AuditEvent).where(AuditEvent.action == "withdrawal.complete"))
+
+
 def test_consent_evidence_is_deleted_when_the_project_does_not_keep_it(
     client: TestClient,
     engine: Engine,
