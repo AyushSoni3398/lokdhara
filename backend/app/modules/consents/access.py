@@ -189,6 +189,12 @@ def release_filter(purpose: str) -> ColumnElement[bool]:
     )
 
 
+def consent_allows(purpose: str) -> ColumnElement[bool]:
+    """Only the consent part of release_filter(): does the speaker still allow this use? Used
+    to find frozen release items whose consent was narrowed after freezing."""
+    return _use_allowed_sql(PURPOSE_PERMISSIONS[purpose])
+
+
 def viewer_for(user: AuthenticatedUser) -> Viewer:
     return Viewer(
         is_admin=user.has_role("admin"),
