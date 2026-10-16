@@ -1,4 +1,4 @@
-"""docs/DATABASE_SCHEMA.md §6. Created by migration 0013."""
+"""docs/DATABASE_SCHEMA.md §6. Created by migration 0013; 0014 adds `replaces_id`."""
 
 import uuid
 from datetime import datetime
@@ -39,6 +39,8 @@ class DatasetRelease(Base):
     frozen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     retracted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     retraction_note: Mapped[str | None] = mapped_column(Text)
+    # A PATCH release names the release it replaces (migration 0014).
+    replaces_id: Mapped[uuid.UUID | None] = optional_fk("dataset_releases.id")
 
 
 class DatasetReleaseItem(Base):

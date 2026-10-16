@@ -22,6 +22,7 @@ JOB_TYPES = (
     "cleanup.quarantine",
     "cleanup.expire_drafts",
     "cleanup.expire_exports",
+    "withdrawal.erase",
 )
 JOB_STATUSES = ("queued", "running", "succeeded", "failed")
 
