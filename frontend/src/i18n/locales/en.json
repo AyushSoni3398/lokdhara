@@ -284,7 +284,9 @@
     "withdrawal_decided": "This request has already been decided.",
     "withdrawal_not_verified": "Accept the request before closing it.",
     "erasure_pending": "The files are still being deleted. Try again a little later.",
-    "consent_not_changed": "Record the speaker's new consent first, then accept the request."
+    "consent_not_changed": "Record the speaker's new consent first, then accept the request.",
+    "version_not_patch": "A replacement release keeps the first two numbers of the release it replaces and raises the last one, for example 0.1.1.",
+    "patch_purpose_fixed": "A replacement release keeps the purpose of the release it replaces."
   },
   "jobs": {
     "title": "Failed checks",
@@ -444,7 +446,12 @@
     "retract": "Retract",
     "retractIntro": "Retract a release that must no longer be used, for example after a consent problem. Its packages are deleted; the record stays.",
     "retractButton": "Retract this release",
-    "retractedOn": "Retracted on {{date}}:"
+    "retractedOn": "Retracted on {{date}}:",
+    "withdrawn_one": "{{count}} item of this release was taken back by its speaker, or its speaker no longer allows this use. The release can no longer be exported. Start a replacement release without it.",
+    "withdrawn_other": "{{count}} items of this release were taken back by their speakers, or their speakers no longer allow this use. The release can no longer be exported. Start a replacement release without them.",
+    "startPatch": "Start the replacement release",
+    "patchDraft": "This draft replaces a frozen release. It can only take items of that release, so items that were taken back stay out.",
+    "replacedRelease": "Open the release it replaces"
   },
   "exports": {
     "link": "Export requests",
