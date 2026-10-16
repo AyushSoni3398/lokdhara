@@ -57,6 +57,11 @@ class ReleaseOut(BaseModel):
     frozen_at: datetime | None
     retracted_at: datetime | None
     retraction_note: str | None
+    # The release a PATCH draft replaces, and the version it should be frozen as.
+    replaces_id: uuid.UUID | None
+    next_version: str | None
+    # Items withdrawn after freezing; such a release can no longer be exported.
+    withdrawn_item_count: int
 
 
 class ReleaseListOut(BaseModel):

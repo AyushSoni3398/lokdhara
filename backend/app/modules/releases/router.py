@@ -40,12 +40,18 @@ Store = Annotated[ObjectStore, Depends(get_object_store)]
 DataUser = Annotated[AuthenticatedUser, Depends(require_roles("researcher", "admin"))]
 
 
-def release_out(release: DatasetRelease) -> ReleaseOut:
-    computed = {"selection_criteria"}
+def release_out(
+    db: DbSession, release: DatasetRelease, withdrawn: dict[uuid.UUID, int] | None = None
+) -> ReleaseOut:
+    computed = {"selection_criteria", "next_version", "withdrawn_item_count"}
     fields = {f: getattr(release, f) for f in ReleaseOut.model_fields if f not in computed}
+    if withdrawn is None:
+        withdrawn = service.withdrawn_counts(db, [release.id])
     return ReleaseOut(
         **fields,
         selection_criteria=SelectionCriteria.model_validate(release.selection_criteria),
+        next_version=service.next_patch_version(db, release),
+        withdrawn_item_count=withdrawn.get(release.id, 0),
     )
 
 
@@ -53,24 +59,37 @@ def release_out(release: DatasetRelease) -> ReleaseOut:
 def create_release(
     body: ReleaseCreateRequest, user: DataUser, db: DbSession, context: Context
 ) -> ReleaseOut:
-    return release_out(service.create_draft(db, user=user, body=body, context=context))
+    return release_out(db, service.create_draft(db, user=user, body=body, context=context))
 
 
 @router.get("/datasets")
 def list_releases(_user: DataUser, db: DbSession) -> ReleaseListOut:
-    return ReleaseListOut(items=[release_out(r) for r in service.list_releases(db)])
+    releases = service.list_releases(db)
+    withdrawn = service.withdrawn_counts(db, [r.id for r in releases])
+    return ReleaseListOut(items=[release_out(db, r, withdrawn) for r in releases])
 
 
 @router.get("/datasets/{release_id}")
 def get_release(release_id: uuid.UUID, _user: DataUser, db: DbSession) -> ReleaseOut:
-    return release_out(service.get_release(db, release_id))
+    return release_out(db, service.get_release(db, release_id))
 
 
 @router.patch("/datasets/{release_id}")
 def update_release(
     release_id: uuid.UUID, body: ReleaseUpdateRequest, user: DataUser, db: DbSession
 ) -> ReleaseOut:
-    return release_out(service.update_draft(db, user=user, release_id=release_id, body=body))
+    return release_out(db, service.update_draft(db, user=user, release_id=release_id, body=body))
+
+
+@router.post("/datasets/{release_id}/patch", status_code=status.HTTP_201_CREATED)
+def start_patch(
+    release_id: uuid.UUID, user: DataUser, db: DbSession, context: Context
+) -> ReleaseOut:
+    """Starts (or returns) the PATCH draft that replaces a frozen release, for example after
+    items were withdrawn from it."""
+    return release_out(
+        db, service.start_patch(db, user=user, release_id=release_id, context=context)
+    )
 
 
 @router.get("/datasets/{release_id}/preview")
@@ -129,7 +148,7 @@ def freeze_release(
         version=body.version,
         context=context,
     )
-    return release_out(release)
+    return release_out(db, release)
 
 
 @router.post("/datasets/{release_id}/retract")
@@ -144,7 +163,7 @@ def retract_release(
     release = exports.retract(
         db, store, admin=admin, release_id=release_id, note=body.note, context=context
     )
-    return release_out(release)
+    return release_out(db, release)
 
 
 # ------------------------------------------------------------------ exports
