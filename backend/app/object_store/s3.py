@@ -16,6 +16,7 @@ from app.object_store.base import (
     ObjectNotFound,
     ObjectStore,
     Readable,
+    StorageError,
     StoredObject,
     _HashingReader,
     validate_key,
@@ -23,6 +24,7 @@ from app.object_store.base import (
 
 if TYPE_CHECKING:
     from mypy_boto3_s3 import S3Client
+    from mypy_boto3_s3.type_defs import ObjectIdentifierTypeDef
 
 
 def _is_not_found(error: ClientError) -> bool:
@@ -92,6 +94,25 @@ class S3ObjectStore(ObjectStore):
 
     def delete(self, bucket: Bucket, key: str) -> None:
         self._client.delete_object(Bucket=self._names[bucket], Key=validate_key(key))
+
+    def erase(self, bucket: Bucket, key: str) -> None:
+        """Deleting a key in a versioned bucket only adds a delete marker, so every version
+        and marker of exactly this key is deleted by its version ID."""
+        name = self._names[bucket]
+        validate_key(key)
+        paginator = self._client.get_paginator("list_object_versions")
+        for page in paginator.paginate(Bucket=name, Prefix=key):
+            found = [*page.get("Versions", []), *page.get("DeleteMarkers", [])]
+            versions: list[ObjectIdentifierTypeDef] = [
+                {"Key": key, "VersionId": v["VersionId"]} for v in found if v.get("Key") == key
+            ]
+            if versions:
+                result = self._client.delete_objects(
+                    Bucket=name, Delete={"Objects": versions, "Quiet": True}
+                )
+                if result.get("Errors"):
+                    raise StorageError("some versions could not be deleted")
+        self.delete(bucket, key)  # unversioned buckets list nothing above
 
     def signed_url(self, bucket: Bucket, key: str, *, ttl_seconds: int, content_type: str) -> str:
         if bucket not in SIGNABLE:

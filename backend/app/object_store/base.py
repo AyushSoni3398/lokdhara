@@ -129,6 +129,12 @@ class ObjectStore(ABC):
         ignored."""
 
     @abstractmethod
+    def erase(self, bucket: Bucket, key: str) -> None:
+        """Deletes the object and, in versioned buckets, every earlier version of it. Only the
+        withdrawal routine calls this (docs/DATA_RETENTION_AND_DELETION.md §2). Missing keys
+        are ignored."""
+
+    @abstractmethod
     def signed_url(self, bucket: Bucket, key: str, *, ttl_seconds: int, content_type: str) -> str:
         """Short-lived download URL. Only for derived playback files and exports."""
 

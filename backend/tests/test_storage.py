@@ -83,6 +83,34 @@ def test_write_once_buckets_refuse_overwrite(store: ObjectStore, bucket: Bucket)
     assert _read(store, bucket, "a/b") == b"first"
 
 
+def test_erase_removes_the_object_but_not_its_neighbours(store: ObjectStore) -> None:
+    store.put(Bucket.ORIGINALS, "a/b.webm", io.BytesIO(b"voice"))
+    store.put(Bucket.ORIGINALS, "a/b.webm2", io.BytesIO(b"other"))
+    store.erase(Bucket.ORIGINALS, "a/b.webm")
+    store.erase(Bucket.ORIGINALS, "a/b.webm")  # erasing again is not an error
+    assert store.head(Bucket.ORIGINALS, "a/b.webm") is None
+    assert _read(store, Bucket.ORIGINALS, "a/b.webm2") == b"other"
+
+
+def test_erase_removes_every_version_in_a_versioned_bucket() -> None:
+    with mock_aws():
+        client = boto3.client("s3", region_name="ap-south-1")
+        name = NAMES[Bucket.DERIVED]
+        client.create_bucket(
+            Bucket=name, CreateBucketConfiguration={"LocationConstraint": "ap-south-1"}
+        )
+        client.put_bucket_versioning(Bucket=name, VersioningConfiguration={"Status": "Enabled"})
+        store = S3ObjectStore(client, NAMES)
+        store.put(Bucket.DERIVED, "a/b", io.BytesIO(b"first"))
+        store.put(Bucket.DERIVED, "a/b", io.BytesIO(b"second"))
+        store.delete(Bucket.DERIVED, "a/b")  # only hides it behind a delete marker
+        store.put(Bucket.DERIVED, "a/bc", io.BytesIO(b"neighbour"))
+        store.erase(Bucket.DERIVED, "a/b")
+        left = client.list_object_versions(Bucket=name)
+        keys = {v["Key"] for v in [*left.get("Versions", []), *left.get("DeleteMarkers", [])]}
+        assert keys == {"a/bc"}
+
+
 def test_derived_files_can_be_regenerated(store: ObjectStore) -> None:
     store.put(Bucket.DERIVED, "a/b", io.BytesIO(b"first"))
     store.put(Bucket.DERIVED, "a/b", io.BytesIO(b"second"))

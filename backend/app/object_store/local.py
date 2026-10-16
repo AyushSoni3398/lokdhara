@@ -97,6 +97,9 @@ class LocalObjectStore(ObjectStore):
     def delete(self, bucket: Bucket, key: str) -> None:
         self._path(bucket, key).unlink(missing_ok=True)
 
+    def erase(self, bucket: Bucket, key: str) -> None:
+        self.delete(bucket, key)  # the local store keeps no earlier versions
+
     def _signature(self, bucket: Bucket, key: str, expires: int, content_type: str) -> str:
         return keyed_hash(self._secret, "local-url", f"{bucket}:{key}:{expires}:{content_type}")
 
