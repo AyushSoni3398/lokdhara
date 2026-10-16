@@ -286,7 +286,8 @@
     "erasure_pending": "The files are still being deleted. Try again a little later.",
     "consent_not_changed": "Record the speaker's new consent first, then accept the request.",
     "version_not_patch": "A replacement release keeps the first two numbers of the release it replaces and raises the last one, for example 0.1.1.",
-    "patch_purpose_fixed": "A replacement release keeps the purpose of the release it replaces."
+    "patch_purpose_fixed": "A replacement release keeps the purpose of the release it replaces.",
+    "submission_not_found": "This item could not be found. It may have been taken back."
   },
   "jobs": {
     "title": "Failed checks",
