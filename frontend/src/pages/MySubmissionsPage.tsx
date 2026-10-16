@@ -99,6 +99,9 @@ export function MySubmissionsPage() {
           </li>
         ))}
       </ul>
+      <p>
+        <Link to="/withdrawals">{t('withdrawal.link')}</Link>
+      </p>
     </section>
   )
 }

@@ -277,7 +277,10 @@
     "export_decided": "This request has already been decided.",
     "own_request": "Another admin must decide on your own request.",
     "export_not_ready": "This package is not ready yet.",
-    "export_expired": "This package has expired. Ask for a new one."
+    "export_expired": "This package has expired. Ask for a new one.",
+    "already_withdrawn": "This has already been taken back.",
+    "already_requested": "A request for this is already waiting for an admin.",
+    "withdrawal_not_found": "This request could not be found."
   },
   "jobs": {
     "title": "Failed checks",
@@ -468,5 +471,39 @@
     "getLink": "Get download link",
     "save": "Save {{name}}",
     "checksum": "SHA-256:"
+  },
+  "withdrawal": {
+    "link": "Take recordings back",
+    "title": "Taking recordings back",
+    "intro": "You can take back one item you sent, or everything of a person you record for. An admin checks that the request really comes from that person. Then the items are hidden at once and their recordings and texts are deleted.",
+    "none": "No requests yet.",
+    "myRequests": "Your requests",
+    "myself": "you",
+    "everythingOf": "Everything from {{who}}",
+    "fullIntro": "This takes back every item, and no new recordings can be made for this person. Their details are deleted too. It cannot be undone.",
+    "fullStart": "Take back everything from {{who}}",
+    "changeConsent": "Or keep the recordings and change what they may be used for",
+    "itemTitle": "Take this back",
+    "itemIntro": "If you no longer want this item in Lokdhara, ask for it to be taken back. An admin checks the request first.",
+    "itemStart": "Ask to take this back",
+    "copies": "Copies that researchers already downloaded cannot be deleted from here, but no new copies are given out. Backups of the server keep it for up to a year before it is gone everywhere.",
+    "note": "Anything the admin should know (optional)",
+    "send": "Send request",
+    "cancel": "Cancel",
+    "sent": "Request sent. An admin will check it.",
+    "scopes": {
+      "full": "Everything",
+      "narrow": "Fewer uses",
+      "specific_items": "One item"
+    },
+    "states": {
+      "received": "Waiting for an admin",
+      "verified": "Done",
+      "in_progress": "Being carried out",
+      "deleting": "Hidden, being deleted",
+      "deleted": "Hidden and deleted",
+      "completed": "Done",
+      "rejected": "Not carried out"
+    }
   }
 }

@@ -17,6 +17,7 @@ import { NotFoundPage } from './pages/NotFoundPage'
 import { ReleasePage } from './pages/ReleasePage'
 import { ReleasesPage } from './pages/ReleasesPage'
 import { ReportsPage } from './pages/ReportsPage'
+import { WithdrawalsPage } from './pages/WithdrawalsPage'
 
 const signedIn = (page: ReactNode) => <RequireAuth>{page}</RequireAuth>
 
@@ -33,6 +34,7 @@ export const routes: RouteObject[] = [
       { path: 'speakers/:speakerId/consent', element: signedIn(<ConsentPage />) },
       { path: 'submissions', element: signedIn(<MySubmissionsPage />) },
       { path: 'submissions/:submissionId', element: signedIn(<SubmissionPage />) },
+      { path: 'withdrawals', element: signedIn(<WithdrawalsPage />) },
       { path: 'catalogue', element: signedIn(<CataloguePage />) },
       { path: 'datasets', element: signedIn(<ReleasesPage />) },
       { path: 'datasets/:releaseId', element: signedIn(<ReleasePage />) },
