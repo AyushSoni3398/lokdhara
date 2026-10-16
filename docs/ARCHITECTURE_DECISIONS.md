@@ -27,6 +27,7 @@ ADRs 001–019 were **Accepted** by the project owner on 2026-10-11 (ADR-019 aft
 | 019 | In-house PostgreSQL job table instead of Procrastinate (refines ADR-007) | Accepted |
 | 020 | Database triggers enforce column immutability and self-review; schema refinements from Milestone 2 | Accepted |
 | 021 | No human reviewer: submissions are accepted after automatic checks and their text stays unverified | Accepted |
+| 022 | Withdrawals: a separate module, deletion right after an admin accepts, PATCH releases only from the replaced release | Proposed |
 
 ---
 
@@ -177,3 +178,19 @@ ADRs 001–019 were **Accepted** by the project owner on 2026-10-11 (ADR-019 aft
 - **Alternatives:** Keep the reviewer queue and let the admin approve everything (one person becomes the bottleneck and would approve without understanding the language); peer voting among contributors as in Mozilla Common Voice (a good later step, but needs enough active contributors first); marking text "verified" when it came from read mode (false, since speakers do not always read exactly what is shown).
 - **Consequences:** Datasets are honest but noisier: data cards must say that transcriptions are unverified. Pre-freeze checks D1 and D5 change (DATA_QUALITY_AND_VALIDATION §4). M6 shrinks to reporting, admin hiding and the researcher catalogue. Existing `awaiting_review` rows move to `accepted` in migration `0010`.
 - **Revisit when:** Mundari-literate volunteers or paid reviewers become available, or enough contributors are active for peer checking.
+
+## ADR-022 — Withdrawals: deletion right after acceptance, PATCH releases from the replaced release
+
+- **Status:** Proposed (built in M7 part 2, 2026-10-16; awaiting the project owner's approval). Implements DATA_RETENTION_AND_DELETION §2–3 and DATASET_VERSIONING §2.
+- **Context:** A speaker can take back one item, everything, or some uses. The plan left open when deletion runs, what happens to frozen releases (which never change), what a PATCH release may contain, and whether proof of consent survives a withdrawal.
+- **Decision:**
+  - A `withdrawals` module owns the request workflow (`received` → `verified` or `rejected` → `completed`). The `withdrawal_requests` table stays in the consents area of the schema; who logged a request and what was asked never change (trigger, migration `0014`).
+  - Accepting a request (`verify`) hides the items at once and queues the deletion job in the same transaction; there is no waiting period. Accepting is the admin's point of no return, so the screen asks once more.
+  - The deletion job runs as `app_erasure`. It deletes every stored version of the originals (quarantine and originals buckets), renditions and the `items.jsonl` of releases that held the items; empties the text revisions, the title and context, report notes, and, for a whole withdrawal, the identity and demographics. Rows stay as tombstones so manifests remain readable. Audio jobs that were running re-check and delete what they made.
+  - Frozen releases are not changed. Their items get `withdrawn_after_release_at`, their ready packages are deleted and new export requests are refused. The release shows how many items were withdrawn.
+  - A PATCH release is a draft that names the release it replaces. It can only take items of that release (so withdrawn, hidden and no longer allowed items stay out), keeps its purpose, and freezes as the same MAJOR.MINOR with a higher PATCH. Its data card starts with a notice.
+  - A narrower consent (fewer uses) is a new consent record; it marks frozen releases for the purposes it no longer allows. Widening consent later does not unmark them.
+  - The consent records, the request and the oral consent recording are kept by default (`LKD_WITHDRAWAL_KEEP_CONSENT_EVIDENCE=true`) until Q-G8 is answered.
+- **Alternatives:** A 30-day delay before deletion (a speaker could change their mind, but data stays longer and a second admin step is needed); rewriting frozen releases (breaks reproducibility of published results); a PATCH draft with fresh selection criteria (could add new items, which is a MINOR change); deleting consent evidence at once (cannot be undone if the institution needs proof).
+- **Consequences:** A mistaken acceptance cannot be undone except from backups, so admins must check the requester first. Export holders are not notified by the system yet; that waits for the data-use agreement (Q-G5). Backups keep deleted data until they age out (DATA_RETENTION_AND_DELETION §2).
+- **Revisit when:** the ethics committee answers Q-G8 or asks for a cooling-off period, or legal holds (§5) need to pause deletions.

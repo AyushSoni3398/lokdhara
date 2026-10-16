@@ -88,7 +88,7 @@ Shrunk on 2026-10-14: the professor decided there is no human reviewer ([ADR-021
 - **Acceptance criteria:** full permission matrix test passes for Python and SQL implementations; a hidden item disappears from the catalogue and from release previews; every report decision is audited; nothing in the catalogue calls contributor text "verified".
 - **Tests:** table-driven permission suite; report and hide tests; Playwright report-to-hide flow.
 
-## M7 — Dataset export, quality checks, and versioning *(part 1 built 2026-10-15: releases, checks D1–D9, freeze, retract, export request/approval/build/download/expiry, screens; part 2 is the withdrawal workflow)*
+## M7 — Dataset export, quality checks, and versioning *(part 1 built 2026-10-15: releases, checks D1–D9, freeze, retract, export request/approval/build/download/expiry, screens; part 2 built 2026-10-16: withdrawal requests, immediate deletion as `app_erasure`, release marking, PATCH releases, screens; ADR-022)*
 
 - **Deliverables:** draft/preview/freeze/retract releases; pre-freeze checks D1–D9; deterministic export builder with manifest, data card, checksums; export request/approval; withdrawal workflow end-to-end (restrict, release annotation, PATCH preview, deletion routine with `app_erasure` role).
 - **Dependencies:** M6; Q-L5 licence and Q-G5 data-use agreement needed before any *external* release (internal releases can be tested with synthetic data).

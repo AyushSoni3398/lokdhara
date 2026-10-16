@@ -1,6 +1,6 @@
 # Data Retention and Deletion
 
-Status: **Proposed.** Retention periods are placeholders until the data steward and institution approve them (Q-L1, Q-L3).
+Status: **Proposed.** Retention periods are placeholders until the data steward and institution approve them (Q-L1, Q-L3). The withdrawal process (§2–3) is **built** (M7 part 2, [ADR-022](ARCHITECTURE_DECISIONS.md#adr-022--withdrawals-deletion-right-after-acceptance-patch-releases-from-the-replaced-release)); see *As built* below.
 
 ## 1. Retention schedule (proposed)
 
@@ -36,9 +36,18 @@ Status: **Proposed.** Retention periods are placeholders until the data steward 
 - Objects are deleted from all buckets, including **all object versions** in versioned buckets.
 - **Backups:** data in backups ages out with the backup retention window (max ~12 months for monthly backups). Restores must re-apply the withdrawal list before the system is reopened (the restore runbook includes this step). This limitation must be stated in the consent explanation.
 
+### As built (M7 part 2)
+
+- **Receive:** a contributor asks from an item's page (one item) or from *Take recordings back* (everything of a speaker they act for). An admin logs requests that came by phone, in person, by email or through a facilitator on *Withdrawal requests*. One waiting request per speaker, item and scope.
+- **Verify and restrict:** the admin writes how the requester was checked and accepts. In the same step the speaker (for *everything*), their active consent and the submissions become `withdrawn`, and release items are marked (step 4). Or the admin refuses with a reason.
+- **Delete:** accepting queues the `withdrawal.erase` job at once (no 30-day wait). It deletes the files and every stored version, empties the text, the title and context, report notes and, for *everything*, the identity details, demographics and consent notes. `erased_at` and `actions_taken` record what was deleted.
+- **Close:** once `erased_at` is set, the admin closes the request with how the person was told. The contributor sees each request's state in plain words.
+- **Kept:** the request, the consent records and, until Q-G8 is answered, the oral consent recording (`LKD_WITHDRAWAL_KEEP_CONSENT_EVIDENCE`). Release manifests stay; the `items.jsonl` of releases with withdrawn items is deleted because it holds their text.
+- **Not built yet:** notifying export holders (step 5, waits for Q-G5), the 2-working-day target, legal holds (§5), account deletion (§4).
+
 ## 3. Restriction without deletion
 
-Some requests are to narrow, not delete (e.g., "no public use, research is fine"). This creates a new consent record (narrowing), recomputes effective access, and triggers the release steps in §2.4–2.5 only for affected purposes.
+Some requests are to narrow, not delete (e.g., "no public use, research is fine"). This creates a new consent record (narrowing), recomputes effective access, and triggers the release steps in §2.4–2.5 only for affected purposes. *As built:* the admin (or the contributor, on the consent page) records the new answers; any new consent record marks frozen releases whose purpose it no longer allows. A logged *fewer uses* request can only be accepted after that new record exists, and deletes nothing.
 
 ## 4. Deleting a whole account
 
