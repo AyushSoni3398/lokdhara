@@ -278,6 +278,9 @@ export interface Release {
   frozen_at: string | null
   retracted_at: string | null
   retraction_note: string | null
+  replaces_id: string | null
+  next_version: string | null
+  withdrawn_item_count: number
 }
 
 export interface ReleaseCreate {
@@ -347,4 +350,33 @@ export interface ExportDownload {
   sha256: string
   size_bytes: number
   expires_at: string
+}
+
+export type WithdrawalScope = 'full' | 'narrow' | 'specific_items'
+export type ReceivedVia = 'in_app' | 'facilitator' | 'phone' | 'in_person' | 'email'
+export type WithdrawalStatus = 'received' | 'verified' | 'in_progress' | 'completed' | 'rejected'
+
+export interface WithdrawalCreate {
+  scope: WithdrawalScope
+  speaker_id?: string
+  submission_id?: string
+  received_via?: ReceivedVia
+  note?: string
+}
+
+export interface Withdrawal {
+  id: string
+  speaker_id: string
+  speaker_code: string
+  submission_id: string | null
+  requested_scope: WithdrawalScope
+  received_via: ReceivedVia
+  received_at: string
+  status: WithdrawalStatus
+  note: string | null
+  verified_at: string | null
+  erased_at: string | null
+  completed_at: string | null
+  /** Only admins get the record of what was done. */
+  actions_taken: { action: string; at: string; note?: string }[] | null
 }
