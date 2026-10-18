@@ -2,6 +2,7 @@
 
 from fastapi import FastAPI
 
+from app import log_privacy
 from app.config import get_settings
 from app.errors import install_error_handlers
 from app.health import router as health_router
@@ -24,6 +25,7 @@ API_PREFIX = "/api/v1"
 def create_app() -> FastAPI:
     settings = get_settings()
     is_production = settings.env == "production"
+    log_privacy.configure(settings.log_level)
     app = FastAPI(
         title="Lokdhara API",
         version="0.1.0",
