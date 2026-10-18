@@ -26,7 +26,7 @@ class Base(DeclarativeBase):
 
 @lru_cache
 def get_engine() -> Engine:
-    return create_engine(get_settings().database_url, pool_pre_ping=True)
+    return create_engine(get_settings().database_url, pool_pre_ping=True, hide_parameters=True)
 
 
 def get_db(engine: Annotated[Engine, Depends(get_engine)]) -> Iterator[Session]:

@@ -49,7 +49,7 @@ ERASED_SCOPES = ("full", "specific_items")
 
 @lru_cache
 def _engine_for(url: str) -> Engine:
-    return create_engine(url, pool_pre_ping=True)
+    return create_engine(url, pool_pre_ping=True, hide_parameters=True)
 
 
 def erasure_engine(context: JobContext) -> Engine:
