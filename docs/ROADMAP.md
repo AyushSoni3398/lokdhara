@@ -95,7 +95,7 @@ Shrunk on 2026-10-14: the professor decided there is no human reviewer ([ADR-021
 - **Acceptance criteria:** rebuilding an export gives identical checksums; withdrawn or hidden item cannot appear in any new release; the data card states that transcriptions are contributor-provided and unverified; export contains only allow-listed fields.
 - **Tests:** export snapshot test; withdrawal propagation tests; pre-freeze check tests.
 
-## M8 — Testing, security review, deployment, and pilot collection
+## M8 — Testing, security review, deployment, and pilot collection *(in progress since 2026-10-18: part 1, server files, encrypted backups and a rehearsed restore, built; next: monitoring and the daily digest, admin MFA, the security review)*
 
 - **Deliverables:** staging + production deployment per [DEPLOYMENT.md](DEPLOYMENT.md); backups + restore drill; monitoring and digest; admin MFA; security review checklist; facilitator training material; final consent forms (approved by ethics committee) loaded; pilot plan.
 - **Dependencies:** M7; **all Blocks pilot questions answered** (Q-L1, Q-L2, Q-L3, Q-L4, Q-L8, Q-P4), hosting decision (Q-L7, Q-P5).

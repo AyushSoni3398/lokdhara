@@ -1,6 +1,6 @@
 # Deployment
 
-Status: **Plan only. No infrastructure has been created and no paid services are used during the planning phase.**
+Status: **Server files built in M8 (2026-10-18): `infra/prod/` and the step-by-step [ops/RUNBOOK.md](ops/RUNBOOK.md). No server exists yet and no paid services are used; the hosting choice waits on Q-L7 and Q-P5.**
 
 ## 1. Local development (Milestone 1)
 
@@ -50,6 +50,8 @@ Deployment credentials (SSH key or platform token) are GitHub Actions environmen
 
 ## 5. Production topology (Scenario A or B in [INFRASTRUCTURE_AND_COSTS.md](INFRASTRUCTURE_AND_COSTS.md))
 
+*As built:* `infra/prod/docker-compose.yml`, `infra/prod/Caddyfile`, the backup container in `infra/prod/backup/`, and one example settings file per container in `infra/prod/env/`. Images are built on the server from the checked-out commit and tagged with it. Caddy sends HSTS, a Content-Security-Policy that allows scripts and styles only from the site itself, and keeps client addresses out of its access log. The API trusts forwarded client addresses only from Caddy's fixed address on the Compose network.
+
 ```
 VM (Ubuntu LTS, unattended security updates, firewall: 22 restricted, 80/443 open)
 └── docker compose
@@ -57,7 +59,7 @@ VM (Ubuntu LTS, unattended security updates, firewall: 22 restricted, 80/443 ope
     ├── api        (uvicorn, N workers)
     ├── worker     (FFmpeg; no inbound ports; egress only to DB + storage)
     ├── db         (PostgreSQL 18, volume on separate disk)
-    └── backup     (scheduled pg_dump → encrypt → backup bucket)
+    └── backup     (pg_dump → age → rclone to an off-site bucket; ADR-023)
 Object storage (external, private buckets)
 ```
 
