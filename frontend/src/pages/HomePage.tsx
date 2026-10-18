@@ -32,6 +32,11 @@ export function HomePage() {
           </Link>
         )}
         {hasRole(session, 'admin') && (
+          <Link to="/admin/status" className="action">
+            <span aria-hidden="true">🩺</span> {t('status.link')}
+          </Link>
+        )}
+        {hasRole(session, 'admin') && (
           <Link to="/admin/jobs" className="action">
             <span aria-hidden="true">🛠️</span> {t('jobs.link')}
           </Link>

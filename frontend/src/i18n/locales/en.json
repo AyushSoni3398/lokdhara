@@ -289,6 +289,48 @@
     "patch_purpose_fixed": "A replacement release keeps the purpose of the release it replaces.",
     "submission_not_found": "This item could not be found. It may have been taken back."
   },
+  "status": {
+    "title": "Service status",
+    "link": "Service status",
+    "intro": "Whether backups and checks are running, and what is waiting for an admin. Counts only.",
+    "adminOnly": "Only admins can see this page.",
+    "checkedAt": "Checked {{date}}",
+    "allWell": "Nothing needs attention.",
+    "attention": "Needs attention",
+    "alerts": {
+      "backup_missing_database": "No successful database backup in the last 26 hours.",
+      "backup_missing_withdrawal_log": "No successful withdrawal log backup in the last 2 hours.",
+      "backup_failed_database": "The last database backup failed.",
+      "backup_failed_withdrawal_log": "The last withdrawal log backup failed.",
+      "backup_not_off_site": "Backups are kept on the server only: no off-site copy is set up.",
+      "queue_behind": "A check has been waiting for more than an hour. Is the worker running?",
+      "jobs_failed": "Checks failed for good in the last 24 hours.",
+      "disk_nearly_full": "The server disk is more than 80% full.",
+      "many_failed_sign_ins": "Unusually many failed sign-ins in the last 24 hours.",
+      "unknown": "Something needs attention ({{code}})."
+    },
+    "backups": "Backups",
+    "backupKind": {
+      "database": "Database",
+      "withdrawal_log": "Withdrawal log"
+    },
+    "lastSuccess": "Last success: {{date}} ({{size}})",
+    "never": "No successful backup yet.",
+    "lastRunFailed": "The last run failed: {{detail}}",
+    "lastDay": "Last 24 hours",
+    "submissions": "{{sent}} sent, {{accepted}} accepted, {{rejected}} rejected by the checks",
+    "failedSignIns": "Failed sign-ins: {{count}}",
+    "waiting": "Waiting for an admin",
+    "reports": "Reports: {{count}}",
+    "withdrawals": "Withdrawal requests: {{count}}",
+    "exports": "Export requests: {{count}}",
+    "jobs": "Checks",
+    "jobCounts": "{{queued}} waiting, {{running}} running, {{failed}} failed",
+    "oldestDue": "Oldest waiting since {{date}}",
+    "server": "Server",
+    "databaseSize": "Database size: {{size}}",
+    "disk": "Disk {{share}} full"
+  },
   "jobs": {
     "title": "Failed checks",
     "intro": "Checks that stopped after their last attempt. Fix the cause first, then run them again. The original recording is never changed.",

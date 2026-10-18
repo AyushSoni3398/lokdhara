@@ -3,6 +3,7 @@ import type { RouteObject } from 'react-router'
 
 import { RequireAuth } from './auth/session'
 import { Layout } from './components/Layout'
+import { AdminStatusPage } from './pages/AdminStatusPage'
 import { AdminWithdrawalsPage } from './pages/AdminWithdrawalsPage'
 import { CataloguePage } from './pages/CataloguePage'
 import { ChooseSpeakerPage } from './pages/ChooseSpeakerPage'
@@ -40,6 +41,7 @@ export const routes: RouteObject[] = [
       { path: 'datasets', element: signedIn(<ReleasesPage />) },
       { path: 'datasets/:releaseId', element: signedIn(<ReleasePage />) },
       { path: 'exports', element: signedIn(<ExportsPage />) },
+      { path: 'admin/status', element: signedIn(<AdminStatusPage />) },
       { path: 'admin/jobs', element: signedIn(<FailedJobsPage />) },
       { path: 'admin/reports', element: signedIn(<ReportsPage />) },
       { path: 'admin/withdrawals', element: signedIn(<AdminWithdrawalsPage />) },

@@ -23,6 +23,7 @@ import type {
   Restriction,
   Revision,
   Script,
+  ServiceStatus,
   Session,
   Speaker,
   Submission,
@@ -131,6 +132,8 @@ export const submitSubmission = (id: string) =>
 export const listFailedJobs = () =>
   request<{ items: Job[] }>('GET', '/admin/jobs?status=failed').then((r) => r.items)
 export const retryJob = (id: string) => request<Job>('POST', `/admin/jobs/${id}/retry`)
+
+export const getServiceStatus = () => request<ServiceStatus>('GET', '/admin/status')
 
 export const listOpenReports = () =>
   request<{ items: ReportedItem[] }>('GET', '/admin/reports').then((r) => r.items)

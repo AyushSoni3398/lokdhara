@@ -195,6 +195,35 @@ export interface Job {
   finished_at: string | null
 }
 
+export interface BackupState {
+  kind: 'database' | 'withdrawal_log'
+  last_run_at: string | null
+  last_run_succeeded: boolean | null
+  last_run_detail: string | null
+  last_success_at: string | null
+  last_success_bytes: number | null
+}
+
+export interface ServiceStatus {
+  checked_at: string
+  alerts: string[]
+  jobs_queued: number
+  jobs_running: number
+  oldest_due_job_since: string | null
+  jobs_failed_last_day: number
+  jobs_failed_waiting: number
+  backups: BackupState[]
+  submissions_last_day: number
+  accepted_last_day: number
+  rejected_last_day: number
+  login_failures_last_day: number
+  open_reports: number
+  open_withdrawals: number
+  exports_awaiting_approval: number
+  database_bytes: number
+  disk_used_share: number | null
+}
+
 export type ReportReason =
   | 'personal_information'
   | 'third_party_voice'
