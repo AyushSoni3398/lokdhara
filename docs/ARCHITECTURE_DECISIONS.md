@@ -207,3 +207,16 @@ ADRs 001–019 were **Accepted** by the project owner on 2026-10-11 (ADR-019 aft
 - **Alternatives:** WAL archiving with pgBackRest or WAL-G (a smaller loss window, but more to run and learn than the 24-hour RPO needs); the provider's own volume snapshots (not encrypted with our keys, and tied to a provider not yet chosen); GPG instead of age (more options to get wrong).
 - **Consequences:** Up to 24 hours of metadata can be lost (the RPO in §5); originals are protected by bucket versioning, not by these dumps. Losing both admins' private keys makes every backup unreadable, so each admin keeps theirs offline and the keys are checked at every drill. The identity encryption key must be kept in the password manager too, or restored identities cannot be read. Backups keep withdrawn data until they age out (DATA_RETENTION_AND_DELETION §2).
 - **Revisit when:** the pilot needs a loss window shorter than a day, or the chosen provider offers encrypted, off-account backups that meet §3.
+
+## ADR-024 — Monitoring: an admin status page and a daily email digest, no metrics stack
+
+- **Status:** Proposed (built in M8 part 2, 2026-10-18; awaiting the project owner's approval). Implements OBSERVABILITY_AND_BACKUPS §2.
+- **Context:** A student team will look after the pilot server part-time. They need to know when backups stop, the worker stalls, checks fail, or the disk fills, without running Prometheus, Grafana and an alert manager. The plan left the digest's delivery channel open.
+- **Decision:**
+  - `GET /admin/status` and the *Service status* page gather counts and times from the database (jobs, `backup_runs`, submissions, failed sign-ins from the audit log, open reports, withdrawals and export approvals), the database size and the disk use. A pure `alerts()` function turns them into codes with the thresholds of §2.
+  - A periodic `ops.digest` job (migration `0016`) writes the same facts as a plain-text email once a day and sends it through SMTP, with STARTTLS, using Python's standard library. Without a mail server and recipients it only logs.
+  - The digest and the page hold counts and times only, never names, contacts, client addresses or contributed content, so an ordinary mail provider may carry it.
+  - Uptime is checked from outside by a free external monitor on `/healthz`, which learns only that the site answers.
+- **Alternatives:** Prometheus with Grafana (more to run and secure than a part-time team can manage); a hosted error and metrics service (sends request data to a third party and needs its own ADR); a chat webhook such as Slack or Telegram (another account to manage, and not every maintainer uses one).
+- **Consequences:** Problems are noticed within a day by email, or at once by an admin who opens the page; there is no paging at night, which the pilot does not need. The 5xx error rate is not tracked until an optional error tracker is added. The SMTP password is one more secret in `app.env`.
+- **Revisit when:** the service grows past one server, or the team needs alerts faster than daily.

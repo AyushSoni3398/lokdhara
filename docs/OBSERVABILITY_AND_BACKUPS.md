@@ -23,6 +23,8 @@ Status: **Proposed.**
 
 MVP uses an admin dashboard page and a daily digest to maintainers (delivery channel to be chosen in M8, e.g. email); no Prometheus/Grafana stack until there is a need.
 
+*As built (M8 part 2, ADR-024):* the **Service status** page (`/admin/status`, API `GET /admin/status`) shows every signal above except the 5xx rate, with alerts first: no successful database backup for 26 hours or withdrawal log for 2 hours, a failed last backup run, backups not copied off-site, a job due for more than an hour, jobs failed in the last day, the disk more than 80% full, or more than 50 failed sign-ins in a day. The worker sends the same facts as a plain-text email once a day (`ops.digest`) through any SMTP server set in `LKD_SMTP_*` to `LKD_DIGEST_RECIPIENTS`; without those settings it only logs that a digest was made. Counts and times only, never names or content. An external uptime monitor on `/healthz` is still to be set up with the server ([ops/RUNBOOK.md §6](ops/RUNBOOK.md#6-monitoring)). The 5xx rate waits for an error tracker, which is optional.
+
 Optional error tracking (e.g., Sentry free tier): only with `send_default_pii` disabled, request bodies not captured, and a scrubbing hook; otherwise rely on logs.
 
 ## 3. Backups
