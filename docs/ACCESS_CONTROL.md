@@ -84,7 +84,7 @@ Who may be given the `culturally_restricted` scope, and which content it covers,
 | CSRF | Double-submit token header on all non-GET requests. |
 | Brute force | Failed sign-ins counted per account (5) and per client network (20, higher because facilitators may share one connection) within 15 minutes; reaching a limit locks sign-in for 15 minutes (`429` + `Retry-After`). Values are settings. An admin unlock action is not built yet; the lock expires on its own. |
 | Object access | Short-lived signed URLs (≤ 10 min) for playback renditions only; originals via admin endpoint that streams after audit write. |
-| Database roles | `app_rw` (normal), `app_erasure` (withdrawal routine only, may delete in append-only tables), `app_readonly` (reporting). Migrations run under a separate owner role. |
+| Database roles | `app_rw` (normal), `app_erasure` (withdrawal routine only, may delete in append-only tables), `app_readonly` (reporting), `app_backup` (nightly backup: reads everything, writes only `backup_runs`; migration `0015`). Migrations run under a separate owner role. |
 | Storage credentials | Separate keys per bucket class; `consent-evidence` key only available to the API, not the worker. |
 | Least privilege for staff | At least two admins; admin actions audited; quarterly access review. |
 | Access logging | `audit_events` for sign-in, role changes, restricted data access, originals download, exports, withdrawals. |

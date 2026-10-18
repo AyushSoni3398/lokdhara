@@ -73,7 +73,7 @@ Implemented by migration `0004`.
 Frozen: `id`, `speaker_code` (format `SPK-` + 5–12 of `0-9A-Z`), `created_by`.
 
 ### `speaker_identities` 🔒 (separate table; admin + creating facilitator only)
-`speaker_id PK/FK, full_name_enc, contact_enc, village_enc, notes_enc, key_version, created_at, updated_at` — application-level encrypted `bytea` columns (key from environment/secret store; `key_version` allows rotation). Deleted on withdrawal. The `app_readonly` role cannot read this table.
+`speaker_id PK/FK, full_name_enc, contact_enc, village_enc, notes_enc, key_version, created_at, updated_at` — application-level encrypted `bytea` columns (key from environment/secret store; `key_version` allows rotation). Deleted on withdrawal. The `app_readonly` role cannot read this table; the backup role `app_backup` can, so that backups are complete.
 
 ### `consent_forms` 🧊
 | Column | Type | Notes |
@@ -288,6 +288,9 @@ Implemented by migration `0003` (ADR-019).
 
 ### `processing_runs` 🧊 (one row per finished attempt)
 `id, job_id (no FK, so jobs can be purged), job_type ('system.ping','audio.validate','audio.analyze','audio.renditions','audio.dedupe','text.derive','dataset.export','cleanup.quarantine','cleanup.expire_drafts','cleanup.expire_exports','withdrawal.erase'), target_type, target_id, attempt, status ('succeeded','failed'), started_at, finished_at, worker_id, tool_versions jsonb 🗂, input_sha256, output_summary jsonb 🗂, error_code, error_detail (sanitised: for unexpected errors only the exception type is stored)`. A running attempt is visible in `jobs`, so this table never needs updating.
+
+### `backup_runs` 🧊 (one row per finished backup)
+`id, kind ('database','withdrawal_log'), started_at, finished_at, succeeded, size_bytes NULL, file_name NULL (≤ 200), detail NULL (≤ 500, an error summary with no content)` — migration `0015`. A successful run names its file and size. Written once by the backup job, which logs in as a member of the NOLOGIN role `app_backup`: it may read every table (speaker identities included, encrypted, so a restore is complete) and insert only here. The admin status page reads the latest row of each kind ([OBSERVABILITY_AND_BACKUPS.md](OBSERVABILITY_AND_BACKUPS.md)).
 
 ## 6. Datasets
 

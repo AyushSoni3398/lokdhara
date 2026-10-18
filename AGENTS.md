@@ -8,7 +8,7 @@ Lokdhara is a community-driven, research-oriented platform for preserving and di
 
 ## Current phase
 
-**Plan approved (2026-10-11); Milestones 1 and 2 done; Milestone 3's code and the load test done (its device and user checks are still open); Milestone 4 (audio and text validation pipeline) in progress since 2026-10-12.** Implement only the current milestone in `docs/ROADMAP.md`; do not start later milestones (review, exports, production infrastructure) without the owner's go-ahead.
+**Plan approved (2026-10-11); Milestones 1 to 7 built (their device, user and governance checks are listed in `docs/ROADMAP.md`); Milestone 8 (security review, deployment, backups, pilot) in progress since 2026-10-18.** Implement only the current milestone in `docs/ROADMAP.md`. Creating a real server or paid resources still needs the owner's approval, and the pilot needs the professor's written approval.
 
 ## Architecture (see `docs/SYSTEM_ARCHITECTURE.md`, `docs/ARCHITECTURE_DECISIONS.md`)
 
@@ -32,7 +32,7 @@ backend/              # FastAPI app/ (main, config, db, errors, security, cli, w
                       #   modules/<domain>/{models,schemas,service,router}.py), migrations/, tests/,
                       #   loadtest/ (Locust, synthetic data only)
 frontend/             # Vite React app: src/{api,auth,drafts,recording,pages,components,i18n}, e2e/
-infra/                # docker-compose.yml (Caddyfile in M8)
+infra/                # docker-compose.yml (local db), demo/, prod/ (server stack, Caddyfile, backup/, env/)
 scripts/              # repository checks used by CI
 .github/workflows/    # CI
 ```
@@ -55,6 +55,7 @@ npm run lint && npm run typecheck && npm test && npm run build && npm run size
 npm run e2e                                             # Playwright flow test (needs the db running)
 bash scripts/check-forbidden-files.sh                   # same check CI runs
 bash backend/loadtest/run.sh 50 5m                      # load test, own database (docs/LOAD_TESTING.md)
+uv run python -m app.cli verify-restore --withdrawal-log log.csv   # after a restore (docs/ops/RUNBOOK.md)
 ```
 
 Set `LKD_TEST_DATABASE_URL` to run the PostgreSQL integration tests locally (CI always runs them).
