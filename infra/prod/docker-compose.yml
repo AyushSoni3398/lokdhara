@@ -79,6 +79,10 @@ services:
   worker:
     <<: *backend
     command: ["python", "-m", "app.worker"]
+    # FFmpeg decodes files strangers send; a hostile one must not starve the database or api.
+    cpus: ${LKD_WORKER_CPUS:-1.0}
+    mem_limit: ${LKD_WORKER_MEMORY:-1g}
+    pids_limit: 256
     depends_on:
       db:
         condition: service_healthy
