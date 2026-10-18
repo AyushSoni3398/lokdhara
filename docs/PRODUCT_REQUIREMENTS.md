@@ -156,7 +156,7 @@ The professor decided on 2026-10-14 that there is no human reviewer ([ADR-021](A
 
 | Scenario | Required behaviour |
 |----------|--------------------|
-| Upload interrupted at 90% | Recording remains in the device draft; retry resumes or restarts without data loss. Server discards incomplete quarantine objects after 24 h. |
+| Upload interrupted at 90% | Recording remains in the device draft; retry resumes or restarts without data loss. The server never keeps a partial upload: a cut-off transfer is discarded at once. |
 | File renamed to `.mp3` but is an executable or HTML | Rejected by signature/decoder check; logged as a validation failure; nothing promoted to permanent storage. |
 | Valid audio, but 100% silence or < 1 s | Accepted into quarantine, flagged `silent`/`too_short`; contributor told before final submission when detectable client-side. |
 | Same file uploaded twice | Exact hash match flagged; contributor sees "this looks like a recording you already submitted"; both kept and linked as possible duplicates for researchers to filter. |

@@ -7,7 +7,7 @@ Status: **Proposed.**
 - Structured JSON logs to stdout from API and worker; Docker log rotation on the host (e.g., 7 × 50 MB).
 - Every request has a `request_id` (propagated to jobs as `correlation_id`).
 - **Never logged:** audio, text content, speaker names/contacts, emails/phones, passwords, tokens, cookies, raw IP addresses, object keys of consent evidence.
-- A logging filter redacts known sensitive keys; a unit test feeds sample payloads through the logger and asserts redaction.
+- A logging filter (`app/log_privacy.py`) masks IP addresses, emails and secret values in every API and worker log line; `tests/test_log_privacy.py` feeds sample lines through it. Database errors never include query values (`hide_parameters`).
 
 ## 2. Metrics and health (lightweight)
 
