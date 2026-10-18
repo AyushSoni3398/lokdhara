@@ -6,6 +6,15 @@ export interface Session {
   user: { id: string; username: string; display_name: string; preferred_locale: string }
   roles: { role: Role; scope: string | null }[]
   csrf_token: string
+  mfa_enabled: boolean
+  /** An admin who must set up two-step sign-in; until then the admin role is left out. */
+  mfa_setup_required: boolean
+}
+
+export interface MfaSetup {
+  secret: string
+  uri: string
+  qr_svg: string
 }
 
 export interface Speaker {

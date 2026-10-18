@@ -24,7 +24,25 @@
     "inviteOnly": "Lokdhara is by invitation. Ask your coordinator for an account.",
     "username": "Username",
     "password": "Password",
-    "submit": "Sign in"
+    "submit": "Sign in",
+    "code": "Code from your authenticator app",
+    "codeHint": "Two-step sign-in is on for this account. Enter the 6-digit code your authenticator app shows now, or one of your recovery codes."
+  },
+  "twoStep": {
+    "title": "Two-step sign-in",
+    "link": "Set up two-step sign-in",
+    "required": "Admins must use two-step sign-in. Until you set it up, admin pages are hidden.",
+    "intro": "After your password, you will also enter a code from an authenticator app on your phone (for example Google Authenticator, Microsoft Authenticator or Aegis). Someone who learns your password still cannot sign in.",
+    "start": "Start",
+    "scan": "1. In your authenticator app, add an account and scan this code.",
+    "manual": "If you cannot scan, type this key instead:",
+    "qrAlt": "QR code to add Lokdhara to an authenticator app",
+    "codeLabel": "2. Enter the 6-digit code the app shows now",
+    "confirm": "Turn on",
+    "codesTitle": "Two-step sign-in is on",
+    "codesIntro": "Write these recovery codes on paper and keep them safe. Each works once, if you lose your phone. They will not be shown again.",
+    "done": "I have written them down",
+    "alreadyOn": "Two-step sign-in is on for your account. If you lose your phone and your recovery codes, ask the server maintainer to reset it."
   },
   "speaker": {
     "title": "Whose voice or text is this?",
@@ -287,7 +305,10 @@
     "consent_not_changed": "Record the speaker's new consent first, then accept the request.",
     "version_not_patch": "A replacement release keeps the first two numbers of the release it replaces and raises the last one, for example 0.1.1.",
     "patch_purpose_fixed": "A replacement release keeps the purpose of the release it replaces.",
-    "submission_not_found": "This item could not be found. It may have been taken back."
+    "submission_not_found": "This item could not be found. It may have been taken back.",
+    "invalid_mfa_code": "That code is not right. Enter the newest code from the app.",
+    "mfa_already_enabled": "Two-step sign-in is already on.",
+    "mfa_not_started": "Start setting up two-step sign-in first."
   },
   "status": {
     "title": "Service status",

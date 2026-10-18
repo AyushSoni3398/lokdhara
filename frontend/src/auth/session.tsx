@@ -13,8 +13,10 @@ type State =
 
 interface Auth {
   state: State
-  signIn: (username: string, password: string) => Promise<void>
+  signIn: (username: string, password: string, code?: string) => Promise<void>
   signOut: () => Promise<void>
+  /** Fetches the session again, e.g. after two-step sign-in gives back the admin role. */
+  refresh: () => Promise<void>
 }
 
 const AuthContext = createContext<Auth | null>(null)
@@ -34,9 +36,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [accept])
 
   const signIn = useCallback(
-    async (username: string, password: string) => accept(await api.login(username, password)),
+    async (username: string, password: string, code?: string) =>
+      accept(await api.login(username, password, code)),
     [accept],
   )
+  const refresh = useCallback(async () => accept(await api.me()), [accept])
   const signOut = useCallback(async () => {
     try {
       await api.logout()
@@ -46,7 +50,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const value = useMemo(() => ({ state, signIn, signOut }), [state, signIn, signOut])
+  const value = useMemo(
+    () => ({ state, signIn, signOut, refresh }),
+    [state, signIn, signOut, refresh],
+  )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 

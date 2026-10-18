@@ -14,6 +14,7 @@ import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { MySubmissionsPage } from './pages/MySubmissionsPage'
 import { SubmissionPage } from './pages/SubmissionPage'
+import { TwoStepPage } from './pages/TwoStepPage'
 import { NewSubmissionPage } from './pages/NewSubmissionPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { ReleasePage } from './pages/ReleasePage'
@@ -41,6 +42,7 @@ export const routes: RouteObject[] = [
       { path: 'datasets', element: signedIn(<ReleasesPage />) },
       { path: 'datasets/:releaseId', element: signedIn(<ReleasePage />) },
       { path: 'exports', element: signedIn(<ExportsPage />) },
+      { path: 'account/two-step', element: signedIn(<TwoStepPage />) },
       { path: 'admin/status', element: signedIn(<AdminStatusPage />) },
       { path: 'admin/jobs', element: signedIn(<FailedJobsPage />) },
       { path: 'admin/reports', element: signedIn(<ReportsPage />) },

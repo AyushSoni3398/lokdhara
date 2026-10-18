@@ -10,6 +10,7 @@ import type {
   ExportRequest,
   Job,
   Playback,
+  MfaSetup,
   Prompt,
   PromptType,
   Release,
@@ -36,8 +37,11 @@ import type {
   WithdrawalCreate,
 } from './types'
 
-export const login = (username: string, password: string) =>
-  request<Session>('POST', '/auth/login', { json: { username, password } })
+export const login = (username: string, password: string, code?: string) =>
+  request<Session>('POST', '/auth/login', { json: { username, password, code: code || null } })
+export const startMfaSetup = () => request<MfaSetup>('POST', '/auth/mfa/setup')
+export const confirmMfa = (code: string) =>
+  request<{ recovery_codes: string[] }>('POST', '/auth/mfa/confirm', { json: { code } })
 export const logout = () => request<void>('POST', '/auth/logout')
 export const me = () => request<Session>('GET', '/auth/me')
 

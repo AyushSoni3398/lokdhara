@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Navigate, useLocation, useNavigate } from 'react-router'
 
+import { errorCode } from '../api/client'
 import { useAuth } from '../auth/session'
 import { ErrorMessage } from '../components/ErrorMessage'
 
@@ -12,6 +13,9 @@ export function LoginPage() {
   const location = useLocation()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  // Shown once the server says the password was right and a second step is needed.
+  const [needsCode, setNeedsCode] = useState(false)
+  const [code, setCode] = useState('')
   const [error, setError] = useState<unknown>(null)
   const [busy, setBusy] = useState(false)
   const from = (location.state as { from?: string } | null)?.from ?? '/'
@@ -23,10 +27,11 @@ export function LoginPage() {
     setBusy(true)
     setError(null)
     try {
-      await signIn(username, password)
+      await signIn(username, password, needsCode ? code : undefined)
       void navigate(from, { replace: true })
     } catch (failure) {
-      setError(failure)
+      if (errorCode(failure) === 'mfa_required') setNeedsCode(true)
+      else setError(failure)
     } finally {
       setBusy(false)
     }
@@ -57,6 +62,24 @@ export function LoginPage() {
             required
           />
         </label>
+        {needsCode && (
+          <>
+            <p className="note">{t('login.codeHint')}</p>
+            <label>
+              {t('login.code')}
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                autoComplete="one-time-code"
+                autoCapitalize="characters"
+                inputMode="text"
+                maxLength={20}
+                autoFocus
+                required
+              />
+            </label>
+          </>
+        )}
         <ErrorMessage error={error} />
         <button type="submit" className="action primary" disabled={busy}>
           {t('login.submit')}

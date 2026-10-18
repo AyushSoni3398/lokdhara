@@ -13,6 +13,11 @@ export function HomePage() {
   return (
     <section className="home">
       <p className="tagline">{t('home.greeting', { name: session.user.display_name })}</p>
+      {session.mfa_setup_required && (
+        <p className="warning">
+          {t('twoStep.required')} <Link to="/account/two-step">{t('twoStep.link')}</Link>
+        </p>
+      )}
       <div className="actions">
         <Link to="/contribute" className="action primary">
           <span aria-hidden="true">🎙️</span> {t('home.newRecording')}
