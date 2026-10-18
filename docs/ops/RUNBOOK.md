@@ -69,6 +69,10 @@ Then check, from a computer outside the server:
 - The buckets are **not** public: opening `https://<storage endpoint>/<bucket>/` without
   credentials gives "Access Denied" for all five, and a signed playback link stops working after
   10 minutes (docs/ROADMAP.md M8 tests).
+- The quarantine bucket has lifecycle rules, set in the storage provider's console: delete
+  objects older than 45 days, and abort unfinished multipart uploads after 1 day (backstops for
+  files left by a crash; docs/ops/SECURITY_REVIEW.md F7).
+- The rest of the pre-pilot checks in docs/ops/SECURITY_REVIEW.md §4 pass.
 - `dc run --rm backup backup.sh database` prints `backup database ok` and the file appears in
   the backup bucket.
 - Sign in as the admin, set up two-step sign-in when the app asks (an authenticator app on
@@ -171,3 +175,19 @@ dc run --rm api python -m app.cli reset-mfa --username <name>
 It turns two-step sign-in off for that user and signs them out everywhere; they set it up again
 at their next sign-in. Confirm who is asking (in person or by phone) before running it: anyone
 who can make you run it can take over the account.
+
+## 8. Incident contacts
+
+Fill this in before the pilot, and keep phone numbers off this public repository: write
+"in the team's contact sheet" instead. What to do in an incident is in
+docs/PRIVACY_AND_SECURITY.md §8; the first step is always to contain (revoke sessions, take the
+service offline with `dc stop api web` if in doubt) and then call the first person below.
+
+| Role | Who | How to reach them |
+|------|-----|-------------------|
+| Project lead (decides, informs the institution) | _to fill in_ | _contact sheet_ |
+| Data steward (consent, speakers, withdrawals) | _to fill in_ | _contact sheet_ |
+| Server admin 1 (holds a backup key) | _to fill in_ | _contact sheet_ |
+| Server admin 2 (holds a backup key) | _to fill in_ | _contact sheet_ |
+| Institution's legal or ethics contact (notifications) | _to fill in_ | _contact sheet_ |
+| Hosting provider support | _when chosen (Q-L7)_ | _provider's support page_ |

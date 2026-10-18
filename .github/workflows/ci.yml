@@ -27,6 +27,33 @@ jobs:
           docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.21.2 \
             git /repo --redact --verbose
 
+  dependency-audit:
+    name: Dependency audit
+    # Reports known vulnerabilities in the libraries we use. It does not block merging: a new
+    # advisory can appear any day without our code changing, so a red result here means
+    # "update a library soon" (docs/ops/SECURITY_REVIEW.md).
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+      - name: Python libraries (pip-audit)
+        working-directory: backend
+        run: |
+          uv export --locked --all-groups --no-emit-project --format requirements-txt -q \
+            > "$RUNNER_TEMP/requirements.txt"
+          uvx pip-audit@2.9.0 --disable-pip --require-hashes -r "$RUNNER_TEMP/requirements.txt"
+      - name: JavaScript libraries (npm audit)
+        working-directory: frontend
+        run: npm audit --audit-level=high
+
   backend:
     name: Backend
     # Pinned so the FFmpeg the tests run against is the one the worker uses (6.1, Ubuntu 24.04).

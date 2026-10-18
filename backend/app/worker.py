@@ -14,6 +14,7 @@ import threading
 from collections.abc import Callable
 from types import FrameType
 
+from app import log_privacy
 from app.config import get_settings
 from app.db import get_engine
 from app.modules.processing import handlers  # noqa: F401 - registers job handlers
@@ -68,9 +69,7 @@ def main() -> None:
     args = parser.parse_args()
 
     settings = get_settings()
-    logging.basicConfig(
-        level=settings.log_level, format="%(asctime)s %(levelname)s %(name)s %(message)s"
-    )
+    log_privacy.configure(settings.log_level)
     stop = threading.Event()
 
     def handle_signal(signum: int, _frame: FrameType | None) -> None:

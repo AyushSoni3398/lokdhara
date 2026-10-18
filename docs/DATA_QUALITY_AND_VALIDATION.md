@@ -66,5 +66,5 @@ Built in M7 (`app.modules.releases.freeze`). D3 leaves out an item with any rest
 |-----|-----------|-------------------|
 | Checksum audit of a random sample of originals | Weekly | Alert admin; restore from backup/versioned object. |
 | Orphan check: objects with no DB row / rows with missing objects | Weekly | Report; never auto-delete originals. |
-| Quarantine cleanup | Hourly | Delete quarantine objects older than 24 h with no promotion. |
+| Quarantine cleanup | Hourly | Delete draft audio left unsent for 30 days (Q-T7); checked uploads leave quarantine right after their decision. |
 | Consent consistency: submissions linked to withdrawn speakers still visible | Daily | Alert admin; hide immediately. |

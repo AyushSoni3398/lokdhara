@@ -64,6 +64,13 @@ class StoredObject:
     sha256: str
 
 
+def attachment_header(download_name: str) -> str:
+    """A Content-Disposition value; names are made by the app, but keep them to safe characters."""
+    if not re.fullmatch(r"[A-Za-z0-9._-]{1,100}", download_name):
+        raise ValueError("download names may only use letters, digits, '.', '_' and '-'")
+    return f'attachment; filename="{download_name}"'
+
+
 def validate_key(key: str) -> str:
     if len(key) > 512 or ".." in key or not _KEY_PATTERN.fullmatch(key):
         raise ValueError("invalid object key")
@@ -135,8 +142,20 @@ class ObjectStore(ABC):
         are ignored."""
 
     @abstractmethod
-    def signed_url(self, bucket: Bucket, key: str, *, ttl_seconds: int, content_type: str) -> str:
-        """Short-lived download URL. Only for derived playback files and exports."""
+    def signed_url(
+        self,
+        bucket: Bucket,
+        key: str,
+        *,
+        ttl_seconds: int,
+        content_type: str,
+        download_name: str | None = None,
+    ) -> str:
+        """Short-lived download URL. Only for derived playback files and exports.
+
+        With `download_name` the file is served as an attachment with that name, so a browser
+        saves it instead of opening it (docs/PRIVACY_AND_SECURITY.md §4).
+        """
 
     @abstractmethod
     def is_reachable(self) -> bool:

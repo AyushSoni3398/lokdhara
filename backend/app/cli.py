@@ -133,7 +133,7 @@ def reset_mfa(username: str) -> int:
 
 def owner_engine() -> Engine:
     """The schema owner's connection (LKD_MIGRATION_DATABASE_URL), which can read every table."""
-    return create_engine(get_settings().effective_migration_url)
+    return create_engine(get_settings().effective_migration_url, hide_parameters=True)
 
 
 def verify_restore(sample: int, withdrawal_log: Path | None) -> int:

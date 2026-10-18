@@ -278,7 +278,11 @@ def download(
         details={"release_id": str(request.release_id), "sha256": request.sha256},
     )
     url = store.signed_url(
-        Bucket.EXPORTS, request.object_key, ttl_seconds=ttl_seconds, content_type="application/zip"
+        Bucket.EXPORTS,
+        request.object_key,
+        ttl_seconds=ttl_seconds,
+        content_type="application/zip",
+        download_name=request.object_key.rsplit("/", 1)[-1],
     )
     db.commit()
     return request, url

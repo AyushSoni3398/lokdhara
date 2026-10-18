@@ -36,7 +36,7 @@ Status: **Proposed.** This is an engineering design, not a certification. A secu
 
 | Bucket / prefix | Contents | Access | Protection |
 |-----------------|----------|--------|------------|
-| `quarantine/` | Unvalidated uploads | API write, worker read/delete | Auto-expire 24 h; never served to users |
+| `quarantine/` | Unvalidated uploads | API write, worker read/delete | Deleted once checked; draft audio after 30 days (Q-T7); 45-day lifecycle rule as a backstop; never served to users |
 | `originals/` | Validated originals | Worker write-once; admin download | Versioning on; object lock where supported; no public access |
 | `derived/` | Renditions | Worker write; signed-URL read | No public access |
 | `consent-evidence/` | Oral consent audio | API only | Separate credentials; no public access |
@@ -50,9 +50,9 @@ Encryption: TLS in transit everywhere; provider server-side encryption at rest; 
 1. Size limit at proxy and streaming counter in API.
 2. Magic-byte allow-list; extension/MIME ignored.
 3. Files stored under server-generated keys; client filename never used in paths.
-4. Full decode in an isolated worker (non-root, no outbound network, CPU/memory/time limits, `-protocol_whitelist file`).
+4. Full decode in an isolated worker (non-root, no added privileges, CPU/memory/process and time limits, `-protocol_whitelist file`). The worker reaches only the database and object storage.
 5. Never served from the application origin with a sniffable content type; playback via signed URLs with explicit `Content-Type` and `Content-Disposition: attachment` for downloads; `X-Content-Type-Options: nosniff`.
-6. Rate limits per user and IP; idempotency keys to stop duplicate retries from multiplying storage.
+6. Rate limits per user (uploads need an account; sign-in is also limited per IP); idempotency keys to stop duplicate retries from multiplying storage.
 
 ## 5. Application security baseline
 
@@ -64,9 +64,9 @@ Encryption: TLS in transit everywhere; provider server-side encryption at rest; 
 | SSRF | No user-supplied URLs fetched by the server in MVP. |
 | Dependencies | Lockfiles (uv, npm); Dependabot alerts; `pip-audit`/`npm audit` in CI (non-blocking at first, triaged weekly). |
 | Secrets | Environment variables from the host's secret store; `.env` never committed; gitleaks (or GitHub secret scanning) in CI. |
-| Headers | HSTS, CSP, `Referrer-Policy: same-origin`, `Permissions-Policy` allowing `microphone` only on the recording route. |
+| Headers | HSTS, CSP, `Referrer-Policy: no-referrer`, `Permissions-Policy` allowing only `microphone` (site-wide: the app is a single page). |
 | Errors | Problem+JSON with codes; no stack traces or SQL in responses. |
-| Logging | No audio, text content, names, contacts, tokens, or raw IPs in logs (IPs hashed with a rotating salt). |
+| Logging | No audio, text content, names, contacts, tokens, or raw IPs in logs; a redacting filter masks addresses, emails and secret values; query values hidden from database errors. IPs stored only as a keyed hash. |
 
 ## 6. Repository safety (the most likely accident)
 
@@ -90,11 +90,13 @@ Released audio can be used to clone voices. Mitigations: AI-training and public 
 
 ## 9. Security review checklist before pilot (Milestone 8)
 
-- [ ] Threat model reviewed against implemented code.
-- [ ] Permission tests cover the full matrix in [ACCESS_CONTROL.md](ACCESS_CONTROL.md).
-- [ ] Upload fuzzing with malformed files.
-- [ ] Dependency audit clean or triaged.
-- [ ] Buckets verified non-public from outside.
-- [ ] Backup restore drill completed, including withdrawal re-application.
-- [ ] Admin MFA enabled.
-- [ ] Incident contacts documented.
+Results and findings: [ops/SECURITY_REVIEW.md](ops/SECURITY_REVIEW.md) (2026-10-18).
+
+- [x] Threat model reviewed against implemented code.
+- [x] Permission tests cover the full matrix in [ACCESS_CONTROL.md](ACCESS_CONTROL.md).
+- [x] Upload fuzzing with malformed files.
+- [x] Dependency audit clean or triaged.
+- [ ] Buckets verified non-public from outside (on the real server).
+- [ ] Backup restore drill completed, including withdrawal re-application (rehearsed on a test copy; repeat on the server).
+- [ ] Admin MFA enabled (built and required; each admin sets it up on the server).
+- [ ] Incident contacts documented (template in [ops/RUNBOOK.md](ops/RUNBOOK.md) §8; names needed).

@@ -207,3 +207,41 @@ def test_local_signed_url_rejects_tampering_and_expiry(
         response = client.get(bad)
         assert response.status_code == 403
         assert response.json()["code"] == "signed_url_invalid"
+
+
+def test_downloads_are_attachments_with_a_safe_name(store: ObjectStore) -> None:
+    url = store.signed_url(
+        Bucket.EXPORTS,
+        "exports/1/pilot-0.1.0.zip",
+        ttl_seconds=60,
+        content_type="application/zip",
+        download_name="pilot-0.1.0.zip",
+    )
+    query = parse_qs(urlsplit(url).query)
+    if isinstance(store, S3ObjectStore):
+        assert query["response-content-disposition"] == ['attachment; filename="pilot-0.1.0.zip"']
+    else:
+        assert query["dl"] == ["pilot-0.1.0.zip"]
+    with pytest.raises(ValueError, match="download names"):
+        store.signed_url(
+            Bucket.EXPORTS, "a/b", ttl_seconds=60, content_type="x", download_name='a"; b.zip'
+        )
+
+
+def test_local_downloads_say_attachment_and_cannot_be_renamed(
+    local_client: tuple[LocalObjectStore, TestClient],
+) -> None:
+    store, client = local_client
+    store.put(Bucket.EXPORTS, "exports/1/p.zip", io.BytesIO(b"zip bytes"))
+    url = store.signed_url(
+        Bucket.EXPORTS,
+        "exports/1/p.zip",
+        ttl_seconds=60,
+        content_type="application/zip",
+        download_name="p.zip",
+    )
+    response = client.get(url)
+    assert response.headers["content-disposition"] == 'attachment; filename="p.zip"'
+    assert response.headers["x-content-type-options"] == "nosniff"
+    for bad in (url.replace("dl=p.zip", "dl=q.zip"), url.replace("&dl=p.zip", "")):
+        assert client.get(bad).status_code == 403
