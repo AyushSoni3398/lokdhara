@@ -19,6 +19,7 @@ from app.object_store.base import (
     StorageError,
     StoredObject,
     _HashingReader,
+    attachment_header,
     validate_key,
 )
 
@@ -114,17 +115,26 @@ class S3ObjectStore(ObjectStore):
                     raise StorageError("some versions could not be deleted")
         self.delete(bucket, key)  # unversioned buckets list nothing above
 
-    def signed_url(self, bucket: Bucket, key: str, *, ttl_seconds: int, content_type: str) -> str:
+    def signed_url(
+        self,
+        bucket: Bucket,
+        key: str,
+        *,
+        ttl_seconds: int,
+        content_type: str,
+        download_name: str | None = None,
+    ) -> str:
         if bucket not in SIGNABLE:
             raise ValueError(f"{bucket} objects are never handed out as URLs")
+        params = {
+            "Bucket": self._names[bucket],
+            "Key": validate_key(key),
+            "ResponseContentType": content_type,
+        }
+        if download_name is not None:
+            params["ResponseContentDisposition"] = attachment_header(download_name)
         return self._client.generate_presigned_url(
-            "get_object",
-            Params={
-                "Bucket": self._names[bucket],
-                "Key": validate_key(key),
-                "ResponseContentType": content_type,
-            },
-            ExpiresIn=ttl_seconds,
+            "get_object", Params=params, ExpiresIn=ttl_seconds
         )
 
     def is_reachable(self) -> bool:

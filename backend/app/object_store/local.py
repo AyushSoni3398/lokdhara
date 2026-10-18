@@ -19,6 +19,7 @@ from app.object_store.base import (
     Readable,
     StoredObject,
     _HashingReader,
+    attachment_header,
     validate_key,
 )
 from app.security import constant_time_equals, keyed_hash
@@ -100,29 +101,47 @@ class LocalObjectStore(ObjectStore):
     def erase(self, bucket: Bucket, key: str) -> None:
         self.delete(bucket, key)  # the local store keeps no earlier versions
 
-    def _signature(self, bucket: Bucket, key: str, expires: int, content_type: str) -> str:
-        return keyed_hash(self._secret, "local-url", f"{bucket}:{key}:{expires}:{content_type}")
+    def _signature(
+        self, bucket: Bucket, key: str, expires: int, content_type: str, download_name: str
+    ) -> str:
+        return keyed_hash(
+            self._secret, "local-url", f"{bucket}:{key}:{expires}:{content_type}:{download_name}"
+        )
 
-    def signed_url(self, bucket: Bucket, key: str, *, ttl_seconds: int, content_type: str) -> str:
+    def signed_url(
+        self,
+        bucket: Bucket,
+        key: str,
+        *,
+        ttl_seconds: int,
+        content_type: str,
+        download_name: str | None = None,
+    ) -> str:
         if bucket not in SIGNABLE:
             raise ValueError(f"{bucket} objects are never handed out as URLs")
         validate_key(key)
+        if download_name is not None:
+            attachment_header(download_name)  # rejects unsafe names
         expires = int(time.time()) + ttl_seconds
-        query = urlencode(
-            {
-                "expires": expires,
-                "ct": content_type,
-                "sig": self._signature(bucket, key, expires, content_type),
-            }
-        )
+        params: dict[str, str | int] = {"expires": expires, "ct": content_type}
+        if download_name is not None:
+            params["dl"] = download_name
+        params["sig"] = self._signature(bucket, key, expires, content_type, download_name or "")
+        query = urlencode(params)
         return f"{self._base_url}{LOCAL_URL_PATH}/{bucket}/{key}?{query}"
 
     def verify_signed(
-        self, bucket: Bucket, key: str, expires: int, content_type: str, signature: str
+        self,
+        bucket: Bucket,
+        key: str,
+        expires: int,
+        content_type: str,
+        signature: str,
+        download_name: str = "",
     ) -> bool:
         if bucket not in SIGNABLE or expires < time.time():
             return False
-        expected = self._signature(bucket, key, expires, content_type)
+        expected = self._signature(bucket, key, expires, content_type, download_name)
         return constant_time_equals(signature, expected)
 
     def is_reachable(self) -> bool:
