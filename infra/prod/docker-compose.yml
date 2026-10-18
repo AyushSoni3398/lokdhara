@@ -65,6 +65,8 @@ services:
       - --proxy-headers
       - --forwarded-allow-ips=172.30.0.10
       - --timeout-keep-alive=75
+      # Caddy already logs each request (without the client address); no second copy here.
+      - --no-access-log
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/healthz"]
       interval: 10s
