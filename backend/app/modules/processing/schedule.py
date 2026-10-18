@@ -18,6 +18,7 @@ from app.modules.processing.queue import enqueue, utcnow
 PERIODIC: dict[str, timedelta] = {
     "cleanup.expire_drafts": timedelta(hours=1),
     "cleanup.expire_exports": timedelta(hours=1),
+    "ops.digest": timedelta(days=1),
 }
 
 

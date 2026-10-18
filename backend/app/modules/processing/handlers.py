@@ -1,5 +1,6 @@
 """Job handlers. Importing this module registers every handler with the queue."""
 
+from app.modules.ops import digest  # noqa: F401 - ops.digest
 from app.modules.processing.queue import JobContext, JobResult, handler
 from app.modules.releases import export_job  # noqa: F401 - dataset.export, cleanup.expire_exports
 from app.modules.submissions import (
