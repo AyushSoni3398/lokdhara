@@ -8,6 +8,7 @@ from app.health import router as health_router
 from app.modules.catalogue.router import router as catalogue_router
 from app.modules.consents.router import router as consents_router
 from app.modules.identity.router import router as identity_router
+from app.modules.ops.router import router as ops_router
 from app.modules.processing.router import router as processing_router
 from app.modules.prompts.router import router as prompts_router
 from app.modules.releases.router import router as releases_router
@@ -43,6 +44,7 @@ def create_app() -> FastAPI:
     app.include_router(catalogue_router, prefix=API_PREFIX)
     app.include_router(releases_router, prefix=API_PREFIX)
     app.include_router(withdrawals_router, prefix=API_PREFIX)
+    app.include_router(ops_router, prefix=API_PREFIX)
     if settings.storage_backend == "local" and settings.is_local:
         app.include_router(local_storage_router, prefix=API_PREFIX)
     return app

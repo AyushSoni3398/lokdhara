@@ -193,6 +193,7 @@ There is no reviewer (ADR-021). Anyone who can see an item can report it, and an
 |--------|------|------|---------|
 | GET | `/admin/jobs?status=failed&limit=50` | admin | Jobs by status (`queued`, `running`, `succeeded`, `failed`); payloads are not returned |
 | POST | `/admin/jobs/{id}/retry` | admin 🔒 | Re-queue a failed job (attempts reset); its submission goes back from `processing_failed` to `processing` once none of its checks is still failed; `409 job_not_failed` otherwise |
+| GET | `/admin/status` | admin | Counts and times only: jobs queued, running and failed, when the oldest due job became due, the last run and last success of each backup kind, submissions sent, accepted and rejected and failed sign-ins in the last 24 hours, open reports, withdrawals and export approvals, database size, disk use, and `alerts` (codes such as `backup_missing:database`, `queue_behind`, `jobs_failed`; docs/OBSERVABILITY_AND_BACKUPS.md §2) |
 | GET | `/admin/audit-events?target_type=&target_id=&actor=` | admin | Audit log |
 | POST | `/admin/consent-forms` | admin 🔒 | New form version |
 | GET | `/healthz` | public | Liveness |
