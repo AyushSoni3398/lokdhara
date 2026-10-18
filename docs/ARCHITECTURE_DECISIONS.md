@@ -220,3 +220,18 @@ ADRs 001–019 were **Accepted** by the project owner on 2026-10-11 (ADR-019 aft
 - **Alternatives:** Prometheus with Grafana (more to run and secure than a part-time team can manage); a hosted error and metrics service (sends request data to a third party and needs its own ADR); a chat webhook such as Slack or Telegram (another account to manage, and not every maintainer uses one).
 - **Consequences:** Problems are noticed within a day by email, or at once by an admin who opens the page; there is no paging at night, which the pilot does not need. The 5xx error rate is not tracked until an optional error tracker is added. The SMTP password is one more secret in `app.env`.
 - **Revisit when:** the service grows past one server, or the team needs alerts faster than daily.
+
+## ADR-025 — Two-step sign-in for admins: TOTP built in, recovery codes, reset on the server
+
+- **Status:** Proposed (built in M8 part 3, 2026-10-18; awaiting the project owner's approval). Implements the MFA row of ACCESS_CONTROL §4.
+- **Context:** An admin account can hide items, accept withdrawals (which delete data), approve exports and grant roles. A stolen or guessed admin password would be the worst single failure, so the plan called for TOTP for admins in M8. ADR-008 rules out managed auth services, so the second step has to be built in.
+- **Decision:**
+  - Time-based codes (RFC 6238: SHA-1, 6 digits, 30 seconds), which every common authenticator app supports, implemented with Python's standard library and checked against the RFC's test vectors. A code is accepted one step either side of the current one and never twice (`last_used_step`).
+  - The secret is encrypted with AES-256-GCM under a key derived (HKDF) from `LKD_IDENTITY_ENCRYPTION_KEY` and bound to the user (migration `0017`). The setup QR code is drawn on the server with `segno`, a small pure-Python library, so the secret never goes to an outside service.
+  - Ten one-time recovery codes are shown once at setup and stored as keyed hashes.
+  - The login request carries the code in the same request as the password (`401 mfa_required` asks for it), so there is no half-signed-in session state. Wrong codes count towards the existing per-account and per-network lockout.
+  - `LKD_REQUIRE_ADMIN_MFA` (on outside development and test): an admin without two-step sign-in has every role except admin until they set it up. The rule is applied where sessions are resolved, so every admin check, including those inside services, sees the same roles. Confirming setup signs out the user's other sessions.
+  - Turning it off for a lost phone is a server command (`python -m app.cli reset-mfa`), not a button: it signs the user out everywhere and is audited.
+- **Alternatives:** WebAuthn passkeys (stronger, but more code and harder to support on the shared and older phones in the field; a later addition); SMS codes (cost, SIM-swap risk, and phone numbers would have to be stored); an admin button to reset another admin (a single compromised admin could then remove the other's protection).
+- **Consequences:** Admins need a smartphone authenticator app and must keep their recovery codes. Losing both needs someone with server access. The identity encryption key now also protects sign-in, one more reason to keep it in the password manager. Other roles can turn two-step sign-in on but are not required to.
+- **Revisit when:** passkeys are well supported on the phones the team uses, or facilitators get wider powers.

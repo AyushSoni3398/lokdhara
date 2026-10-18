@@ -71,7 +71,9 @@ Then check, from a computer outside the server:
   10 minutes (docs/ROADMAP.md M8 tests).
 - `dc run --rm backup backup.sh database` prints `backup database ok` and the file appears in
   the backup bucket.
-- Sign in as the admin and invite the second admin.
+- Sign in as the admin, set up two-step sign-in when the app asks (an authenticator app on
+  your phone; write the recovery codes on paper), then invite the second admin, who does the
+  same at their first sign-in. Until then admin pages stay hidden (ADR-025).
 
 ## 3. Updating to a new version
 
@@ -157,3 +159,15 @@ storage: stop and investigate before reopening. Record every drill in
   the maintainers after three failed checks. It sees only that the site answers.
 - **Logs:** `dc logs --since 1h api worker`. Logs never hold content, names or client
   addresses; Docker keeps 7 files of 50 MB per container.
+
+## 7. A lost phone
+
+If an admin has lost both their phone and their recovery codes, someone with server access runs:
+
+```bash
+dc run --rm api python -m app.cli reset-mfa --username <name>
+```
+
+It turns two-step sign-in off for that user and signs them out everywhere; they set it up again
+at their next sign-in. Confirm who is asking (in person or by phone) before running it: anyone
+who can make you run it can take over the account.
