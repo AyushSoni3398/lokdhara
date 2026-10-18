@@ -1,0 +1,126 @@
+# Production on one server (docs/DEPLOYMENT.md §5, docs/ops/RUNBOOK.md).
+# Secrets live in /etc/lokdhara/*.env on the server (mode 600), never in this repository.
+#
+#   export LKD_GIT_COMMIT=$(git rev-parse --short HEAD)
+#   docker compose -f infra/prod/docker-compose.yml build
+#   docker compose -f infra/prod/docker-compose.yml run --rm backup backup.sh database
+#   docker compose -f infra/prod/docker-compose.yml run --rm migrate
+#   docker compose -f infra/prod/docker-compose.yml up -d
+name: lokdhara
+
+x-hardening: &hardening
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  logging:
+    driver: json-file
+    options:
+      max-size: 50m
+      max-file: "7"
+
+x-backend: &backend
+  <<: *hardening
+  build: ../../backend
+  image: lokdhara-backend:${LKD_GIT_COMMIT:-local}
+  env_file: /etc/lokdhara/app.env
+  environment:
+    LKD_GIT_COMMIT: ${LKD_GIT_COMMIT:-unknown}
+  cap_drop: [ALL]
+  networks: [lokdhara]
+
+services:
+  db:
+    <<: *hardening
+    image: postgres:18
+    env_file: /etc/lokdhara/db.env
+    volumes:
+      # On its own disk, so a full disk elsewhere cannot stop the database.
+      - ${LKD_PGDATA_DIR:-/srv/lokdhara/pgdata}:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\""]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks: [lokdhara]   # no published port: only the containers below reach it
+
+  # Brings the schema up to date as its owner; run before starting a new version.
+  migrate:
+    <<: *backend
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    profiles: [tools]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    <<: *backend
+    command:
+      - uvicorn
+      - app.main:app
+      - --host=0.0.0.0
+      - --port=8000
+      - --workers=${LKD_API_WORKERS:-2}
+      # The client address (for sign-in throttling) is trusted only from Caddy.
+      - --proxy-headers
+      - --forwarded-allow-ips=172.30.0.10
+      - --timeout-keep-alive=75
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    depends_on:
+      db:
+        condition: service_healthy
+
+  worker:
+    <<: *backend
+    command: ["python", "-m", "app.worker"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    <<: *hardening
+    build: ../../frontend
+    image: lokdhara-web:${LKD_GIT_COMMIT:-local}
+    env_file: /etc/lokdhara/web.env
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      lokdhara:
+        ipv4_address: 172.30.0.10
+
+  backup:
+    <<: *hardening
+    build: ./backup
+    image: lokdhara-backup:${LKD_GIT_COMMIT:-local}
+    env_file: /etc/lokdhara/backup.env
+    volumes:
+      - ${LKD_BACKUP_DIR:-/srv/lokdhara/backups}:/backups
+      - /etc/lokdhara/backup_recipients:/run/secrets/backup_recipients:ro
+    cap_drop: [ALL]
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [lokdhara]
+
+networks:
+  lokdhara:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+volumes:
+  caddy_data:
+  caddy_config:

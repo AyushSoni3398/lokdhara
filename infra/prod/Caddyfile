@@ -1,0 +1,63 @@
+# Production web server (docs/DEPLOYMENT.md §5): HTTPS certificates from Let's Encrypt, the
+# contributor app, and /api forwarded to the API. Values come from /etc/lokdhara/web.env.
+{
+	email {$LKD_ACME_EMAIL}
+}
+
+{$LKD_DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		# The microphone is the only device the app asks for.
+		Permissions-Policy "camera=(), geolocation=(), payment=(), usb=(), microphone=(self)"
+		# Audio and prompt images play from short-lived signed links to object storage.
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: {$LKD_STORAGE_ORIGIN}; media-src 'self' blob: {$LKD_STORAGE_ORIGIN}; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		-Server
+	}
+
+	handle /api/* {
+		# Recordings are at most LKD_MAX_UPLOAD_BYTES (100 MB); leave room for the form fields.
+		request_body {
+			max_size 110MB
+		}
+		reverse_proxy api:8000 {
+			# Shorter than uvicorn's --timeout-keep-alive 75, so Caddy never reuses a connection
+			# the API is closing (docs/LOAD_TESTING.md).
+			transport http {
+				keepalive 60s
+			}
+		}
+	}
+
+	# For the external uptime monitor.
+	handle /healthz {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		root * /srv
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		try_files {path} /index.html
+		file_server
+	}
+
+	log {
+		output stdout
+		# Client addresses are personal data; keep them out of the access log.
+		format filter {
+			wrap json
+			fields {
+				request>remote_ip delete
+				request>client_ip delete
+				request>headers>Cookie delete
+				request>headers>X-Csrf-Token delete
+				request>headers>Authorization delete
+			}
+		}
+	}
+}
