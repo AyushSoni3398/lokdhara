@@ -111,6 +111,10 @@ class Settings(BaseSettings):
     smtp_starttls: bool = True
     digest_recipients: str = ""  # comma-separated addresses
 
+    # Admins must sign in with a code from an authenticator app (docs/ACCESS_CONTROL.md §4).
+    # Left empty it is on everywhere except development and test.
+    require_admin_mfa: bool | None = None
+
     # Login throttling
     login_max_failures: int = Field(default=5, gt=0)
     login_max_failures_per_ip: int = Field(default=20, gt=0)
@@ -125,6 +129,10 @@ class Settings(BaseSettings):
     def cookie_secure(self) -> bool:
         """Cookies carry the Secure flag everywhere except local http development."""
         return not self.is_local
+
+    @property
+    def admin_mfa_required(self) -> bool:
+        return self.require_admin_mfa if self.require_admin_mfa is not None else not self.is_local
 
     @property
     def digest_recipient_list(self) -> list[str]:

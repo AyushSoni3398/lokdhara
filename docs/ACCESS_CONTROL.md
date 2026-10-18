@@ -88,4 +88,4 @@ Who may be given the `culturally_restricted` scope, and which content it covers,
 | Storage credentials | Separate keys per bucket class; `consent-evidence` key only available to the API, not the worker. |
 | Least privilege for staff | At least two admins; admin actions audited; quarterly access review. |
 | Access logging | `audit_events` for sign-in, role changes, restricted data access, originals download, exports, withdrawals. |
-| MFA | Recommended for admins (TOTP) — Milestone 8 hardening item. |
+| MFA | Required for admins outside development (`LKD_REQUIRE_ADMIN_MFA`; ADR-025, built in M8). After the password, an admin enters a 6-digit code from an authenticator app, or one of ten one-time recovery codes. Until an admin has set it up, they have every role except admin. A lost phone is reset with a server command, which signs the user out everywhere. Other roles may turn it on for themselves. |

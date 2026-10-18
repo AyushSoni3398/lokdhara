@@ -10,7 +10,7 @@ from fastapi import APIRouter, Response, status
 
 from app.config import Settings
 from app.db import DbSession
-from app.modules.identity import service
+from app.modules.identity import mfa_service, service
 from app.modules.identity.deps import (
     SESSION_COOKIE,
     AdminUser,
@@ -25,6 +25,9 @@ from app.modules.identity.schemas import (
     InvitationOut,
     InvitationRequest,
     LoginRequest,
+    MfaConfirmOut,
+    MfaConfirmRequest,
+    MfaSetupOut,
     PasswordResetOut,
     PasswordResetUseRequest,
     RevokedSessionsOut,
@@ -43,6 +46,8 @@ def _session_out(settings: Settings, user: AuthenticatedUser) -> SessionOut:
         user=UserOut.model_validate(user.user, from_attributes=True),
         roles=[GrantOut(role=g.role, scope=g.scope) for g in user.grants],
         csrf_token=csrf_token_for(settings, user.session_token),
+        mfa_enabled=user.mfa_enabled,
+        mfa_setup_required=user.mfa_setup_required,
     )
 
 
@@ -51,7 +56,12 @@ def login(
     body: LoginRequest, response: Response, db: DbSession, settings: SettingsDep, context: Context
 ) -> SessionOut:
     user = service.login(
-        db, settings, username=body.username, password=body.password, context=context
+        db,
+        settings,
+        username=body.username,
+        password=body.password,
+        code=body.code,
+        context=context,
     )
     response.set_cookie(
         SESSION_COOKIE,
@@ -74,6 +84,24 @@ def logout(user: CurrentUser, response: Response, db: DbSession, context: Contex
 @router.get("/auth/me")
 def me(user: CurrentUser, settings: SettingsDep) -> SessionOut:
     return _session_out(settings, user)
+
+
+@router.post("/auth/mfa/setup")
+def start_mfa_setup(user: CurrentUser, db: DbSession, settings: SettingsDep) -> MfaSetupOut:
+    started = mfa_service.start_setup(db, settings, user)
+    return MfaSetupOut(secret=started.secret, uri=started.uri, qr_svg=started.qr_svg)
+
+
+@router.post("/auth/mfa/confirm")
+def confirm_mfa_setup(
+    body: MfaConfirmRequest,
+    user: CurrentUser,
+    db: DbSession,
+    settings: SettingsDep,
+    context: Context,
+) -> MfaConfirmOut:
+    codes = mfa_service.confirm_setup(db, settings, user, body.code, context)
+    return MfaConfirmOut(recovery_codes=codes)
 
 
 @router.post("/auth/invitations", status_code=status.HTTP_201_CREATED)

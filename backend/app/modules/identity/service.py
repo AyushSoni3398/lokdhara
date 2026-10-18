@@ -16,12 +16,15 @@ from app.config import Settings
 from app.errors import ApiError
 from app.modules.audit import service as audit
 from app.modules.audit.service import RequestContext
+from app.modules.identity import mfa
 from app.modules.identity.models import (
     STAFF_ROLES,
     Invitation,
     LoginThrottle,
+    MfaRecoveryCode,
     PasswordReset,
     User,
+    UserMfa,
     UserRole,
     UserSession,
 )
@@ -56,6 +59,10 @@ class AuthenticatedUser:
     grants: tuple[Grant, ...]
     session_id: uuid.UUID
     session_token: str
+    mfa_enabled: bool = False
+    # An admin who must use two-step sign-in but has not set it up yet: they keep every role
+    # except admin until they do (docs/ACCESS_CONTROL.md §4).
+    mfa_setup_required: bool = False
 
     @property
     def id(self) -> uuid.UUID:
@@ -281,6 +288,69 @@ def _session_idle_limit(settings: Settings, grants: tuple[Grant, ...]) -> timede
     return timedelta(hours=hours)
 
 
+def mfa_enabled(db: Session, user_id: uuid.UUID) -> bool:
+    return db.scalar(select(UserMfa.confirmed_at).where(UserMfa.user_id == user_id)) is not None
+
+
+def _signed_in(
+    db: Session,
+    settings: Settings,
+    user: User,
+    grants: tuple[Grant, ...],
+    session_id: uuid.UUID,
+    token: str,
+) -> AuthenticatedUser:
+    enabled = mfa_enabled(db, user.id)
+    setup_required = (
+        settings.admin_mfa_required and not enabled and any(g.role == "admin" for g in grants)
+    )
+    if setup_required:
+        grants = tuple(g for g in grants if g.role != "admin")
+    return AuthenticatedUser(
+        user, grants, session_id, token, mfa_enabled=enabled, mfa_setup_required=setup_required
+    )
+
+
+def _second_factor_ok(
+    db: Session, settings: Settings, user: User, code: str, now: datetime, context: RequestContext
+) -> bool:
+    """Checks an authenticator code or an unused recovery code, and uses it up."""
+    record = db.scalar(select(UserMfa).where(UserMfa.user_id == user.id).with_for_update())
+    assert record is not None  # noqa: S101 - the caller found it confirmed
+    secret = mfa.MfaCipher(settings).decrypt(user.id, record.secret_enc)
+    step = mfa.matching_step(secret, code, now, record.last_used_step)
+    if step is not None:
+        record.last_used_step = step
+        return True
+    recovery = db.scalar(
+        select(MfaRecoveryCode)
+        .where(
+            MfaRecoveryCode.user_id == user.id,
+            MfaRecoveryCode.code_hash == mfa.recovery_code_hash(settings, code),
+            MfaRecoveryCode.used_at.is_(None),
+        )
+        .with_for_update()
+    )
+    if recovery is None:
+        return False
+    recovery.used_at = now
+    left = db.scalar(
+        select(func.count())
+        .select_from(MfaRecoveryCode)
+        .where(MfaRecoveryCode.user_id == user.id, MfaRecoveryCode.used_at.is_(None))
+    )
+    audit.record(
+        db,
+        action="auth.mfa_recovery_code_used",
+        context=context,
+        actor_user_id=user.id,
+        target_type="user",
+        target_id=user.id,
+        details={"codes_left": left or 0},
+    )
+    return True
+
+
 def login(
     db: Session,
     settings: Settings,
@@ -288,6 +358,7 @@ def login(
     username: str,
     password: str,
     context: RequestContext,
+    code: str | None = None,
 ) -> AuthenticatedUser:
     now = utcnow()
     username = normalize_username(username)
@@ -316,6 +387,28 @@ def login(
         db.commit()
         raise ApiError(401, "invalid_credentials", "Username or password is incorrect.")
 
+    if mfa_enabled(db, user.id):
+        if not code:
+            db.rollback()
+            raise ApiError(
+                401, "mfa_required", "Enter the 6-digit code from your authenticator app."
+            )
+        if not _second_factor_ok(db, settings, user, code, now, context):
+            db.rollback()
+            _record_failure(db, settings, limits, now)
+            audit.record(
+                db,
+                action="auth.login_failed",
+                context=context,
+                actor_user_id=None,
+                actor_type="system",
+                target_type="user",
+                target_id=user.id,
+                details={"step": "mfa"},
+            )
+            db.commit()
+            raise ApiError(401, "invalid_mfa_code", "That code is not right. Try the newest one.")
+
     db.execute(delete(LoginThrottle).where(LoginThrottle.key_hash == user_key))
     if password_needs_rehash(user.password_hash):
         user.password_hash = hash_password(password)
@@ -341,7 +434,7 @@ def login(
         target_id=session.id,
     )
     db.commit()
-    return AuthenticatedUser(user, active_grants(db, user.id), session.id, token)
+    return _signed_in(db, settings, user, active_grants(db, user.id), session.id, token)
 
 
 def resolve_session(db: Session, settings: Settings, token: str) -> AuthenticatedUser | None:
@@ -363,7 +456,7 @@ def resolve_session(db: Session, settings: Settings, token: str) -> Authenticate
     if now - session.last_seen_at > _TOUCH_INTERVAL:
         session.last_seen_at = now
         db.commit()
-    return AuthenticatedUser(user, grants, session.id, token)
+    return _signed_in(db, settings, user, grants, session.id, token)
 
 
 def logout(db: Session, current: AuthenticatedUser, context: RequestContext) -> None:

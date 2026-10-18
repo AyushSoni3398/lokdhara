@@ -4,6 +4,7 @@
     uv run python -m app.cli seed-dev          # synthetic users, test consent forms and prompts
     uv run python -m app.cli ping-worker       # enqueue a no-op job to check the worker
     uv run python -m app.cli verify-restore --withdrawal-log log.csv   # after a restore
+    uv run python -m app.cli reset-mfa --username asha   # lost phone and recovery codes
 
 Accounts are invite-only (ADR-008); create-admin exists to bootstrap the first administrator.
 """
@@ -22,7 +23,7 @@ from app.db import get_engine
 from app.errors import ApiError
 from app.modules.audit import service as audit
 from app.modules.consents import service as consents
-from app.modules.identity import service
+from app.modules.identity import mfa_service, service
 from app.modules.identity.models import ROLES, User, UserRole
 from app.modules.ops.restore import check_restore
 from app.modules.processing.queue import enqueue
@@ -119,6 +120,17 @@ def ping_worker() -> int:
     return 0
 
 
+def reset_mfa(username: str) -> int:
+    with Session(get_engine()) as db:
+        try:
+            mfa_service.reset(db, service.normalize_username(username))
+        except ApiError as exc:
+            print(f"Error: {exc.title}", file=sys.stderr)
+            return 1
+    print(f"Two-step sign-in is off for '{username}'; they set it up again when they sign in.")
+    return 0
+
+
 def owner_engine() -> Engine:
     """The schema owner's connection (LKD_MIGRATION_DATABASE_URL), which can read every table."""
     return create_engine(get_settings().effective_migration_url)
@@ -169,7 +181,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     verify = commands.add_parser("verify-restore", help="check a database restored from backup")
     verify.add_argument("--sample", type=int, default=20, help="originals to checksum")
     verify.add_argument("--withdrawal-log", type=Path, help="decrypted withdrawal log CSV")
+    reset = commands.add_parser("reset-mfa", help="turn off two-step sign-in for a user")
+    reset.add_argument("--username", required=True)
     args = parser.parse_args(argv)
+    if args.command == "reset-mfa":
+        return reset_mfa(args.username)
     if args.command == "verify-restore":
         return verify_restore(args.sample, args.withdrawal_log)
     if args.command == "create-admin":

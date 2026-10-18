@@ -49,6 +49,8 @@ Partial unique index: one active grant per (user, role, scope).
 `sessions(id, user_id, token_hash 🔒, created_at, last_seen_at, expires_at, revoked_at NULL, user_agent_hash, ip_hash)` — raw tokens are never stored, only SHA-256 hashes.
 `login_throttle(key_hash PK, failures, window_started_at, locked_until NULL)` — keys are HMACs of the username or client IP hash, never the raw values.
 
+`user_mfa(user_id PK/FK, secret_enc 🔒 bytea, key_version, created_at, confirmed_at NULL, last_used_step bigint)` and `mfa_recovery_codes(id, user_id FK, code_hash 🔒 UNIQUE, used_at NULL)` — migration `0017`. The TOTP secret is encrypted by the app (AES-256-GCM, key derived from the identity key, bound to the user); two-step sign-in counts once `confirmed_at` is set; `last_used_step` stops a code being used twice. Recovery codes are stored as keyed hashes and marked when used. `app_readonly` cannot read either table.
+
 ## 2. Speakers and consent
 
 Implemented by migration `0004`.

@@ -24,9 +24,11 @@ Auth column: role(s) required. 🔒 = also audit-logged.
 
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| POST | `/auth/login` | public (rate-limited) | `{username, password}` → sets session cookie; returns `{user, roles, csrf_token}` |
+| POST | `/auth/login` | public (rate-limited) | `{username, password, code?}` → sets session cookie; returns `{user, roles, csrf_token, mfa_enabled, mfa_setup_required}`. With two-step sign-in on, a missing `code` gives `401 mfa_required` (the password was right) and a wrong one `401 invalid_mfa_code`, which counts towards the lockout. `code` is the authenticator code or an unused recovery code. |
 | POST | `/auth/logout` | any | Revokes current session |
-| GET | `/auth/me` | any | Current user, roles, locale |
+| GET | `/auth/me` | any | Current user, roles, locale, `mfa_enabled`, `mfa_setup_required`. When admins must use two-step sign-in (`LKD_REQUIRE_ADMIN_MFA`, on outside development) and this admin has not set it up, `admin` is left out of `roles` until they do. |
+| POST | `/auth/mfa/setup` | any 🔒 | A new authenticator secret, not yet in use: `{secret, uri, qr_svg}` (the base32 key, the `otpauth://` link, and its QR code as SVG). Replaces an unconfirmed one; `409 mfa_already_enabled` once on. |
+| POST | `/auth/mfa/confirm` | any 🔒 | `{code}` turns two-step sign-in on and returns `{recovery_codes}` (ten, shown once); signs out the user's other sessions. `422 invalid_mfa_code`, `409 mfa_not_started`. Turning it off for a lost phone is a server command: `python -m app.cli reset-mfa --username …`. |
 | POST | `/auth/invitations` | admin 🔒 | `{role, expires_in_hours}` → `{invite_url}` (token shown once) |
 | POST | `/auth/invitations/accept` | public 🔒 | `{token, username, display_name, password, locale}` |
 | POST | `/auth/password-reset` | public 🔒 | `{token, password}`; signs the user out of all sessions |
