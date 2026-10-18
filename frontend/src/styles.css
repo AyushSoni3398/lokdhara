@@ -121,3 +121,11 @@ label.inline { display: inline-flex; align-items: center; gap: 6px; margin-right
 .checks { list-style: none; padding: 0; }
 .checks li { margin: 4px 0; }
 code { overflow-wrap: anywhere; }
+
+/* Two-step sign-in setup */
+.qr { background: #fff; border: 1px solid #e6d9cc; border-radius: var(--radius); }
+.secret { overflow-wrap: anywhere; font-size: 1rem; }
+.recovery-codes {
+  list-style: none; padding: 0; display: grid; gap: 6px;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); font-size: 1.1rem;
+}

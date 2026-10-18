@@ -6,6 +6,15 @@ export interface Session {
   user: { id: string; username: string; display_name: string; preferred_locale: string }
   roles: { role: Role; scope: string | null }[]
   csrf_token: string
+  mfa_enabled: boolean
+  /** An admin who must set up two-step sign-in; until then the admin role is left out. */
+  mfa_setup_required: boolean
+}
+
+export interface MfaSetup {
+  secret: string
+  uri: string
+  qr_svg: string
 }
 
 export interface Speaker {
@@ -193,6 +202,35 @@ export interface Job {
   last_error_code: string | null
   created_at: string
   finished_at: string | null
+}
+
+export interface BackupState {
+  kind: 'database' | 'withdrawal_log'
+  last_run_at: string | null
+  last_run_succeeded: boolean | null
+  last_run_detail: string | null
+  last_success_at: string | null
+  last_success_bytes: number | null
+}
+
+export interface ServiceStatus {
+  checked_at: string
+  alerts: string[]
+  jobs_queued: number
+  jobs_running: number
+  oldest_due_job_since: string | null
+  jobs_failed_last_day: number
+  jobs_failed_waiting: number
+  backups: BackupState[]
+  submissions_last_day: number
+  accepted_last_day: number
+  rejected_last_day: number
+  login_failures_last_day: number
+  open_reports: number
+  open_withdrawals: number
+  exports_awaiting_approval: number
+  database_bytes: number
+  disk_used_share: number | null
 }
 
 export type ReportReason =

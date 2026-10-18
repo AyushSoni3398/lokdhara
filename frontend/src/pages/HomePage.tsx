@@ -13,6 +13,11 @@ export function HomePage() {
   return (
     <section className="home">
       <p className="tagline">{t('home.greeting', { name: session.user.display_name })}</p>
+      {session.mfa_setup_required && (
+        <p className="warning">
+          {t('twoStep.required')} <Link to="/account/two-step">{t('twoStep.link')}</Link>
+        </p>
+      )}
       <div className="actions">
         <Link to="/contribute" className="action primary">
           <span aria-hidden="true">🎙️</span> {t('home.newRecording')}
@@ -29,6 +34,11 @@ export function HomePage() {
         {hasRole(session, 'researcher', 'admin') && (
           <Link to="/datasets" className="action">
             <span aria-hidden="true">📦</span> {t('releases.link')}
+          </Link>
+        )}
+        {hasRole(session, 'admin') && (
+          <Link to="/admin/status" className="action">
+            <span aria-hidden="true">🩺</span> {t('status.link')}
           </Link>
         )}
         {hasRole(session, 'admin') && (

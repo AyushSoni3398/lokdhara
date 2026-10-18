@@ -47,6 +47,8 @@ export const SESSION = {
   user: { id: 'u1', username: 'asha', display_name: 'Asha', preferred_locale: 'hi' },
   roles: [{ role: 'contributor', scope: null }],
   csrf_token: 'csrf-1',
+  mfa_enabled: false,
+  mfa_setup_required: false,
 }
 
 export const SPEAKER = {

@@ -14,6 +14,8 @@ Password = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
 class LoginRequest(BaseModel):
     username: str = Field(min_length=1, max_length=40)
     password: str = Password
+    # An authenticator code, or a recovery code, when two-step sign-in is on.
+    code: str | None = Field(default=None, max_length=20)
 
 
 class GrantOut(BaseModel):
@@ -32,6 +34,22 @@ class SessionOut(BaseModel):
     user: UserOut
     roles: list[GrantOut]
     csrf_token: str
+    mfa_enabled: bool
+    mfa_setup_required: bool
+
+
+class MfaSetupOut(BaseModel):
+    secret: str
+    uri: str
+    qr_svg: str
+
+
+class MfaConfirmRequest(BaseModel):
+    code: str = Field(min_length=6, max_length=10)
+
+
+class MfaConfirmOut(BaseModel):
+    recovery_codes: list[str]
 
 
 class InvitationRequest(BaseModel):

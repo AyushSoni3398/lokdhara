@@ -10,6 +10,7 @@ import type {
   ExportRequest,
   Job,
   Playback,
+  MfaSetup,
   Prompt,
   PromptType,
   Release,
@@ -23,6 +24,7 @@ import type {
   Restriction,
   Revision,
   Script,
+  ServiceStatus,
   Session,
   Speaker,
   Submission,
@@ -35,8 +37,11 @@ import type {
   WithdrawalCreate,
 } from './types'
 
-export const login = (username: string, password: string) =>
-  request<Session>('POST', '/auth/login', { json: { username, password } })
+export const login = (username: string, password: string, code?: string) =>
+  request<Session>('POST', '/auth/login', { json: { username, password, code: code || null } })
+export const startMfaSetup = () => request<MfaSetup>('POST', '/auth/mfa/setup')
+export const confirmMfa = (code: string) =>
+  request<{ recovery_codes: string[] }>('POST', '/auth/mfa/confirm', { json: { code } })
 export const logout = () => request<void>('POST', '/auth/logout')
 export const me = () => request<Session>('GET', '/auth/me')
 
@@ -131,6 +136,8 @@ export const submitSubmission = (id: string) =>
 export const listFailedJobs = () =>
   request<{ items: Job[] }>('GET', '/admin/jobs?status=failed').then((r) => r.items)
 export const retryJob = (id: string) => request<Job>('POST', `/admin/jobs/${id}/retry`)
+
+export const getServiceStatus = () => request<ServiceStatus>('GET', '/admin/status')
 
 export const listOpenReports = () =>
   request<{ items: ReportedItem[] }>('GET', '/admin/reports').then((r) => r.items)

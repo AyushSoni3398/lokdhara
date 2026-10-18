@@ -56,6 +56,7 @@ npm run e2e                                             # Playwright flow test (
 bash scripts/check-forbidden-files.sh                   # same check CI runs
 bash backend/loadtest/run.sh 50 5m                      # load test, own database (docs/LOAD_TESTING.md)
 uv run python -m app.cli verify-restore --withdrawal-log log.csv   # after a restore (docs/ops/RUNBOOK.md)
+uv run python -m app.cli reset-mfa --username …          # lost phone and recovery codes (ADR-025)
 ```
 
 Set `LKD_TEST_DATABASE_URL` to run the PostgreSQL integration tests locally (CI always runs them).

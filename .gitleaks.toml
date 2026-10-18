@@ -1,0 +1,10 @@
+# Secret scanning rules for CI (gitleaks reads this file from the repository root).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Published test values, not secrets"
+regexes = [
+  # RFC 6238 test secret "12345678901234567890" in base32, used by backend/tests/test_mfa.py.
+  '''GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ''',
+]

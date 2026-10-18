@@ -49,6 +49,8 @@ Partial unique index: one active grant per (user, role, scope).
 `sessions(id, user_id, token_hash 🔒, created_at, last_seen_at, expires_at, revoked_at NULL, user_agent_hash, ip_hash)` — raw tokens are never stored, only SHA-256 hashes.
 `login_throttle(key_hash PK, failures, window_started_at, locked_until NULL)` — keys are HMACs of the username or client IP hash, never the raw values.
 
+`user_mfa(user_id PK/FK, secret_enc 🔒 bytea, key_version, created_at, confirmed_at NULL, last_used_step bigint)` and `mfa_recovery_codes(id, user_id FK, code_hash 🔒 UNIQUE, used_at NULL)` — migration `0017`. The TOTP secret is encrypted by the app (AES-256-GCM, key derived from the identity key, bound to the user); two-step sign-in counts once `confirmed_at` is set; `last_used_step` stops a code being used twice. Recovery codes are stored as keyed hashes and marked when used. `app_readonly` cannot read either table.
+
 ## 2. Speakers and consent
 
 Implemented by migration `0004`.
@@ -287,7 +289,7 @@ Implemented by migration `0003` (ADR-019).
 `id, job_type, payload jsonb (IDs only), target_type, target_id, status ('queued','running','succeeded','failed'), attempts, max_attempts, run_after, dedupe_key NULL, locked_by NULL, lock_expires_at NULL, last_error_code NULL, created_at, finished_at NULL` — partial unique index on `dedupe_key` while queued or running. Finished rows may be purged; history lives in `processing_runs`.
 
 ### `processing_runs` 🧊 (one row per finished attempt)
-`id, job_id (no FK, so jobs can be purged), job_type ('system.ping','audio.validate','audio.analyze','audio.renditions','audio.dedupe','text.derive','dataset.export','cleanup.quarantine','cleanup.expire_drafts','cleanup.expire_exports','withdrawal.erase'), target_type, target_id, attempt, status ('succeeded','failed'), started_at, finished_at, worker_id, tool_versions jsonb 🗂, input_sha256, output_summary jsonb 🗂, error_code, error_detail (sanitised: for unexpected errors only the exception type is stored)`. A running attempt is visible in `jobs`, so this table never needs updating.
+`id, job_id (no FK, so jobs can be purged), job_type ('system.ping','audio.validate','audio.analyze','audio.renditions','audio.dedupe','text.derive','dataset.export','cleanup.quarantine','cleanup.expire_drafts','cleanup.expire_exports','withdrawal.erase','ops.digest' (migration `0016`)), target_type, target_id, attempt, status ('succeeded','failed'), started_at, finished_at, worker_id, tool_versions jsonb 🗂, input_sha256, output_summary jsonb 🗂, error_code, error_detail (sanitised: for unexpected errors only the exception type is stored)`. A running attempt is visible in `jobs`, so this table never needs updating.
 
 ### `backup_runs` 🧊 (one row per finished backup)
 `id, kind ('database','withdrawal_log'), started_at, finished_at, succeeded, size_bytes NULL, file_name NULL (≤ 200), detail NULL (≤ 500, an error summary with no content)` — migration `0015`. A successful run names its file and size. Written once by the backup job, which logs in as a member of the NOLOGIN role `app_backup`: it may read every table (speaker identities included, encrypted, so a restore is complete) and insert only here. The admin status page reads the latest row of each kind ([OBSERVABILITY_AND_BACKUPS.md](OBSERVABILITY_AND_BACKUPS.md)).

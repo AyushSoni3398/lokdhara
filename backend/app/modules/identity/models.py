@@ -3,7 +3,18 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, Text, Uuid, func, text
+from sqlalchemy import (
+    BigInteger,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Integer,
+    LargeBinary,
+    Text,
+    Uuid,
+    func,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -111,3 +122,25 @@ class LoginThrottle(Base):
     failures: Mapped[int] = mapped_column(Integer, server_default="0")
     window_started_at: Mapped[datetime] = _now()
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class UserMfa(Base):
+    """A TOTP secret, encrypted; it counts once confirmed (migration 0017)."""
+
+    __tablename__ = "user_mfa"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    secret_enc: Mapped[bytes] = mapped_column(LargeBinary)
+    key_version: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = _now()
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_used_step: Mapped[int] = mapped_column(BigInteger, server_default="0")
+
+
+class MfaRecoveryCode(Base):
+    __tablename__ = "mfa_recovery_codes"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("user_mfa.user_id"))
+    code_hash: Mapped[str] = mapped_column(Text, unique=True)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

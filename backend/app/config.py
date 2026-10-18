@@ -101,6 +101,20 @@ class Settings(BaseSettings):
     prompt_image_max_bytes: int = Field(default=5 * 1024 * 1024, gt=0)
     prompt_audio_max_bytes: int = Field(default=10 * 1024 * 1024, gt=0)
 
+    # Daily digest to the maintainers (docs/OBSERVABILITY_AND_BACKUPS.md §2): counts only,
+    # sent by email when a mail server and recipients are set, otherwise only logged.
+    smtp_host: str | None = None
+    smtp_port: int = Field(default=587, gt=0)
+    smtp_username: str | None = None
+    smtp_password: SecretStr | None = None
+    smtp_from: str | None = None
+    smtp_starttls: bool = True
+    digest_recipients: str = ""  # comma-separated addresses
+
+    # Admins must sign in with a code from an authenticator app (docs/ACCESS_CONTROL.md §4).
+    # Left empty it is on everywhere except development and test.
+    require_admin_mfa: bool | None = None
+
     # Login throttling
     login_max_failures: int = Field(default=5, gt=0)
     login_max_failures_per_ip: int = Field(default=20, gt=0)
@@ -115,6 +129,14 @@ class Settings(BaseSettings):
     def cookie_secure(self) -> bool:
         """Cookies carry the Secure flag everywhere except local http development."""
         return not self.is_local
+
+    @property
+    def admin_mfa_required(self) -> bool:
+        return self.require_admin_mfa if self.require_admin_mfa is not None else not self.is_local
+
+    @property
+    def digest_recipient_list(self) -> list[str]:
+        return [a.strip() for a in self.digest_recipients.split(",") if a.strip()]
 
     @property
     def effective_migration_url(self) -> str:

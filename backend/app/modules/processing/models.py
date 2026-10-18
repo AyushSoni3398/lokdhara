@@ -23,6 +23,7 @@ JOB_TYPES = (
     "cleanup.expire_drafts",
     "cleanup.expire_exports",
     "withdrawal.erase",
+    "ops.digest",
 )
 JOB_STATUSES = ("queued", "running", "succeeded", "failed")
 
