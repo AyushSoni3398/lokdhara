@@ -19,7 +19,7 @@ The first version focuses **only on the Mundari language** (Jharkhand, India): c
 | Work with the data model | [Data lifecycle](docs/DATA_LIFECYCLE.md), [Database schema](docs/DATABASE_SCHEMA.md), [Data dictionary](docs/DATA_DICTIONARY.md) |
 | Understand consent and privacy | [Consent and governance](docs/CONSENT_AND_DATA_GOVERNANCE.md), [Privacy and security](docs/PRIVACY_AND_SECURITY.md), [Access control](docs/ACCESS_CONTROL.md) |
 | Know what happens next | [Roadmap](docs/ROADMAP.md), [Planning review](docs/PLANNING_REVIEW.md), [Open questions](docs/ASSUMPTIONS_AND_OPEN_QUESTIONS.md) |
-| Test, measure, or deploy it | [Testing strategy](docs/TESTING_STRATEGY.md), [Load testing](docs/LOAD_TESTING.md), [Deployment](docs/DEPLOYMENT.md), [Server runbook](docs/ops/RUNBOOK.md), [Recording modes](docs/RECORDING_MODES.md) |
+| Test, measure, or deploy it | [Testing strategy](docs/TESTING_STRATEGY.md), [Load testing](docs/LOAD_TESTING.md), [Deployment](docs/DEPLOYMENT.md), [Server runbook](docs/ops/RUNBOOK.md), [Security review](docs/ops/SECURITY_REVIEW.md), [Recording modes](docs/RECORDING_MODES.md) |
 
 ## Stack
 
