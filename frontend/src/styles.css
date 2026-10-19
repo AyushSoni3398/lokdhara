@@ -1,11 +1,31 @@
-/* Mobile-first, system fonts only (no web-font download on slow networks). */
+/* Mobile-first, system fonts (no web-font download on slow networks). The one exception is
+   Mundari Bani (Nag Mundari), which most phones in use cannot draw yet (Q-T6): a 4 KB font with
+   only those letters, downloaded by the browser only when such a letter is on screen. */
+@font-face {
+  font-family: 'Lokdhara Nag Mundari';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('@fontsource/noto-sans-nag-mundari/files/noto-sans-nag-mundari-nag-mundari-400-normal.woff2')
+    format('woff2');
+  unicode-range: U+1E4D0-1E4FF;
+}
+@font-face {
+  font-family: 'Lokdhara Nag Mundari';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('@fontsource/noto-sans-nag-mundari/files/noto-sans-nag-mundari-nag-mundari-700-normal.woff2')
+    format('woff2');
+  unicode-range: U+1E4D0-1E4FF;
+}
 :root {
   --bg: #fbf7f2;
   --fg: #2b1d14;
   --accent: #7a3e1d;
   --muted: #6b5a4d;
   --radius: 12px;
-  font-family: system-ui, 'Noto Sans', 'Noto Sans Devanagari', sans-serif;
+  font-family: system-ui, 'Noto Sans', 'Noto Sans Devanagari', 'Lokdhara Nag Mundari', sans-serif;
   color: var(--fg);
   background: var(--bg);
 }
