@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { EntryType, Script } from '../../api/types'
 import { Choice } from '../../components/Choice'
 import type { Draft, DraftText } from '../../drafts/types'
+import { KeyboardTextarea } from '../../keyboard/KeyboardTextarea'
 import { ScriptWarning } from '../../text/ScriptWarning'
 
 const SCRIPTS: Script[] = ['Deva', 'Latn', 'Nagm', 'Zyyy']
@@ -90,12 +91,13 @@ export function TextStep({
       />
       <label>
         {t(isTranscription ? 'text.transcription' : 'text.mundari')}
-        <textarea
+        <KeyboardTextarea
           rows={5}
           lang="unr"
           spellCheck={false}
           value={main?.content ?? ''}
-          onChange={(e) => setMain({ content: e.target.value })}
+          onValue={(content) => setMain({ content })}
+          keyboard={(main?.scriptCode ?? 'Deva') === 'Deva'}
         />
       </label>
       <ScriptWarning text={main?.content ?? ''} script={main?.scriptCode ?? 'Deva'} />
@@ -103,11 +105,12 @@ export function TextStep({
         TRANSLATIONS.map(({ languageTag, scriptCode }) => (
           <label key={languageTag}>
             {t(`text.translation.${languageTag}`)}
-            <textarea
+            <KeyboardTextarea
               rows={3}
               lang={languageTag}
               value={draft.texts.find((x) => x.key === `translation-${languageTag}`)?.content ?? ''}
-              onChange={(e) => setTranslation(languageTag, scriptCode, e.target.value)}
+              onValue={(content) => setTranslation(languageTag, scriptCode, content)}
+              keyboard={scriptCode === 'Deva'}
             />
           </label>
         ))}
