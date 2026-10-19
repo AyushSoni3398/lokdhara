@@ -89,7 +89,7 @@ A contribution can be in more than one `approved_*` state (e.g., research + AI t
 | Public | Only through a governance-approved public release with a licence. |
 | AI developers | Only `ai_training` releases with separate approval; commercial only with `allow_commercial_use`. |
 
-## 7. Facilitator training checklist (to be developed with the professor)
+## 7. Facilitator training checklist (session plan and field card: [ops/FACILITATOR_GUIDE.md](ops/FACILITATOR_GUIDE.md))
 
 1. Explaining each permission without pressure; "No" is always fine.
 2. Language: explain in Mundari or Hindi as the speaker prefers.
