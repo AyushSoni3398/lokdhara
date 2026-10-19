@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { EntryType, Script } from '../../api/types'
 import { Choice } from '../../components/Choice'
 import type { Draft, DraftText } from '../../drafts/types'
+import { ScriptWarning } from '../../text/ScriptWarning'
 
 const SCRIPTS: Script[] = ['Deva', 'Latn', 'Nagm', 'Zyyy']
 const ENTRY_TYPES: EntryType[] = ['word', 'phrase', 'sentence', 'paragraph', 'long_text']
@@ -97,6 +98,7 @@ export function TextStep({
           onChange={(e) => setMain({ content: e.target.value })}
         />
       </label>
+      <ScriptWarning text={main?.content ?? ''} script={main?.scriptCode ?? 'Deva'} />
       {main?.content.trim() &&
         TRANSLATIONS.map(({ languageTag, scriptCode }) => (
           <label key={languageTag}>
