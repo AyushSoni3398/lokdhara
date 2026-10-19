@@ -64,7 +64,7 @@ As built (M4, `app/text/scripts.py`):
 - Letters are counted with the `regex` package's Unicode script property. Digits, punctuation, spaces, ZWJ/ZWNJ, and combining marks shared by several scripts (Unicode scripts Common and Inherited) are not counted. Devanagari digits do count as Devanagari.
 - Markup tags such as `[inaudible]` are ignored, but the words inside `[?…]` and `[hi: …]` are counted.
 - `detected_scripts` lists the most used script first. Letters in any script other than `Deva`, `Latn`, `Nagm`, `Beng`, or `Orya` are counted as `Zyyy`.
-- A layer shows `script_mismatch` when its declared script does not appear in its current text at all. A declared `Zyyy`, or text with no letters, never counts as a mismatch.
+- A layer shows `script_mismatch` when its declared script does not appear in its current text at all. A declared `Zyyy`, or text with no letters, never counts as a mismatch. The contributor app applies the same rule while the text is typed (`frontend/src/text/scripts.ts`), so the warning appears before sending; it never blocks or changes the text.
 
 ## 6. Policy normalisation (`content_normalized`) — deferred
 

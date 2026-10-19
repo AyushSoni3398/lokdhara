@@ -6,6 +6,7 @@ import * as api from '../../api/endpoints'
 import type { Script, TextLayerCreate, TextLayerDetail } from '../../api/types'
 import { Choice } from '../../components/Choice'
 import { ErrorMessage } from '../../components/ErrorMessage'
+import { ScriptWarning } from '../../text/ScriptWarning'
 
 const SCRIPTS: Script[] = ['Deva', 'Latn', 'Nagm', 'Zyyy']
 export const TRANSLATIONS = [
@@ -68,6 +69,7 @@ export function EditText({
           onChange={(e) => setContent(e.target.value)}
         />
       </label>
+      <ScriptWarning text={content} script={layer.script_code} canChoose={false} />
       <label>
         {t('submission.edit.note')}
         <input value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} />
@@ -146,6 +148,7 @@ export function AddText({
           onChange={(e) => setContent(e.target.value)}
         />
       </label>
+      <ScriptWarning text={content} script={script} canChoose={chooseScript} />
       <ErrorMessage error={error} />
       <div className="row">
         <button

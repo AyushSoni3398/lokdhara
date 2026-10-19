@@ -114,6 +114,7 @@
     "transcriptionHint": "Optional: write down what is said in the recording, as you hear it.",
     "entryType": "What are you writing?",
     "script": "Script",
+    "scriptMismatch": "This text does not seem to be in {{script}}. If you meant another script, choose it above; otherwise you can keep it as it is.",
     "mundari": "Mundari text",
     "transcription": "What is said",
     "translation": {
