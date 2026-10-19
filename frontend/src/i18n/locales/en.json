@@ -619,5 +619,15 @@
     "verifyConfirm": "This hides the items at once and deletes their recordings and texts for good. Continue?",
     "reject": "Refuse",
     "complete": "Close request"
+  },
+  "keyboard": {
+    "open": "Hindi keyboard",
+    "close": "Close keyboard",
+    "label": "Devanagari keyboard",
+    "letters": "Letters",
+    "signs": "Signs",
+    "numbers": "Numbers",
+    "space": "Space",
+    "delete": "Delete"
   }
 }

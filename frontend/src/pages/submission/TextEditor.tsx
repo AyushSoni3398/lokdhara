@@ -6,6 +6,7 @@ import * as api from '../../api/endpoints'
 import type { Script, TextLayerCreate, TextLayerDetail } from '../../api/types'
 import { Choice } from '../../components/Choice'
 import { ErrorMessage } from '../../components/ErrorMessage'
+import { KeyboardTextarea } from '../../keyboard/KeyboardTextarea'
 import { ScriptWarning } from '../../text/ScriptWarning'
 
 const SCRIPTS: Script[] = ['Deva', 'Latn', 'Nagm', 'Zyyy']
@@ -61,12 +62,13 @@ export function EditText({
     <div className="step">
       <label>
         {t('submission.edit.text')}
-        <textarea
+        <KeyboardTextarea
           rows={5}
           lang={layer.language_tag}
           spellCheck={false}
           value={content}
-          onChange={(e) => setContent(e.target.value)}
+          onValue={setContent}
+          keyboard={layer.script_code === 'Deva'}
         />
       </label>
       <ScriptWarning text={content} script={layer.script_code} canChoose={false} />
@@ -140,12 +142,13 @@ export function AddText({
       )}
       <label>
         {label}
-        <textarea
+        <KeyboardTextarea
           rows={4}
           lang={base.language_tag}
           spellCheck={false}
           value={content}
-          onChange={(e) => setContent(e.target.value)}
+          onValue={setContent}
+          keyboard={script === 'Deva'}
         />
       </label>
       <ScriptWarning text={content} script={script} canChoose={chooseScript} />

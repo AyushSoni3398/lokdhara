@@ -149,3 +149,13 @@ code { overflow-wrap: anywhere; }
   list-style: none; padding: 0; display: grid; gap: 6px;
   grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); font-size: 1.1rem;
 }
+
+/* On-screen Devanagari keyboard: big keys for thumbs, wraps on narrow phones. */
+.keyboard { display: grid; gap: 6px; padding: 8px; border-radius: var(--radius); background: #f1e6da; }
+.keyboard-row { display: flex; flex-wrap: wrap; gap: 4px; }
+.key {
+  min-width: 40px; min-height: 44px; flex: 1 0 40px; font-size: 1.25rem; font-family: inherit;
+  border: 1px solid #c9b6a4; border-radius: 8px; background: #fff; color: var(--fg); cursor: pointer;
+}
+.key.wide { flex: 4 0 160px; font-size: 1rem; }
+.key:active { background: #f6ebe1; }
