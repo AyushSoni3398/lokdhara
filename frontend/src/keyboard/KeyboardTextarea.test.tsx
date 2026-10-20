@@ -8,7 +8,7 @@ import { KeyboardTextarea } from './KeyboardTextarea'
 
 function Box() {
   const [value, setValue] = useState('')
-  return <KeyboardTextarea aria-label="text" value={value} onValue={setValue} />
+  return <KeyboardTextarea label="text" value={value} onValue={setValue} />
 }
 
 describe('KeyboardTextarea', () => {
@@ -28,5 +28,21 @@ describe('KeyboardTextarea', () => {
     expect(screen.getByRole('textbox', { name: 'text' })).toHaveValue('नाम')
     await user.click(screen.getByRole('button', { name: 'Delete' }))
     expect(screen.getByRole('textbox', { name: 'text' })).toHaveValue('ना')
+  })
+})
+
+describe('KeyboardTextarea Roman typing', () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('en')
+  })
+
+  it('adds Roman letters as Devanagari', async () => {
+    const user = userEvent.setup()
+    render(<Box />)
+    await user.click(screen.getByRole('button', { name: 'Hindi keyboard' }))
+    await user.click(screen.getByRole('button', { name: 'ABC → हिंदी' }))
+    await user.type(screen.getByRole('textbox', { name: 'Type in Roman letters' }), 'naam')
+    await user.click(screen.getByRole('button', { name: 'Add to text' }))
+    expect(screen.getByRole('textbox', { name: 'text' })).toHaveValue('नाम ')
   })
 })

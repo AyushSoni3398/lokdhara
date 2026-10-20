@@ -628,6 +628,10 @@
     "signs": "Signs",
     "numbers": "Numbers",
     "space": "Space",
-    "delete": "Delete"
+    "delete": "Delete",
+    "roman": "ABC → हिंदी",
+    "romanLabel": "Type in Roman letters",
+    "romanAdd": "Add to text",
+    "romanHint": "Examples: naam → नाम, kitaab → किताब. Capitals for ट ठ ड ढ ण ष (T, Th, D, Dh, N, Sh), M for ं, .n for ँ. Type a between letters to keep them apart."
   }
 }
