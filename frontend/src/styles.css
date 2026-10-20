@@ -159,3 +159,5 @@ code { overflow-wrap: anywhere; }
 }
 .key.wide { flex: 4 0 160px; font-size: 1rem; }
 .key:active { background: #f6ebe1; }
+.field { display: grid; gap: 6px; }
+.field > label { font-weight: 600; }

@@ -60,17 +60,15 @@ export function EditText({
 
   return (
     <div className="step">
-      <label>
-        {t('submission.edit.text')}
-        <KeyboardTextarea
-          rows={5}
-          lang={layer.language_tag}
-          spellCheck={false}
-          value={content}
-          onValue={setContent}
-          keyboard={layer.script_code === 'Deva'}
-        />
-      </label>
+      <KeyboardTextarea
+        label={t('submission.edit.text')}
+        rows={5}
+        lang={layer.language_tag}
+        spellCheck={false}
+        value={content}
+        onValue={setContent}
+        keyboard={layer.script_code === 'Deva'}
+      />
       <ScriptWarning text={content} script={layer.script_code} canChoose={false} />
       <label>
         {t('submission.edit.note')}
@@ -140,17 +138,15 @@ export function AddText({
           onChange={setScript}
         />
       )}
-      <label>
-        {label}
-        <KeyboardTextarea
-          rows={4}
-          lang={base.language_tag}
-          spellCheck={false}
-          value={content}
-          onValue={setContent}
-          keyboard={script === 'Deva'}
-        />
-      </label>
+      <KeyboardTextarea
+        label={label}
+        rows={4}
+        lang={base.language_tag}
+        spellCheck={false}
+        value={content}
+        onValue={setContent}
+        keyboard={script === 'Deva'}
+      />
       <ScriptWarning text={content} script={script} canChoose={chooseScript} />
       <ErrorMessage error={error} />
       <div className="row">

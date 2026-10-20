@@ -89,30 +89,27 @@ export function TextStep({
         value={main?.scriptCode ?? 'Deva'}
         onChange={(scriptCode) => setMain({ scriptCode })}
       />
-      <label>
-        {t(isTranscription ? 'text.transcription' : 'text.mundari')}
-        <KeyboardTextarea
-          rows={5}
-          lang="unr"
-          spellCheck={false}
-          value={main?.content ?? ''}
-          onValue={(content) => setMain({ content })}
-          keyboard={(main?.scriptCode ?? 'Deva') === 'Deva'}
-        />
-      </label>
+      <KeyboardTextarea
+        label={t(isTranscription ? 'text.transcription' : 'text.mundari')}
+        rows={5}
+        lang="unr"
+        spellCheck={false}
+        value={main?.content ?? ''}
+        onValue={(content) => setMain({ content })}
+        keyboard={(main?.scriptCode ?? 'Deva') === 'Deva'}
+      />
       <ScriptWarning text={main?.content ?? ''} script={main?.scriptCode ?? 'Deva'} />
       {main?.content.trim() &&
         TRANSLATIONS.map(({ languageTag, scriptCode }) => (
-          <label key={languageTag}>
-            {t(`text.translation.${languageTag}`)}
-            <KeyboardTextarea
-              rows={3}
-              lang={languageTag}
-              value={draft.texts.find((x) => x.key === `translation-${languageTag}`)?.content ?? ''}
-              onValue={(content) => setTranslation(languageTag, scriptCode, content)}
-              keyboard={scriptCode === 'Deva'}
-            />
-          </label>
+          <KeyboardTextarea
+            key={languageTag}
+            label={t(`text.translation.${languageTag}`)}
+            rows={3}
+            lang={languageTag}
+            value={draft.texts.find((x) => x.key === `translation-${languageTag}`)?.content ?? ''}
+            onValue={(content) => setTranslation(languageTag, scriptCode, content)}
+            keyboard={scriptCode === 'Deva'}
+          />
         ))}
     </div>
   )
