@@ -127,9 +127,11 @@ Implemented in Milestone 3. `POST /admin/prompts` and `/versions` are multipart:
 | GET | `/recordings/{id}` | per access rules | Technical metadata, quality metrics/flags, rendition list |
 | GET | `/recordings/{id}/playback` | per access rules (🔒 if restricted) | `{sources: [{url, content_type}]}`: signed URLs for the listening copies, Opus (`audio/webm`) first, then AAC (`audio/mp4`) |
 | GET | `/recordings/{id}/waveform` | per access rules | Peaks JSON |
+| GET | `/recordings/{id}/download` | sender, not withdrawn or hidden | `303` redirect to a signed link that saves the listening copy (AAC `.m4a`, else Opus `.webm`) |
+| GET | `/me/recordings.zip` | any signed-in user | Zip of the listening copies of every recording the user sent, not withdrawn or hidden |
 | GET | `/admin/recordings/{id}/original?reason=…` | admin 🔒 | Streams original; reason required |
 
-`/recordings/{id}/playback` is implemented (Milestone 5): `sources` is empty until `audio.renditions` has made the copies, and links expire with `LKD_SIGNED_URL_TTL_SECONDS`. Error code: `recording_not_found` (404, also for recordings the user may not see). The other routes in this table are not built yet.
+`/recordings/{id}/playback` is implemented (Milestone 5): `sources` is empty until `audio.renditions` has made the copies, and links expire with `LKD_SIGNED_URL_TTL_SECONDS`. Error code: `recording_not_found` (404, also for recordings the user may not see). `/recordings/{id}/download` and `/me/recordings.zip` are implemented (ADR-026). Both are plain GETs so the app links to them directly. Files are named `lokdhara-<recording day>-<last 8 characters of the recording ID>.<ext>`; the zip is `lokdhara-recordings-<today>.zip`, oldest recording first, and leaves out recordings whose listening copy is not made yet. Error codes: `recording_not_found` (404, also for someone else's, withdrawn or hidden recordings), `download_not_ready` (409, the copy is not made yet), `no_recordings` (404, nothing to zip). The other routes in this table are not built yet.
 
 ## 6. Text layers and revisions
 

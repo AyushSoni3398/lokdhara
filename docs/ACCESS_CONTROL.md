@@ -39,6 +39,7 @@ Roles are additive. Role grants/revocations are audit-logged.
 | Hide / show / dismiss reports | ❌ | ❌ | ❌ | ❌ | ✅ (excl. own) |
 | Add reviewer revision | ❌ | ❌ | ✅ | ❌ | ✅ |
 | Play playback rendition | 🟡 own | 🟡 own + created | ✅ in queue/restricted per scope | ✅ approved + consent allows research | ✅ |
+| Download listening copy (one, or all as a zip; ADR-026) | 🟡 sent by them, not hidden | 🟡 sent by them, not hidden | 🟡 sent by them, not hidden | ❌ | 🟡 sent by them, not hidden |
 | Download original audio | ❌ | ❌ | ❌ | ❌ | ✅ (audited, reason required) |
 | Browse the catalogue (accepted, research consent, not hidden) | ❌ | ❌ | ❌ | ✅ | ✅ |
 | Create draft dataset release | ❌ | ❌ | ❌ | ✅ | ✅ |
@@ -83,7 +84,7 @@ Who may be given the `culturally_restricted` scope, and which content it covers,
 | Authentication | Argon2id password hashes; opaque session token (256-bit random) stored hashed; cookie `HttpOnly; Secure; SameSite=Lax; Path=/`; idle timeout 7 days for contributors, 12 hours for reviewers/admins (initial values). |
 | CSRF | Double-submit token header on all non-GET requests. |
 | Brute force | Failed sign-ins counted per account (5) and per client network (20, higher because facilitators may share one connection) within 15 minutes; reaching a limit locks sign-in for 15 minutes (`429` + `Retry-After`). Values are settings. An admin unlock action is not built yet; the lock expires on its own. |
-| Object access | Short-lived signed URLs (≤ 10 min) for playback renditions only; originals via admin endpoint that streams after audit write. |
+| Object access | Short-lived signed URLs (≤ 10 min) for playback renditions only (also as attachments for the owner's download, ADR-026); originals via admin endpoint that streams after audit write. |
 | Database roles | `app_rw` (normal), `app_erasure` (withdrawal routine only, may delete in append-only tables), `app_readonly` (reporting), `app_backup` (nightly backup: reads everything, writes only `backup_runs`; migration `0015`). Migrations run under a separate owner role. |
 | Storage credentials | Separate keys per bucket class; `consent-evidence` key only available to the API, not the worker. |
 | Least privilege for staff | At least two admins; admin actions audited; quarterly access review. |
