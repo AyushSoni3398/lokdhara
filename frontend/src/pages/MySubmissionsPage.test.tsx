@@ -39,6 +39,7 @@ describe('downloading everything I sent', () => {
     const link = await screen.findByRole('link', { name: 'Download all my recordings' })
     expect(link).toHaveAttribute('href', '/api/v1/me/recordings.zip')
     expect(link).toHaveAttribute('download')
+    expect(screen.getByText('Tap an item to listen to it and read its text.')).toBeInTheDocument()
   })
 
   it.each([

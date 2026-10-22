@@ -131,6 +131,7 @@ export function MySubmissionsPage() {
           </li>
         ))}
       </ul>
+      {sent && sent.length > 0 && <p className="note">{t('submissions.openToListen')}</p>}
       {canDownloadAll && (
         <>
           <a className="action" href={api.MY_RECORDINGS_ZIP_URL} download>

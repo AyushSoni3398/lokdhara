@@ -232,6 +232,7 @@
     "keptOnDevice": "Drafts stay on this phone until they are uploaded, even without internet.",
     "sent": "Sent",
     "none": "Nothing sent yet.",
+    "openToListen": "Tap an item to listen to it and read its text.",
     "downloadAll": "Download all my recordings",
     "downloadAllNote": "Saves a listening copy of every recording you sent to this phone, together in one zip file."
   },
