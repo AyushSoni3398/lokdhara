@@ -138,6 +138,8 @@ describe('contributing', () => {
     await userEvent.click(next()) // the transcription is optional
     await userEvent.click(next())
     await userEvent.click(next())
+    // One more listen before sending.
+    expect(screen.getByLabelText('Listen to the recording')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Save and upload' }))
 
     expect(await screen.findByText('Being checked')).toBeInTheDocument()
