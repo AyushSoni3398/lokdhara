@@ -111,6 +111,36 @@ describe('one submission', () => {
     ).toBeInTheDocument()
   })
 
+  it('lets the owner save the recording to their phone', async () => {
+    fakeServer({
+      'GET /auth/me': () => ({ body: SESSION }),
+      'GET /submissions/sub1': () => ({ body: DETAIL }),
+      'GET /recordings/rec1/playback': () => ({
+        body: { sources: [{ url: '/files/rec1.webm', content_type: 'audio/webm' }] },
+      }),
+    })
+    renderApp('/submissions/sub1')
+    const link = await screen.findByRole('link', { name: 'Download' })
+    expect(link).toHaveAttribute('href', '/api/v1/recordings/rec1/download')
+    expect(link).toHaveAttribute('download')
+  })
+
+  it.each([
+    ['someone else', { mine: false }],
+    ['hidden by an admin', { restriction_flags: ['contains_pii'] }],
+  ])('offers no download when the item is %s', async (_, change) => {
+    fakeServer({
+      'GET /auth/me': () => ({ body: SESSION }),
+      'GET /submissions/sub1': () => ({ body: { ...DETAIL, ...change } }),
+      'GET /recordings/rec1/playback': () => ({
+        body: { sources: [{ url: '/files/rec1.webm', content_type: 'audio/webm' }] },
+      }),
+    })
+    renderApp('/submissions/sub1')
+    expect(await screen.findByLabelText('Recording')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Download' })).not.toBeInTheDocument()
+  })
+
   it('saves a correction as a new version on top of the one shown', async () => {
     const corrected = {
       ...LAYER,

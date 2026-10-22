@@ -49,6 +49,7 @@ These are assumptions the plan currently relies on. Each one can change the desi
 | Q-G7 | Who approves images and situation prompts as culturally appropriate? | Community representatives | Blocks M3 | *Provisional for development (2026-10-12):* reviewers and admins draft prompts and only an admin approves them; a community reviewer still has to be named before real collection. |
 | Q-G8 | After a withdrawal, must proof of consent and of the withdrawal be kept (the oral consent recording, the consent record, the request), and for how long? | Professor + institution (ethics committee) | Blocks the pilot (M8) | *Provisional (2026-10-16):* the deletion routine keeps the consent records, the request and the oral consent recording (`LKD_WITHDRAWAL_KEEP_CONSENT_EVIDENCE=true`); it deletes the recordings, the text, the identity details and the consent notes. Setting it to false also deletes the oral consent recording. |
 | Q-G6 | How is benefit returned to the community (access to materials, educational outputs)? | Professor + community | Later | — |
+| Q-G9 | May contributors download the **original** of their own recordings, not only the listening copy? Should a facilitator be able to download what they recorded of other speakers? | Professor | Later | *Provisional (2026-10-22, ADR-026):* only the listening copy, only of recordings the user sent, never of items an admin hid. |
 
 ### Linguistic
 

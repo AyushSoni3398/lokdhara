@@ -4,12 +4,14 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, Header, Query, UploadFile, status
+from fastapi.responses import RedirectResponse, StreamingResponse
 
 from app.db import DbSession
+from app.errors import ApiError
 from app.modules.identity.deps import CurrentUser, SettingsDep, require_roles
-from app.modules.identity.service import AuthenticatedUser
+from app.modules.identity.service import AuthenticatedUser, utcnow
 from app.modules.speakers.service import SELF_SPEAKER_ROLES
-from app.modules.submissions import service, text_layers, uploads
+from app.modules.submissions import downloads, service, text_layers, uploads
 from app.modules.submissions.models import Submission, TextRevision
 from app.modules.submissions.schemas import (
     CollectionContext,
@@ -33,6 +35,7 @@ from app.modules.submissions.schemas import (
     UploadOut,
 )
 from app.object_store import Bucket, ObjectStore, get_object_store
+from app.object_store.base import attachment_header
 from app.text import scripts
 
 router = APIRouter(tags=["submissions"])
@@ -170,6 +173,37 @@ def recording_playback(
             )
             for rendition, content_type in service.playback_files(db, user, recording_id)
         ]
+    )
+
+
+@router.get("/recordings/{recording_id}/download")
+def recording_download(
+    recording_id: uuid.UUID, user: CurrentUser, db: DbSession, settings: SettingsDep, store: Store
+) -> RedirectResponse:
+    """Sends the browser to a short-lived link that saves the user's own listening copy
+    (ADR-026). Plain GET, so an ordinary link works."""
+    file = downloads.own_file(db, user, recording_id)
+    url = store.signed_url(
+        Bucket.DERIVED,
+        file.object_key,
+        ttl_seconds=settings.signed_url_ttl_seconds,
+        content_type=file.content_type,
+        download_name=file.name,
+    )
+    return RedirectResponse(url, status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.get("/me/recordings.zip")
+def my_recordings_zip(user: CurrentUser, db: DbSession, store: Store) -> StreamingResponse:
+    """Every recording the user sent, as one zip of listening copies (ADR-026)."""
+    files = downloads.own_files(db, user)
+    if not files:
+        raise ApiError(404, "no_recordings", "You have no recordings ready to download yet.")
+    name = f"lokdhara-recordings-{utcnow().date().isoformat()}.zip"
+    return StreamingResponse(
+        downloads.zip_chunks(store, files),
+        media_type="application/zip",
+        headers={"Content-Disposition": attachment_header(name), "Cache-Control": "no-store"},
     )
 
 

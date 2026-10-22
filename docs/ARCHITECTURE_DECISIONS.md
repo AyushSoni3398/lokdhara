@@ -28,6 +28,7 @@ ADRs 001–019 were **Accepted** by the project owner on 2026-10-11 (ADR-019 aft
 | 020 | Database triggers enforce column immutability and self-review; schema refinements from Milestone 2 | Accepted |
 | 021 | No human reviewer: submissions are accepted after automatic checks and their text stays unverified | Accepted |
 | 022 | Withdrawals: a separate module, deletion right after an admin accepts, PATCH releases only from the replaced release | Proposed |
+| 026 | Contributors download listening copies of their own recordings, one at a time or all as a zip | Proposed |
 
 ---
 
@@ -235,3 +236,15 @@ ADRs 001–019 were **Accepted** by the project owner on 2026-10-11 (ADR-019 aft
 - **Alternatives:** WebAuthn passkeys (stronger, but more code and harder to support on the shared and older phones in the field; a later addition); SMS codes (cost, SIM-swap risk, and phone numbers would have to be stored); an admin button to reset another admin (a single compromised admin could then remove the other's protection).
 - **Consequences:** Admins need a smartphone authenticator app and must keep their recovery codes. Losing both needs someone with server access. The identity encryption key now also protects sign-in, one more reason to keep it in the password manager. Other roles can turn two-step sign-in on but are not required to.
 - **Revisit when:** passkeys are well supported on the phones the team uses, or facilitators get wider powers.
+
+## ADR-026 — Contributors download listening copies of their own recordings
+
+- **Status:** Proposed (built 2026-10-22 on the project owner's request; awaiting approval). Adds a row to ACCESS_CONTROL §2.
+- **Context:** Contributors asked to keep their own recordings on their phone, one at a time and all at once. Originals are admin-only, audited and need a reason (ACCESS_CONTROL §2), because they are the archive's master copies and may hold more than the speaker expects (location sounds, other voices). A facilitator also sees recordings of speakers they registered, who are other people.
+- **Decision:**
+  - `GET /recordings/{id}/download` redirects to a short-lived signed link that saves the **listening copy** (AAC `.m4a` first, which every phone plays, else Opus `.webm`) as a file. `GET /me/recordings.zip` puts the listening copy of every recording the user sent into one zip, stored without recompressing.
+  - Only recordings **the user sent themselves** (`submitted_by`), not withdrawn, and with **no restriction flag**: an item an admin hid after a report (personal information, a third party's voice, a minor, culturally restricted content) is not offered, although its owner can still play it.
+  - File names hold only the recording day and the random end of the recording ID (`lokdhara-2026-10-12-3f9a0c21.m4a`), never titles or names. Downloads are not audit-logged, like playback, since the user can already listen to the same file.
+- **Alternatives:** Download the original (the contributor's own upload, but it widens an admin-only rule and needs the professor's view on governance first); zip in the browser (a new JavaScript dependency and every file fetched separately on a slow connection); several single downloads at once (browsers block them).
+- **Consequences:** Saved copies leave the platform: a later withdrawal deletes the server's copies but not what is on the contributor's phone, which the withdrawal screen and facilitator guide should say. The zip is built in the API process, spilling to a temporary file above 8 MB; at pilot sizes (tens of recordings, about 20 MB per hour of AAC) this is fine.
+- **Revisit when:** the professor answers whether contributors may download originals, or a contributor's recordings grow past a few hundred MB.

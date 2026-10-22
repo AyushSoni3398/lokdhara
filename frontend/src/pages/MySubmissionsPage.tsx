@@ -19,6 +19,13 @@ export function MySubmissionsPage() {
   const pending = drafts.filter((draft) => draft.ready).length
   // Server drafts are still listed above, from the device.
   const sent = submissions?.filter((submission) => submission.status !== 'draft')
+  // Accepted audio has its listening copy, which is what the zip holds (ADR-026).
+  const canDownloadAll = sent?.some(
+    (submission) =>
+      submission.kind !== 'text' &&
+      submission.status === 'accepted' &&
+      submission.restriction_flags.length === 0,
+  )
 
   useEffect(() => {
     // Reload the server's list whenever an upload round finishes.
@@ -99,6 +106,14 @@ export function MySubmissionsPage() {
           </li>
         ))}
       </ul>
+      {canDownloadAll && (
+        <>
+          <a className="action" href={api.MY_RECORDINGS_ZIP_URL} download>
+            {t('submissions.downloadAll')}
+          </a>
+          <p className="note">{t('submissions.downloadAllNote')}</p>
+        </>
+      )}
       <p>
         <Link to="/withdrawals">{t('withdrawal.link')}</Link>
       </p>
