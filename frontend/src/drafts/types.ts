@@ -70,6 +70,24 @@ export interface Draft {
   updatedAt: string
 }
 
+/**
+ * A copy to change and send again, as a new contribution: whatever an earlier attempt left
+ * on the server is not reused, so a new recording or changed details cannot clash with it.
+ */
+export function reopenedCopy(draft: Draft): Draft {
+  return {
+    ...draft,
+    clientSubmissionId: crypto.randomUUID(),
+    uploadKey: crypto.randomUUID(),
+    texts: draft.texts.map((text) => ({ ...text, serverLayerId: undefined })),
+    ready: false,
+    progress: {},
+    lastError: undefined,
+    needsChange: undefined,
+    updatedAt: new Date().toISOString(),
+  }
+}
+
 export function emptyDetails(): DraftDetails {
   return {
     contentType: 'story',
