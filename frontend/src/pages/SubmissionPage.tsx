@@ -93,7 +93,12 @@ export function SubmissionPage() {
       <ErrorMessage error={error} />
 
       {submission.recordings.map((recording) => (
-        <RecordingPlayer key={recording.id} recording={recording} />
+        <RecordingPlayer
+          key={recording.id}
+          recording={recording}
+          // Your own, unless an admin has hidden it after a report (ADR-026).
+          downloadable={submission.mine && submission.restriction_flags.length === 0}
+        />
       ))}
 
       <h2>{t('submission.texts')}</h2>
@@ -147,7 +152,13 @@ export function SubmissionPage() {
   )
 }
 
-function RecordingPlayer({ recording }: { recording: Recording }) {
+function RecordingPlayer({
+  recording,
+  downloadable,
+}: {
+  recording: Recording
+  downloadable: boolean
+}) {
   const { t } = useTranslation()
   const [playback, setPlayback] = useState<Playback | null>(null)
   const usable = recording.upload_status === 'promoted'
@@ -160,11 +171,20 @@ function RecordingPlayer({ recording }: { recording: Recording }) {
     <>
       <h2>{t('submission.recording')}</h2>
       {playback && playback.sources.length > 0 ? (
-        <audio controls preload="none" aria-label={t('submission.recording')}>
-          {playback.sources.map((source) => (
-            <source key={source.url} src={source.url} type={source.content_type} />
-          ))}
-        </audio>
+        <>
+          <audio controls preload="none" aria-label={t('submission.recording')}>
+            {playback.sources.map((source) => (
+              <source key={source.url} src={source.url} type={source.content_type} />
+            ))}
+          </audio>
+          {downloadable && (
+            <div className="row">
+              <a className="small-action" href={api.recordingDownloadUrl(recording.id)} download>
+                {t('submission.download')}
+              </a>
+            </div>
+          )}
+        </>
       ) : (
         <p className="note">
           {usable ? t('submission.notReadyToPlay') : t('submission.notPlayable')}
