@@ -228,7 +228,9 @@
     "retry": "Try uploading now",
     "keptOnDevice": "Drafts stay on this phone until they are uploaded, even without internet.",
     "sent": "Sent",
-    "none": "Nothing sent yet."
+    "none": "Nothing sent yet.",
+    "downloadAll": "Download all my recordings",
+    "downloadAllNote": "Saves a listening copy of every recording you sent to this phone, together in one zip file."
   },
   "statuses": {
     "draft": "Draft",
@@ -371,6 +373,7 @@
     "recording": "Recording",
     "notReadyToPlay": "The recording is still being prepared for listening.",
     "notPlayable": "This recording cannot be played.",
+    "download": "Download",
     "texts": "Texts",
     "noText": "No text yet.",
     "version": "version {{number}}",

@@ -1,5 +1,5 @@
 /** One function per API call the app makes. */
-import { request } from './client'
+import { API_BASE, request } from './client'
 import type {
   CatalogueItem,
   CatalogueQuery,
@@ -93,6 +93,10 @@ export const getSubmissionDetail = (id: string) =>
   request<SubmissionDetail>('GET', `/submissions/${id}`)
 export const getPlayback = (recordingId: string) =>
   request<Playback>('GET', `/recordings/${recordingId}/playback`)
+// Plain links rather than fetch calls, so the browser saves the file itself (ADR-026).
+export const recordingDownloadUrl = (recordingId: string) =>
+  `${API_BASE}/recordings/${recordingId}/download`
+export const MY_RECORDINGS_ZIP_URL = `${API_BASE}/me/recordings.zip`
 export const listSubmissions = () =>
   request<{ items: Submission[] }>('GET', '/submissions?mine=true&limit=100').then((r) => r.items)
 
