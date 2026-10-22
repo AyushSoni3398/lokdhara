@@ -84,6 +84,7 @@ describe('syncDraft', () => {
     const saved = await store.get('c1')
     expect(saved?.progress).toEqual({ submissionId: 'sub1', recordingId: 'rec1' })
     expect(saved?.lastError).toBe('network_error')
+    expect(saved?.needsChange).toBe(false) // trying again later may work
     expect(saved?.audio).toBeDefined() // never thrown away because an upload failed
 
     await syncDraft(saved!, store, api)
@@ -139,7 +140,9 @@ describe('syncDraft', () => {
     api.submitSubmission.mockRejectedValueOnce(new ApiError(422, 'consent_required'))
 
     await expect(syncDraft(draft(), store, api)).rejects.toBeInstanceOf(ApiError)
-    expect((await store.get('c1'))?.lastError).toBe('consent_required')
+    const saved = await store.get('c1')
+    expect(saved?.lastError).toBe('consent_required')
+    expect(saved?.needsChange).toBe(true)
   })
 })
 

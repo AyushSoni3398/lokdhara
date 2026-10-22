@@ -64,6 +64,8 @@ export interface Draft {
   ready: boolean
   progress: { submissionId?: string; recordingId?: string }
   lastError?: string
+  /** The last upload failed for a reason that sending it again unchanged will not fix. */
+  needsChange?: boolean
   createdAt: string
   updatedAt: string
 }
