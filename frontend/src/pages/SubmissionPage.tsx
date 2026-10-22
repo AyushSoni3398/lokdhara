@@ -91,6 +91,9 @@ export function SubmissionPage() {
         />
       )}
       <ErrorMessage error={error} />
+      {submission.mine && submission.status === 'rejected_invalid' && (
+        <Rejected submission={submission} />
+      )}
 
       {submission.recordings.map((recording) => (
         <RecordingPlayer
@@ -149,6 +152,37 @@ export function SubmissionPage() {
         </>
       )}
     </section>
+  )
+}
+
+const REJECTION_REASONS = [
+  'unreadable',
+  'video_stream',
+  'no_audio_stream',
+  'several_audio_streams',
+  'codec_not_accepted',
+  'too_many_channels',
+  'sample_rate',
+  'decode_errors',
+  'no_audio_decoded',
+  'too_long',
+]
+
+/** The checks refused the file and the phone no longer has it: say why, and start over. */
+function Rejected({ submission }: { submission: SubmissionDetail }) {
+  const { t } = useTranslation()
+  const reason = submission.recordings.find((r) => r.rejection_reason)?.rejection_reason ?? ''
+  return (
+    <div className="warning" role="alert">
+      <h2>{t('submission.rejected.title')}</h2>
+      <p>
+        {t(`submission.rejected.reasons.${REJECTION_REASONS.includes(reason) ? reason : 'other'}`)}
+      </p>
+      <p>{t('submission.rejected.keptNothing')}</p>
+      <Link to={`/contribute/${submission.speaker_id}/new`} className="action primary">
+        {t('submission.rejected.again')}
+      </Link>
+    </div>
   )
 }
 

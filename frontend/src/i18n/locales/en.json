@@ -407,7 +407,25 @@
       "hide": "Hide earlier versions",
       "showChanges": "What changed"
     },
-    "hidden": "Hidden by an admin after a report: {{reasons}}. Researchers no longer see it."
+    "hidden": "Hidden by an admin after a report: {{reasons}}. Researchers no longer see it.",
+    "rejected": {
+      "title": "This file could not be used",
+      "keptNothing": "The recording was not kept. You can record it again, or choose a different file.",
+      "again": "Record again",
+      "reasons": {
+        "unreadable": "The file could not be opened as a sound recording.",
+        "video_stream": "The file is a video. Please send only the sound.",
+        "no_audio_stream": "The file has no sound in it.",
+        "several_audio_streams": "The file has more than one sound track.",
+        "codec_not_accepted": "This kind of audio file is not accepted.",
+        "too_many_channels": "The recording has too many sound channels.",
+        "sample_rate": "The recording was saved with a sound quality setting the platform does not accept.",
+        "decode_errors": "The file is damaged. It may have been cut off while saving or sending.",
+        "no_audio_decoded": "The file has no sound that can be played.",
+        "too_long": "The recording is too long. Please record it in shorter parts.",
+        "other": "The checks could not use this file."
+      }
+    }
   },
   "restrictions": {
     "sensitive": "sensitive content",
