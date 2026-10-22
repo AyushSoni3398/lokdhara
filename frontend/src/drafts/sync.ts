@@ -8,7 +8,7 @@
  * QUESTIONS.md Q-T7). The phone still has it, so it is uploaded again with the same key, which
  * restores the same recording, and the draft is submitted again.
  */
-import { ApiError, errorCode } from '../api/client'
+import { ApiError, errorCode, isRetryable } from '../api/client'
 import * as endpoints from '../api/endpoints'
 import type { SubmissionCreate, TextLayerCreate } from '../api/types'
 import type { DraftStore } from './store'
@@ -140,7 +140,7 @@ export async function syncDraft(
     // The server has everything now; do not keep the recording on a possibly shared phone.
     await store.remove(draft.clientSubmissionId)
   } catch (error) {
-    await save({ lastError: errorCode(error) })
+    await save({ lastError: errorCode(error), needsChange: !isRetryable(error) })
     throw error
   }
 }

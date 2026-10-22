@@ -144,6 +144,8 @@ export interface Recording {
   size_bytes: number
   duration_ms: number | null
   quality_flags: string[]
+  /** Why the checks refused the file, when `upload_status` is `rejected_invalid`. */
+  rejection_reason: string | null
   created_at: string
 }
 
@@ -162,6 +164,7 @@ export type Restriction =
 export interface Submission {
   id: string
   client_submission_id: string
+  speaker_id: string
   kind: Kind
   content_type: ContentType
   title: string | null

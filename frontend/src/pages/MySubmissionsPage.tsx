@@ -1,19 +1,20 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 
 import * as api from '../api/endpoints'
 import type { Submission } from '../api/types'
 import { ErrorMessage } from '../components/ErrorMessage'
 import { useDrafts } from '../drafts/DraftsProvider'
 import { useDraftStore } from '../drafts/store'
-import type { Draft } from '../drafts/types'
+import { reopenedCopy, type Draft } from '../drafts/types'
 
 /** What is still on this phone, and what the server has (FR-S7). */
 export function MySubmissionsPage() {
   const { t, i18n } = useTranslation()
   const { drafts, uploading, uploadNow, refresh } = useDrafts()
   const store = useDraftStore()
+  const navigate = useNavigate()
   const [submissions, setSubmissions] = useState<Submission[] | null>(null)
   const [error, setError] = useState<unknown>(null)
   const pending = drafts.filter((draft) => draft.ready).length
@@ -38,6 +39,15 @@ export function MySubmissionsPage() {
     await refresh()
   }
 
+  // Changed as a new draft: nothing the failed attempt left on the server is reused.
+  const change = async (draft: Draft) => {
+    const copy = reopenedCopy(draft)
+    await store.put(copy)
+    await store.remove(draft.clientSubmissionId)
+    await refresh()
+    void navigate(`/drafts/${copy.clientSubmissionId}`)
+  }
+
   const date = (iso: string) => new Date(iso).toLocaleDateString(i18n.resolvedLanguage)
 
   return (
@@ -54,7 +64,9 @@ export function MySubmissionsPage() {
                 <span>
                   {draft.speakerCode} · {date(draft.createdAt)}
                 </span>
-                {draft.ready ? (
+                {draft.ready && draft.needsChange ? (
+                  <span className="status waiting">{t('submissions.needsChange')}</span>
+                ) : draft.ready ? (
                   <span className="status waiting">
                     {uploading ? t('submissions.uploading') : t('submissions.waiting')}
                   </span>
@@ -62,13 +74,26 @@ export function MySubmissionsPage() {
                   <span className="status">{t('submissions.unfinished')}</span>
                 )}
                 {draft.ready && draft.lastError && <ErrorMessage error={draft.lastError} />}
+                {draft.ready && draft.needsChange && (
+                  <p className="note">{t('submissions.needsChangeHelp')}</p>
+                )}
                 <div className="row">
+                  {draft.ready && draft.needsChange && (
+                    <button
+                      type="button"
+                      className="small-action"
+                      disabled={uploading}
+                      onClick={() => void change(draft)}
+                    >
+                      {t('submissions.change')}
+                    </button>
+                  )}
                   {!draft.ready && (
                     <Link to={`/drafts/${draft.clientSubmissionId}`} className="small-action">
                       {t('submissions.continue')}
                     </Link>
                   )}
-                  {!draft.progress.submissionId && (
+                  {(!draft.progress.submissionId || draft.needsChange) && (
                     <button
                       type="button"
                       className="small-action"
@@ -106,6 +131,7 @@ export function MySubmissionsPage() {
           </li>
         ))}
       </ul>
+      {sent && sent.length > 0 && <p className="note">{t('submissions.openToListen')}</p>}
       {canDownloadAll && (
         <>
           <a className="action" href={api.MY_RECORDINGS_ZIP_URL} download>

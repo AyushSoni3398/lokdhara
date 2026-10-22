@@ -124,6 +124,8 @@ def test_damaged_recordings_are_rejected_with_a_code(
     assert recording.upload_status == "rejected_invalid"
     assert recording.validation_errors == {"code": "corrupt_audio", "reason": "decode_errors"}
     assert submission.status == "rejected_invalid"
+    shown = client.get(f"{SUBMISSIONS}/{submission.id}").json()["recordings"]
+    assert [r["rejection_reason"] for r in shown] == ["decode_errors"]
     key = recording.original_object_key
     assert object_store.head(Bucket.ORIGINALS, key) is None
     assert object_store.head(Bucket.QUARANTINE, key) is None

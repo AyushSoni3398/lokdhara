@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.languages import LanguageTag, Script
 from app.text.safety import LONGEST
@@ -110,7 +110,14 @@ class RecordingOut(BaseModel):
     size_bytes: int
     duration_ms: int | None
     quality_flags: list[str]
+    # Why the checks refused the file (`rejected_invalid`), so the sender can fix it.
+    rejection_reason: str | None = Field(default=None, validation_alias="validation_errors")
     created_at: datetime
+
+    @field_validator("rejection_reason", mode="before")
+    @classmethod
+    def _reason(cls, value: object) -> object:
+        return value.get("reason") if isinstance(value, dict) else value
 
 
 class PlaybackSource(BaseModel):

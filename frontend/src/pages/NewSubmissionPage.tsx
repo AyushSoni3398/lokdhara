@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router'
 
@@ -9,7 +9,7 @@ import { Choice } from '../components/Choice'
 import { ErrorMessage } from '../components/ErrorMessage'
 import { useDrafts } from '../drafts/DraftsProvider'
 import { useDraftStore } from '../drafts/store'
-import { emptyDetails, type Draft } from '../drafts/types'
+import { emptyDetails, type Draft, type DraftAudio } from '../drafts/types'
 import { AudioCapture } from '../recording/AudioCapture'
 import { DetailsStep } from './submission/DetailsStep'
 import { PromptCard, PromptStep } from './submission/PromptStep'
@@ -267,7 +267,10 @@ function Review({ draft }: { draft: Draft }) {
       {draft.audio && (
         <>
           <dt>{t('review.audio')}</dt>
-          <dd>{t(`review.audioSource.${draft.audio.source}`)}</dd>
+          <dd>
+            {t(`review.audioSource.${draft.audio.source}`)}
+            <DraftPlayer audio={draft.audio} />
+          </dd>
         </>
       )}
       {texts.map((text) => (
@@ -285,5 +288,17 @@ function Review({ draft }: { draft: Draft }) {
         </>
       )}
     </dl>
+  )
+}
+
+/** The recording as it is on the phone, to listen to once more before sending it. */
+function DraftPlayer({ audio }: { audio: DraftAudio }) {
+  const { t } = useTranslation()
+  const url = useMemo(() => URL.createObjectURL(audio.blob), [audio])
+  useEffect(() => () => URL.revokeObjectURL(url), [url])
+  return (
+    <div className="captured">
+      <audio controls src={url} aria-label={t('record.listen')} />
+    </div>
   )
 }

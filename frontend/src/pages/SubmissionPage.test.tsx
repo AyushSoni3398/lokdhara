@@ -48,6 +48,7 @@ const TRANSLATION = {
 const DETAIL = {
   id: 'sub1',
   client_submission_id: 'c1',
+  speaker_id: 'sp1',
   kind: 'audio_text',
   content_type: 'story',
   title: 'River story',
@@ -64,6 +65,7 @@ const DETAIL = {
       size_bytes: 1000,
       duration_ms: 3000,
       quality_flags: [],
+      rejection_reason: null,
       created_at: '2026-10-14T10:01:00Z',
     },
   ],
@@ -97,6 +99,26 @@ describe('one submission', () => {
     expect(items[1]).toContain('Translation (English)')
     expect(items[1]).toContain('The text this translates has changed since')
     expect(screen.getAllByText('Written by the contributor, not checked by anyone')).toHaveLength(2)
+  })
+
+  it('says why a file was refused and offers to record it again', async () => {
+    const recording = {
+      ...DETAIL.recordings[0],
+      upload_status: 'rejected_invalid',
+      rejection_reason: 'decode_errors',
+    }
+    fakeServer({
+      'GET /auth/me': () => ({ body: SESSION }),
+      'GET /submissions/sub1': () => ({
+        body: { ...DETAIL, status: 'rejected_invalid', recordings: [recording], text_layers: [] },
+      }),
+    })
+    renderApp('/submissions/sub1')
+    expect(await screen.findByText(/The file is damaged/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Record again' })).toHaveAttribute(
+      'href',
+      '/contribute/sp1/new',
+    )
   })
 
   it('says when the recording is not ready to play yet', async () => {

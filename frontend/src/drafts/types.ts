@@ -64,8 +64,28 @@ export interface Draft {
   ready: boolean
   progress: { submissionId?: string; recordingId?: string }
   lastError?: string
+  /** The last upload failed for a reason that sending it again unchanged will not fix. */
+  needsChange?: boolean
   createdAt: string
   updatedAt: string
+}
+
+/**
+ * A copy to change and send again, as a new contribution: whatever an earlier attempt left
+ * on the server is not reused, so a new recording or changed details cannot clash with it.
+ */
+export function reopenedCopy(draft: Draft): Draft {
+  return {
+    ...draft,
+    clientSubmissionId: crypto.randomUUID(),
+    uploadKey: crypto.randomUUID(),
+    texts: draft.texts.map((text) => ({ ...text, serverLayerId: undefined })),
+    ready: false,
+    progress: {},
+    lastError: undefined,
+    needsChange: undefined,
+    updatedAt: new Date().toISOString(),
+  }
 }
 
 export function emptyDetails(): DraftDetails {
