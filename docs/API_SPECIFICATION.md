@@ -92,7 +92,7 @@ Error codes: `speaker_not_found` / `submission_not_found` (404, also when it is 
 |--------|------|------|---------|
 | POST | `/submissions` | contributor | Create draft. Body: `client_submission_id, speaker_id, kind, content_type, language_tag, dialect_label?, region_coarse?, recorded_on?, collection_method, recording_mode?, prompt_id?, collection_context` |
 | GET | `/submissions?mine=true&status=…` | contributor | My submissions |
-| GET | `/submissions/{id}` | per access rules | Detail incl. layers, current revisions, quality flags, status |
+| GET | `/submissions/{id}` | per access rules | Detail incl. layers, current revisions, quality flags, status; each recording's `rejection_reason` (e.g. `decode_errors`, `too_long`) when the checks refused it |
 | PATCH | `/submissions/{id}` | owner, draft/changes_requested only | Edit metadata |
 | POST | `/submissions/{id}/recordings` | owner | Multipart `file`; `Idempotency-Key`; → `202 {recording_id, upload_status: "quarantined"}` |
 | POST | `/submissions/{id}/text-layers` | owner (draft or accepted) | Create layer + first revision: `{layer_type, recording_id?, source_layer_id?, entry_type?, language_tag, script_code, content}` |
