@@ -25,6 +25,7 @@ Auth column: role(s) required. 🔒 = also audit-logged.
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
 | POST | `/auth/login` | public (rate-limited) | `{username, password, code?}` → sets session cookie; returns `{user, roles, csrf_token, mfa_enabled, mfa_setup_required}`. With two-step sign-in on, a missing `code` gives `401 mfa_required` (the password was right) and a wrong one `401 invalid_mfa_code`, which counts towards the lockout. `code` is the authenticator code or an unused recovery code. |
+| POST | `/auth/signup` | public (limited per network) 🔒 | `{username, display_name, password, locale}` → a **contributor** account, signed in at once (session cookie, same body as `/auth/login`, `201`). `409 username_taken`, `422 weak_password`, `429 signup_limited`, `404 signup_closed` when `LKD_OPEN_SIGNUP=false` (ADR-028). |
 | POST | `/auth/logout` | any | Revokes current session |
 | GET | `/auth/me` | any | Current user, roles, locale, `mfa_enabled`, `mfa_setup_required`. When admins must use two-step sign-in (`LKD_REQUIRE_ADMIN_MFA`, on outside development) and this admin has not set it up, `admin` is left out of `roles` until they do. |
 | POST | `/auth/mfa/setup` | any 🔒 | A new authenticator secret, not yet in use: `{secret, uri, qr_svg}` (the base32 key, the `otpauth://` link, and its QR code as SVG). Replaces an unconfirmed one; `409 mfa_already_enabled` once on. |
@@ -32,6 +33,7 @@ Auth column: role(s) required. 🔒 = also audit-logged.
 | POST | `/auth/invitations` | admin 🔒 | `{role, expires_in_hours}` → `{invite_url}` (token shown once) |
 | POST | `/auth/invitations/accept` | public 🔒 | `{token, username, display_name, password, locale}` |
 | POST | `/auth/password-reset` | public 🔒 | `{token, password}`; signs the user out of all sessions |
+| GET | `/admin/users?q=` | admin | Accounts whose username or display name contains `q` (up to 50, newest first): `{items: [{id, username, display_name, status, roles, created_at, last_login_at}]}`. Used to help someone who forgot their password. |
 | POST | `/admin/users/{id}/password-reset` | admin 🔒 | Returns one-time `{reset_url, expires_at}` |
 | POST | `/admin/users/{id}/roles` | admin 🔒 | Grant role |
 | DELETE | `/admin/users/{id}/roles/{role}` | admin 🔒 | Revoke role |
@@ -49,8 +51,8 @@ Implemented in Milestone 2. Error codes: `invalid_credentials` (401, same respon
 | GET | `/speakers?mine=true` | contributor/facilitator | Speakers created by me or that are me (`mine=false`: admins see all) |
 | GET | `/speakers/{id}` | owner/facilitator/admin | Pseudonymous profile, incl. `has_active_consent` |
 | PATCH | `/speakers/{id}` | owner/facilitator (creator)/admin 🔒 | Dialect; demographics only with demographics consent |
-| PUT | `/speakers/{id}/identity` | facilitator (creator)/admin 🔒 | Set restricted identity details |
-| GET | `/speakers/{id}/identity` | facilitator (creator)/admin 🔒 | Read restricted identity |
+| PUT | `/speakers/{id}/identity` | the speaker themselves/facilitator (creator)/admin 🔒 | Set restricted identity details (`{full_name, contact, village, notes}`; a missing field is cleared) |
+| GET | `/speakers/{id}/identity` | the speaker themselves/facilitator (creator)/admin 🔒 | Read restricted identity |
 | GET | `/consent-forms/current?language=hi` | any | Current form text + version |
 | POST | `/speakers/{id}/consents` | facilitator (creator)/self/admin 🔒 | Multipart: answers as JSON in field `consent`; `evidence` audio file for `oral_recorded`. Supersedes the active record |
 | GET | `/speakers/{id}/consents` | owner/facilitator/admin | History |
@@ -78,7 +80,7 @@ Consent answers, sent as the JSON value of the `consent` form field (example):
 }
 ```
 
-Speakers and consent are implemented in Milestone 3, withdrawal requests in Milestone 7. Error codes: `speaker_not_found` (404, also when the speaker exists but is not yours), `self_speaker_exists` (409), `speaker_withdrawn` (409), `demographics_not_consented` (422), `minors_not_enabled` (422, until Q-L4), `consent_form_not_found` (404), `consent_form_invalid` / `test_form_not_allowed` (422), `store_consent_required` (422), `evidence_required` / `evidence_not_expected` / `evidence_not_audio` (422), `evidence_too_large` (413). Responses never include identity values except from the identity endpoints, nor the consent evidence key or paper reference.
+Speakers and consent are implemented in Milestone 3, withdrawal requests in Milestone 7. Error codes: `speaker_not_found` (404, also when the speaker exists but is not yours), `self_speaker_exists` (409), `speaker_withdrawn` (409), `demographics_not_consented` (422), `minors_not_enabled` (422, only when `LKD_ALLOW_MINORS=false`; minors take part by default since ADR-028), `consent_form_not_found` (404), `consent_form_invalid` / `test_form_not_allowed` (422), `store_consent_required` (422), `evidence_required` / `evidence_not_expected` / `evidence_not_audio` (422), `evidence_too_large` (413). Responses never include identity values except from the identity endpoints, nor the consent evidence key or paper reference.
 
 ### Withdrawal requests
 

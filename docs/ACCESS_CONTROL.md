@@ -11,7 +11,7 @@ The SPA hides buttons for convenience only; it never decides access.
 
 | Role | Granted by | Notes |
 |------|-----------|-------|
-| `contributor` | Admin (invitation) | Default for everyone who submits. |
+| `contributor` | Self (public sign-up, ADR-028) or admin (invitation) | Default for everyone who submits. |
 | `facilitator` | Admin | Can create speaker profiles and capture consent for others. Requires training. |
 | `reviewer` | Admin | May also be a contributor; never reviews own submissions. |
 | `reviewer` + scope `culturally_restricted` | Admin on steward's instruction | Designated community reviewers for restricted content. |
@@ -28,7 +28,7 @@ Roles are additive. Role grants/revocations are audit-logged.
 |--------|:-----------:|:-----------:|:--------:|:----------:|:-----:|
 | Create submission for self | ✅ | ✅ | ✅ | ❌ | ✅ |
 | Create speaker profile for others | ❌ | ✅ | ❌ | ❌ | ✅ |
-| View speaker identity details | ❌ | 🟡 (created by them) | ❌ | ❌ | ✅ (audited) |
+| View or edit speaker identity details | 🟡 (their own, ADR-028) | 🟡 (their own or created by them) | 🟡 (their own) | ❌ | ✅ (audited) |
 | Capture consent | 🟡 (self) | ✅ | ❌ | ❌ | ✅ |
 | View own submissions | ✅ | ✅ | ✅ | — | ✅ |
 | Edit own draft | ✅ | ✅ | ✅ | — | ✅ |
@@ -47,7 +47,7 @@ Roles are additive. Role grants/revocations are audit-logged.
 | Freeze release | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Request export | ❌ | ❌ | ❌ | ✅ | ✅ |
 | Approve export | ❌ | ❌ | ❌ | ❌ | ✅ (one admin, may be their own request; ADR-027) |
-| Manage users/roles, consent forms | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Manage users/roles, consent forms; find accounts, make reset and invitation links | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Process withdrawal | ❌ | ❌ | ❌ | ❌ | ✅ |
 | View audit log | ❌ | ❌ | ❌ | ❌ | ✅ |
 
@@ -85,6 +85,7 @@ Who may be given the `culturally_restricted` scope, and which content it covers,
 | Authentication | Argon2id password hashes; opaque session token (256-bit random) stored hashed; cookie `HttpOnly; Secure; SameSite=Lax; Path=/`; idle timeout 7 days for contributors, 12 hours for reviewers/admins (initial values). |
 | CSRF | Double-submit token header on all non-GET requests. |
 | Brute force | Failed sign-ins counted per account (5) and per client network (20, higher because facilitators may share one connection) within 15 minutes; reaching a limit locks sign-in for 15 minutes (`429` + `Retry-After`). Values are settings. An admin unlock action is not built yet; the lock expires on its own. |
+| Sign-up spam | Public sign-up (ADR-028) makes contributors only. At most 20 new accounts per client network per hour (`429 signup_limited`); `LKD_OPEN_SIGNUP=false` turns sign-up off. |
 | Object access | Short-lived signed URLs (≤ 10 min) for playback renditions only (also as attachments for the owner's download, ADR-026); originals via admin endpoint that streams after audit write. |
 | Database roles | `app_rw` (normal), `app_erasure` (withdrawal routine only, may delete in append-only tables), `app_readonly` (reporting), `app_backup` (nightly backup: reads everything, writes only `backup_runs`; migration `0015`). Migrations run under a separate owner role. |
 | Storage credentials | Separate keys per bucket class; `consent-evidence` key only available to the API, not the worker. |
