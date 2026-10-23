@@ -66,6 +66,52 @@ describe('consent', () => {
   })
 })
 
+describe('consent for someone under 18', () => {
+  it('needs the parent or guardian and sends it with the answers', async () => {
+    const { requests } = fakeServer({
+      'GET /auth/me': () => ({ body: SESSION }),
+      'GET /speakers/s1': () => ({ body: { ...SPEAKER, has_active_consent: false } }),
+      'GET /consent-forms/current.*': () => ({ body: FORM }),
+      'POST /speakers/s1/consents': () => ({ status: 201, body: {} }),
+      'GET /submissions.*': () => ({ body: { items: [] } }),
+    })
+    renderApp('/speakers/s1/consent?next=/submissions')
+    const minor = await screen.findByRole('group', { name: 'Is this person under 18?' })
+    const groups = screen.getAllByRole('group').filter((g) => g.tagName === 'FIELDSET')
+    await userEvent.click(within(groups[0]!).getByRole('radio', { name: 'Yes' }))
+    await userEvent.click(within(minor).getByRole('radio', { name: 'Yes' }))
+    const save = screen.getByRole('button', { name: 'Save consent' })
+    expect(save).toBeDisabled()
+    await userEvent.type(screen.getByLabelText(/parent or guardian\?/), 'mother')
+    await userEvent.click(save)
+    await waitFor(() => expect(requests.some((r) => r.method === 'POST')).toBe(true))
+    const sent = requests.find((r) => r.method === 'POST')?.body as FormData
+    expect(JSON.parse(String(sent.get('consent')))).toMatchObject({
+      guardian_involved: true,
+      guardian_relationship: 'mother',
+    })
+  })
+})
+
+describe('profile details', () => {
+  it('fill in dialect and area for a new recording', async () => {
+    fakeServer({
+      'GET /auth/me': () => ({ body: SESSION }),
+      'GET /speakers/s1': () => ({
+        body: { ...SPEAKER, dialect_label: 'Hasada', region_coarse: 'Khunti' },
+      }),
+      'GET /submissions\\?.*': () => ({ body: { items: [] } }),
+    })
+    renderApp('/contribute/s1/new')
+    await userEvent.click(await screen.findByRole('radio', { name: 'Text' }))
+    await userEvent.click(next())
+    await userEvent.type(screen.getByLabelText('Mundari text'), 'यह परीक्षण है')
+    await userEvent.click(next())
+    expect(screen.getByLabelText(/Dialect/)).toHaveValue('Hasada')
+    expect(screen.getByLabelText(/^Area/)).toHaveValue('Khunti')
+  })
+})
+
 describe('safeNext', () => {
   it('only returns to pages of this site', () => {
     expect(safeNext('/contribute/s1/new')).toBe('/contribute/s1/new')

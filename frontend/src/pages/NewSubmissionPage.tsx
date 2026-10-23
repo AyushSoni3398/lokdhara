@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router'
 
 import * as api from '../api/endpoints'
 import { useSession } from '../auth/session'
-import type { Kind, Prompt, RecordingMode } from '../api/types'
+import type { Kind, Prompt, RecordingMode, Speaker } from '../api/types'
 import { Choice } from '../components/Choice'
 import { ErrorMessage } from '../components/ErrorMessage'
 import { useDrafts } from '../drafts/DraftsProvider'
@@ -47,17 +47,22 @@ function stepDone(step: Step, draft: Draft): boolean {
   }
 }
 
-function newDraft(ownerId: string, speakerId: string, speakerCode: string, isSelf: boolean): Draft {
+/** Dialect and area start from the speaker's profile, so they are not typed every time. */
+function newDraft(ownerId: string, speaker: Speaker): Draft {
   const now = new Date().toISOString()
   return {
     clientSubmissionId: crypto.randomUUID(),
     ownerId,
-    speakerId,
-    speakerCode,
-    collectionMethod: isSelf ? 'self_recorded' : 'facilitator_field',
+    speakerId: speaker.id,
+    speakerCode: speaker.speaker_code,
+    collectionMethod: speaker.is_self ? 'self_recorded' : 'facilitator_field',
     kind: 'audio',
     texts: [],
-    details: emptyDetails(),
+    details: {
+      ...emptyDetails(),
+      dialectLabel: speaker.dialect_label ?? '',
+      regionCoarse: speaker.region_coarse ?? '',
+    },
     uploadKey: crypto.randomUUID(),
     ready: false,
     progress: {},
@@ -89,11 +94,7 @@ export function NewSubmissionPage() {
     } else if (speakerId) {
       api
         .getSpeaker(speakerId)
-        .then(
-          (speaker) =>
-            setDraft(newDraft(userId, speaker.id, speaker.speaker_code, speaker.is_self)),
-          setError,
-        )
+        .then((speaker) => setDraft(newDraft(userId, speaker)), setError)
     }
   }, [draftId, speakerId, store, userId])
 
