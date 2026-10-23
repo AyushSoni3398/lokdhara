@@ -36,7 +36,6 @@ Lokdhara aims to give the Mundari-speaking community and researchers one place t
 - Automatic speech recognition (ASR) or machine translation (MT) in production.
 - Public, anonymous browsing of recordings.
 - Native mobile apps.
-- Open self-registration by anyone on the internet.
 - Payments, rewards, or gamification.
 
 ## 4. Users and roles (summary)
@@ -59,7 +58,7 @@ Priority: **M** = must have for MVP, **S** = should have if time allows, **F** =
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| FR-A1 | Accounts are created by invitation from an administrator; there is no open sign-up in the pilot. | M |
+| FR-A1 | Anyone may sign up as a contributor with a username and password; staff roles are given by invitation or by an administrator (ADR-028, changed 2026-10-23). | M |
 | FR-A2 | A user can sign in, sign out, and see their own role(s). | M |
 | FR-A3 | Roles are assigned and revoked by administrators only; every change is audit-logged. | M |
 | FR-A4 | Sessions expire after inactivity; administrators can revoke a user's sessions. | M |
@@ -168,7 +167,7 @@ The professor decided on 2026-10-14 that there is no human reviewer ([ADR-021](A
 | Recording contains third parties who did not consent | Someone reports it and an administrator marks `restricted: third_party_voice`; excluded from all releases until resolved. |
 | Content is sacred, ritual, or culturally restricted | Someone reports it and an administrator marks `restricted: culturally_sensitive`; visible only to administrators and designated community members; never exported without explicit community approval (see open question Q-G3). |
 | Personal information spoken in the recording (phone numbers, names of others) | Someone reports it and an administrator flags `contains_pii`; excluded from public/AI-training releases; redaction is future work. |
-| Abusive, hateful, or spam submissions | Reported and hidden by an administrator; repeated abuse leads to account suspension. Invite-only access limits exposure. |
+| Abusive, hateful, or spam submissions | Reported and hidden by an administrator; repeated abuse leads to account suspension. Sign-ups are limited per network (ADR-028). |
 | Account compromise | Admin revokes sessions; audit log identifies affected actions. |
 | Consent withdrawn after an item was included in a frozen release | Item marked withdrawn; excluded from all *future* releases; release record annotated; holders of prior exports notified per governance policy. |
 | Facilitator leaves the project | Their submissions remain; ownership of speaker contact data transfers to an administrator. |

@@ -34,7 +34,7 @@ Production secrets live in the host's secret mechanism (environment file outside
 - The API and worker connect (`LKD_DATABASE_URL`) as a login role that is a member of `app_rw` and is **not** the schema owner or a superuser, e.g. `CREATE ROLE lokdhara_app LOGIN PASSWORD '…' IN ROLE app_rw;`. The withdrawal routine (the worker's `withdrawal.erase` job) connects with `LKD_ERASURE_DATABASE_URL` as a separate login role in `app_erasure`, e.g. `CREATE ROLE lokdhara_eraser LOGIN PASSWORD '…' IN ROLE app_erasure;`; only that role can clear rows the append-only triggers protect. Its storage credentials need `s3:DeleteObjectVersion` so earlier versions of a withdrawn file are deleted too; an object-lock retention on originals would stop that, so use versioning without compliance-mode locks.
 - Run uvicorn with `--proxy-headers --forwarded-allow-ips=<Caddy's address>` so the client IP used for per-network sign-in throttling is the real client, not Caddy (otherwise one network limit would apply to everyone).
 - Also run uvicorn with `--timeout-keep-alive 75` and give Caddy's `reverse_proxy` a shorter upstream keep-alive (`transport http { keepalive 60s }`), so uvicorn never closes an idle connection that Caddy is about to reuse. With uvicorn's 5 s default, the load test saw requests fail with "connection reset" ([LOAD_TESTING.md](LOAD_TESTING.md)).
-- The first administrator is created on the server with `uv run python -m app.cli create-admin`; everyone else joins by invitation.
+- The first administrator is created on the server with `uv run python -m app.cli create-admin`; contributors sign up themselves and staff join by invitation from **People and accounts** (ADR-028).
 - CI tests upgrade → downgrade → upgrade on an empty DB.
 
 ## 4. CI/CD
