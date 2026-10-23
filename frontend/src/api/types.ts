@@ -49,6 +49,17 @@ export interface SpeakerIdentity {
   notes: string | null
 }
 
+/** An account as admins see it when helping someone (GET /admin/users). */
+export interface AdminUser {
+  id: string
+  username: string
+  display_name: string
+  status: string
+  roles: { role: Role; scope: string | null }[]
+  created_at: string
+  last_login_at: string | null
+}
+
 export interface SignupRequest {
   username: string
   display_name: string

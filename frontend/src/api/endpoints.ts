@@ -1,6 +1,7 @@
 /** One function per API call the app makes. */
 import { API_BASE, request } from "./client";
 import type {
+  AdminUser,
   CatalogueItem,
   CatalogueQuery,
   ConsentAnswers,
@@ -23,6 +24,7 @@ import type {
   ReportReason,
   Restriction,
   Revision,
+  Role,
   Script,
   ServiceStatus,
   Session,
@@ -53,6 +55,24 @@ export const acceptInvitation = (token: string, body: SignupRequest) =>
   });
 export const resetPassword = (token: string, password: string) =>
   request<void>("POST", "/auth/password-reset", { json: { token, password } });
+/** Admins: find an account, then make a one-time reset link for its owner. */
+export const findUsers = (query: string) =>
+  request<{ items: AdminUser[] }>(
+    "GET",
+    `/admin/users?q=${encodeURIComponent(query)}`,
+  ).then((r) => r.items);
+export const createPasswordReset = (userId: string) =>
+  request<{ reset_url: string; expires_at: string }>(
+    "POST",
+    `/admin/users/${userId}/password-reset`,
+  );
+/** Admins: an invitation link for a staff role (sign-up gives only contributor). */
+export const createInvitation = (role: Role) =>
+  request<{ invite_url: string; expires_at: string }>(
+    "POST",
+    "/auth/invitations",
+    { json: { role } },
+  );
 export const startMfaSetup = () => request<MfaSetup>("POST", "/auth/mfa/setup");
 export const confirmMfa = (code: string) =>
   request<{ recovery_codes: string[] }>("POST", "/auth/mfa/confirm", {
