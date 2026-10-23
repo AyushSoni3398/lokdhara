@@ -1,4 +1,5 @@
-"""Accounts, invitations, sessions, and login throttling (ADR-008, docs/ACCESS_CONTROL.md).
+"""Accounts, sign-up, invitations, sessions, and throttling (ADR-008, ADR-028,
+docs/ACCESS_CONTROL.md).
 
 Every function that changes data commits its own transaction, together with its audit event.
 """
@@ -237,7 +238,13 @@ def _throttle_limits(settings: Settings, username: str, context: RequestContext)
     return limits
 
 
-def _raise_if_locked(db: Session, keys: list[str], now: datetime) -> None:
+def _raise_if_locked(
+    db: Session,
+    keys: list[str],
+    now: datetime,
+    code: str = "login_locked",
+    message: str = "Too many failed sign-in attempts. Try again later.",
+) -> None:
     locked_until = db.scalar(
         select(func.max(LoginThrottle.locked_until)).where(LoginThrottle.key_hash.in_(keys))
     )
@@ -245,14 +252,26 @@ def _raise_if_locked(db: Session, keys: list[str], now: datetime) -> None:
         retry_after = max(1, int((locked_until - now).total_seconds()))
         raise ApiError(
             429,
-            "login_locked",
-            "Too many failed sign-in attempts. Try again later.",
+            code,
+            message,
             headers={"Retry-After": str(retry_after)},
         )
 
 
-def _record_failure(db: Session, settings: Settings, limits: dict[str, int], now: datetime) -> None:
-    window_start = now - timedelta(minutes=settings.login_window_minutes)
+def _record_failure(
+    db: Session,
+    settings: Settings,
+    limits: dict[str, int],
+    now: datetime,
+    *,
+    window_minutes: int | None = None,
+    lockout_minutes: int | None = None,
+) -> None:
+    """Counts one event per key and locks a key that reaches its limit. Used for failed
+    sign-ins and, with its own window, for sign-ups."""
+    window = window_minutes or settings.login_window_minutes
+    lockout = lockout_minutes or settings.login_lockout_minutes
+    window_start = now - timedelta(minutes=window)
     expired = LoginThrottle.window_started_at < window_start
     for key, limit in limits.items():
         stmt = insert(LoginThrottle).values(key_hash=key, failures=1, window_started_at=now)
@@ -272,7 +291,7 @@ def _record_failure(db: Session, settings: Settings, limits: dict[str, int], now
             update(LoginThrottle)
             .where(LoginThrottle.key_hash == key, LoginThrottle.failures >= limit)
             .values(
-                locked_until=now + timedelta(minutes=settings.login_lockout_minutes),
+                locked_until=now + timedelta(minutes=lockout),
                 failures=0,
                 window_started_at=now,
             )
@@ -412,6 +431,12 @@ def login(
     db.execute(delete(LoginThrottle).where(LoginThrottle.key_hash == user_key))
     if password_needs_rehash(user.password_hash):
         user.password_hash = hash_password(password)
+    return _start_session(db, settings, user, now, context)
+
+
+def _start_session(
+    db: Session, settings: Settings, user: User, now: datetime, context: RequestContext
+) -> AuthenticatedUser:
     user.last_login_at = now
     token = new_token()
     session = UserSession(
@@ -502,6 +527,67 @@ def revoke_all_sessions(
     )
     db.commit()
     return count
+
+
+# ---------------------------------------------------------------- public sign-up
+
+
+def signup(
+    db: Session,
+    settings: Settings,
+    *,
+    username: str,
+    display_name: str,
+    password: str,
+    preferred_locale: str,
+    context: RequestContext,
+) -> AuthenticatedUser:
+    """Makes a contributor account and signs it in (ADR-028). Other roles still come from an
+    admin, by invitation or by a role grant."""
+    if not settings.open_signup:
+        raise ApiError(404, "signup_closed", "Sign-up is closed. Ask the team for an invitation.")
+    now = utcnow()
+    limits = (
+        {
+            keyed_hash(
+                settings.secret_key.get_secret_value(), "signup-ip", context.ip_hash
+            ): settings.signup_max_per_ip
+        }
+        if context.ip_hash
+        else {}
+    )
+    _raise_if_locked(
+        db,
+        list(limits),
+        now,
+        code="signup_limited",
+        message="Too many new accounts from this network. Try again later.",
+    )
+    user = create_user(
+        db,
+        username=username,
+        display_name=display_name,
+        password=password,
+        preferred_locale=preferred_locale,
+    )
+    db.add(UserRole(user_id=user.id, role="contributor", granted_at=now))
+    _record_failure(
+        db,
+        settings,
+        limits,
+        now,
+        window_minutes=settings.signup_window_minutes,
+        lockout_minutes=settings.signup_window_minutes,
+    )
+    audit.record(
+        db,
+        action="auth.signup",
+        context=context,
+        actor_user_id=user.id,
+        target_type="user",
+        target_id=user.id,
+    )
+    return _start_session(db, settings, user, now, context)
 
 
 # ---------------------------------------------------------------- invitations
