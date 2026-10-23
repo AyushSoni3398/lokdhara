@@ -26,7 +26,10 @@ import type {
   Script,
   ServiceStatus,
   Session,
+  SignupRequest,
   Speaker,
+  SpeakerIdentity,
+  SpeakerUpdate,
   Submission,
   SubmissionCreate,
   SubmissionDetail,
@@ -41,6 +44,15 @@ export const login = (username: string, password: string, code?: string) =>
   request<Session>("POST", "/auth/login", {
     json: { username, password, code: code || null },
   });
+/** Anyone may make a contributor account; the reply is a signed-in session (ADR-028). */
+export const signup = (body: SignupRequest) =>
+  request<Session>("POST", "/auth/signup", { json: body });
+export const acceptInvitation = (token: string, body: SignupRequest) =>
+  request<unknown>("POST", "/auth/invitations/accept", {
+    json: { token, ...body },
+  });
+export const resetPassword = (token: string, password: string) =>
+  request<void>("POST", "/auth/password-reset", { json: { token, password } });
 export const startMfaSetup = () => request<MfaSetup>("POST", "/auth/mfa/setup");
 export const confirmMfa = (code: string) =>
   request<{ recovery_codes: string[] }>("POST", "/auth/mfa/confirm", {
@@ -57,6 +69,14 @@ export const createSpeaker = (forSelf: boolean) =>
   request<Speaker>("POST", "/speakers", { json: { for_self: forSelf } });
 export const getSpeaker = (id: string) =>
   request<Speaker>("GET", `/speakers/${id}`);
+export const updateSpeaker = (id: string, changes: SpeakerUpdate) =>
+  request<Speaker>("PATCH", `/speakers/${id}`, { json: changes });
+export const getSpeakerIdentity = (id: string) =>
+  request<SpeakerIdentity>("GET", `/speakers/${id}/identity`);
+export const putSpeakerIdentity = (id: string, identity: SpeakerIdentity) =>
+  request<SpeakerIdentity>("PUT", `/speakers/${id}/identity`, {
+    json: identity,
+  });
 /** Admins: every speaker, for logging a request someone made by phone or in person. */
 export const listAllSpeakers = () =>
   request<{ items: Speaker[] }>("GET", "/speakers?mine=false").then(

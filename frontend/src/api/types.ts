@@ -17,6 +17,8 @@ export interface MfaSetup {
   qr_svg: string
 }
 
+export type AgeBand = '18-29' | '30-44' | '45-59' | '60+' | 'under_18' | 'undisclosed'
+
 export interface Speaker {
   id: string
   speaker_code: string
@@ -24,6 +26,34 @@ export interface Speaker {
   status: string
   has_active_consent: boolean
   dialect_label: string | null
+  demographics_consented?: boolean
+  age_band?: AgeBand | null
+  gender_self_described?: string | null
+  first_language?: string | null
+  region_coarse?: string | null
+}
+
+/** Fields a speaker may change on their profile; demographics need their consent. */
+export type SpeakerUpdate = Partial<
+  Pick<
+    Speaker,
+    'dialect_label' | 'age_band' | 'gender_self_described' | 'first_language' | 'region_coarse'
+  >
+>
+
+/** Restricted details: only the speaker, their facilitator and admins read them. */
+export interface SpeakerIdentity {
+  full_name: string | null
+  contact: string | null
+  village: string | null
+  notes: string | null
+}
+
+export interface SignupRequest {
+  username: string
+  display_name: string
+  password: string
+  locale: 'hi' | 'en'
 }
 
 export interface ConsentForm {
@@ -48,6 +78,8 @@ export interface ConsentAnswers {
   allow_commercial_use: boolean
   attribution_preference: Attribution
   demographics_consented: boolean
+  guardian_involved?: boolean
+  guardian_relationship?: string
 }
 
 export type PromptType = 'image' | 'situation' | 'read_sentence'
