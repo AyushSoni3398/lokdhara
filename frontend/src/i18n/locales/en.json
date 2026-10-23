@@ -746,5 +746,30 @@
     "saved": "Saved.",
     "finish": "Save and start",
     "later": "Skip for now"
+  },
+  "users": {
+    "link": "People and accounts",
+    "title": "People and accounts",
+    "forgotTitle": "Someone forgot their password",
+    "forgotIntro": "First make sure the request really comes from the account owner, for example in person or through their facilitator. Then find the account and make a reset link.",
+    "search": "Username or name",
+    "find": "Find",
+    "none": "No account matches.",
+    "makeReset": "Make reset link",
+    "confirmReset": "Make a password reset link for {{username}}? Anyone with the link can set a new password.",
+    "linkOnce": "Copy this link now and send it only to this person. It is shown once and works once.",
+    "expires": "Works until {{when}}.",
+    "inviteTitle": "Invite team members",
+    "inviteIntro": "Anyone can sign up as a contributor. Facilitators, reviewers, researchers and admins join through an invitation link.",
+    "role": "Role",
+    "makeInvite": "Make invitation link",
+    "linkLabel": "One-time link"
+  },
+  "roles": {
+    "contributor": "Contributor",
+    "facilitator": "Facilitator",
+    "reviewer": "Reviewer",
+    "researcher": "Researcher",
+    "admin": "Admin"
   }
 }
