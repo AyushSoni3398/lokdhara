@@ -121,6 +121,12 @@ class Settings(BaseSettings):
     login_window_minutes: int = Field(default=15, gt=0)
     login_lockout_minutes: int = Field(default=15, gt=0)
 
+    # Public sign-up (ADR-028): anyone may make a contributor account. Facilitators often sign
+    # people up on one shared network, so the per-network limit is generous.
+    open_signup: bool = True
+    signup_max_per_ip: int = Field(default=20, gt=0)
+    signup_window_minutes: int = Field(default=60, gt=0)
+
     @property
     def is_local(self) -> bool:
         return self.env in ("development", "test")
