@@ -26,6 +26,11 @@ export function HomePage() {
           <span aria-hidden="true">📋</span> {t('home.mySubmissions')}
           {waiting > 0 && <span className="badge">{t('home.onDevice', { count: waiting })}</span>}
         </Link>
+        {hasRole(session, 'contributor', 'facilitator', 'reviewer', 'admin') && (
+          <Link to="/account/profile" className="action">
+            <span aria-hidden="true">👤</span> {t('profile.link')}
+          </Link>
+        )}
         {hasRole(session, 'researcher', 'admin') && (
           <Link to="/catalogue" className="action">
             <span aria-hidden="true">🔎</span> {t('catalogue.link')}
