@@ -55,8 +55,12 @@ def can_act_for(user: AuthenticatedUser, speaker: Speaker) -> bool:
 
 
 def can_manage_identity(user: AuthenticatedUser, speaker: Speaker) -> bool:
-    return user.has_role("admin") or (
-        speaker.created_by == user.id and user.has_role("facilitator")
+    """Admins, the facilitator who registered the speaker, and the speakers themselves, who
+    fill in their own details when they sign up (ADR-028)."""
+    return (
+        user.has_role("admin")
+        or speaker.linked_user_id == user.id
+        or (speaker.created_by == user.id and user.has_role("facilitator"))
     )
 
 

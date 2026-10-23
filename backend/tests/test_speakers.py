@@ -191,12 +191,18 @@ def test_identity_is_hidden_from_everyone_else(client: TestClient, make_user: Ma
     assert client.get(path).json()["full_name"] == "Synthetic Name"
 
 
-def test_contributors_cannot_read_identity_even_their_own(
+def test_contributors_manage_their_own_identity_only(
     client: TestClient, make_user: MakeUser
 ) -> None:
+    facilitator = make_user("fac", "facilitator")
+    act_as(client, facilitator)
+    other = _create(client, for_self=False)
     act_as(client, make_user("asha", "contributor"))
-    speaker = _create(client, for_self=True)
-    assert client.get(f"{SPEAKERS}/{speaker['id']}/identity").status_code == 403
+    own = _create(client, for_self=True)
+    path = f"{SPEAKERS}/{own['id']}/identity"
+    assert client.put(path, json={"full_name": "Synthetic Self"}).status_code == 200
+    assert client.get(path).json()["full_name"] == "Synthetic Self"
+    assert client.get(f"{SPEAKERS}/{other['id']}/identity").status_code in (403, 404)
 
 
 def test_identity_put_replaces_all_fields(client: TestClient, make_user: MakeUser) -> None:
