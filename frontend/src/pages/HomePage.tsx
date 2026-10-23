@@ -61,6 +61,11 @@ export function HomePage() {
             <span aria-hidden="true">↩️</span> {t('adminWithdrawals.link')}
           </Link>
         )}
+        {hasRole(session, 'admin') && (
+          <Link to="/admin/users" className="action">
+            <span aria-hidden="true">👥</span> {t('users.link')}
+          </Link>
+        )}
       </div>
     </section>
   )

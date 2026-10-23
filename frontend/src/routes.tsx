@@ -4,6 +4,7 @@ import type { RouteObject } from 'react-router'
 import { RequireAuth } from './auth/session'
 import { Layout } from './components/Layout'
 import { AdminStatusPage } from './pages/AdminStatusPage'
+import { AdminUsersPage } from './pages/AdminUsersPage'
 import { AdminWithdrawalsPage } from './pages/AdminWithdrawalsPage'
 import { CataloguePage } from './pages/CataloguePage'
 import { ChooseSpeakerPage } from './pages/ChooseSpeakerPage'
@@ -57,6 +58,7 @@ export const routes: RouteObject[] = [
       { path: 'admin/jobs', element: signedIn(<FailedJobsPage />) },
       { path: 'admin/reports', element: signedIn(<ReportsPage />) },
       { path: 'admin/withdrawals', element: signedIn(<AdminWithdrawalsPage />) },
+      { path: 'admin/users', element: signedIn(<AdminUsersPage />) },
       { path: '*', element: <NotFoundPage /> },
     ],
   },
