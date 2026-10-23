@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from app.config import Settings
 from app.modules.audit.models import AuditEvent
 from app.modules.speakers.models import Speaker, SpeakerIdentity
 from tests.conftest import MakeUser, TestUser, act_as, requires_postgres
@@ -123,14 +124,16 @@ def test_demographics_need_the_speakers_consent(
     assert (changed.json()["age_band"], changed.json()["first_language"]) == ("30-44", "unr")
 
 
-def test_minors_are_not_recorded_in_the_pilot(
-    client: TestClient, make_user: MakeUser, db: Session
+def test_minors_can_be_turned_off(
+    client: TestClient, make_user: MakeUser, db: Session, settings: Settings
 ) -> None:
     act_as(client, make_user("ravi", "facilitator"))
     speaker = _create(client, for_self=False)
     _allow_demographics(db, speaker["id"])
-    response = client.patch(f"{SPEAKERS}/{speaker['id']}", json={"age_band": "under_18"})
-    assert response.json()["code"] == "minors_not_enabled"
+    path = f"{SPEAKERS}/{speaker['id']}"
+    assert client.patch(path, json={"age_band": "under_18"}).status_code == 200
+    settings.allow_minors = False
+    assert client.patch(path, json={"age_band": "under_18"}).json()["code"] == "minors_not_enabled"
 
 
 def test_only_the_people_acting_for_a_speaker_may_edit(
@@ -191,12 +194,18 @@ def test_identity_is_hidden_from_everyone_else(client: TestClient, make_user: Ma
     assert client.get(path).json()["full_name"] == "Synthetic Name"
 
 
-def test_contributors_cannot_read_identity_even_their_own(
+def test_contributors_manage_their_own_identity_only(
     client: TestClient, make_user: MakeUser
 ) -> None:
+    facilitator = make_user("fac", "facilitator")
+    act_as(client, facilitator)
+    other = _create(client, for_self=False)
     act_as(client, make_user("asha", "contributor"))
-    speaker = _create(client, for_self=True)
-    assert client.get(f"{SPEAKERS}/{speaker['id']}/identity").status_code == 403
+    own = _create(client, for_self=True)
+    path = f"{SPEAKERS}/{own['id']}/identity"
+    assert client.put(path, json={"full_name": "Synthetic Self"}).status_code == 200
+    assert client.get(path).json()["full_name"] == "Synthetic Self"
+    assert client.get(f"{SPEAKERS}/{other['id']}/identity").status_code in (403, 404)
 
 
 def test_identity_put_replaces_all_fields(client: TestClient, make_user: MakeUser) -> None:

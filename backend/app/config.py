@@ -75,8 +75,9 @@ class Settings(BaseSettings):
 
     # Consent capture (docs/CONSENT_AND_DATA_GOVERNANCE.md §3)
     consent_evidence_max_bytes: int = Field(default=25 * 1024 * 1024, gt=0)
-    # No minors in the pilot until Q-L4 is answered; the schema already supports guardians.
-    allow_minors: bool = False
+    # People under 18 may take part, with a parent or guardian agreeing alongside them
+    # (owner's decision 2026-10-23, Q-L4). Set false to stop collecting from minors.
+    allow_minors: bool = True
 
     # Dataset releases (docs/DATASET_VERSIONING.md). Releases other than internal research
     # also need governance answers (Q-G1, Q-G5, Q-L5); until they are recorded they cannot be
@@ -120,6 +121,12 @@ class Settings(BaseSettings):
     login_max_failures_per_ip: int = Field(default=20, gt=0)
     login_window_minutes: int = Field(default=15, gt=0)
     login_lockout_minutes: int = Field(default=15, gt=0)
+
+    # Public sign-up (ADR-028): anyone may make a contributor account. Facilitators often sign
+    # people up on one shared network, so the per-network limit is generous.
+    open_signup: bool = True
+    signup_max_per_ip: int = Field(default=20, gt=0)
+    signup_window_minutes: int = Field(default=60, gt=0)
 
     @property
     def is_local(self) -> bool:

@@ -1,6 +1,7 @@
 /** One function per API call the app makes. */
 import { API_BASE, request } from "./client";
 import type {
+  AdminUser,
   CatalogueItem,
   CatalogueQuery,
   ConsentAnswers,
@@ -23,10 +24,14 @@ import type {
   ReportReason,
   Restriction,
   Revision,
+  Role,
   Script,
   ServiceStatus,
   Session,
+  SignupRequest,
   Speaker,
+  SpeakerIdentity,
+  SpeakerUpdate,
   Submission,
   SubmissionCreate,
   SubmissionDetail,
@@ -41,6 +46,33 @@ export const login = (username: string, password: string, code?: string) =>
   request<Session>("POST", "/auth/login", {
     json: { username, password, code: code || null },
   });
+/** Anyone may make a contributor account; the reply is a signed-in session (ADR-028). */
+export const signup = (body: SignupRequest) =>
+  request<Session>("POST", "/auth/signup", { json: body });
+export const acceptInvitation = (token: string, body: SignupRequest) =>
+  request<unknown>("POST", "/auth/invitations/accept", {
+    json: { token, ...body },
+  });
+export const resetPassword = (token: string, password: string) =>
+  request<void>("POST", "/auth/password-reset", { json: { token, password } });
+/** Admins: find an account, then make a one-time reset link for its owner. */
+export const findUsers = (query: string) =>
+  request<{ items: AdminUser[] }>(
+    "GET",
+    `/admin/users?q=${encodeURIComponent(query)}`,
+  ).then((r) => r.items);
+export const createPasswordReset = (userId: string) =>
+  request<{ reset_url: string; expires_at: string }>(
+    "POST",
+    `/admin/users/${userId}/password-reset`,
+  );
+/** Admins: an invitation link for a staff role (sign-up gives only contributor). */
+export const createInvitation = (role: Role) =>
+  request<{ invite_url: string; expires_at: string }>(
+    "POST",
+    "/auth/invitations",
+    { json: { role } },
+  );
 export const startMfaSetup = () => request<MfaSetup>("POST", "/auth/mfa/setup");
 export const confirmMfa = (code: string) =>
   request<{ recovery_codes: string[] }>("POST", "/auth/mfa/confirm", {
@@ -57,6 +89,14 @@ export const createSpeaker = (forSelf: boolean) =>
   request<Speaker>("POST", "/speakers", { json: { for_self: forSelf } });
 export const getSpeaker = (id: string) =>
   request<Speaker>("GET", `/speakers/${id}`);
+export const updateSpeaker = (id: string, changes: SpeakerUpdate) =>
+  request<Speaker>("PATCH", `/speakers/${id}`, { json: changes });
+export const getSpeakerIdentity = (id: string) =>
+  request<SpeakerIdentity>("GET", `/speakers/${id}/identity`);
+export const putSpeakerIdentity = (id: string, identity: SpeakerIdentity) =>
+  request<SpeakerIdentity>("PUT", `/speakers/${id}/identity`, {
+    json: identity,
+  });
 /** Admins: every speaker, for logging a request someone made by phone or in person. */
 export const listAllSpeakers = () =>
   request<{ items: Speaker[] }>("GET", "/speakers?mine=false").then(

@@ -41,6 +41,9 @@ export function ConsentPage() {
   const [method, setMethod] = useState<ConsentMethod>('in_app')
   const [paperReference, setPaperReference] = useState('')
   const [evidence, setEvidence] = useState<DraftAudio | undefined>()
+  // Under 18: a parent or guardian agrees together with the speaker (Q-L4).
+  const [minor, setMinor] = useState(false)
+  const [guardian, setGuardian] = useState('')
   const [error, setError] = useState<unknown>(null)
   const [busy, setBusy] = useState(false)
   const language = i18n.resolvedLanguage ?? 'hi'
@@ -80,7 +83,13 @@ export function ConsentPage() {
 
   const missingEvidence = method === 'oral_recorded' && !evidence
   const missingReference = method === 'paper_reference' && !paperReference.trim()
-  const canSave = answers.allow_store_and_review && !missingEvidence && !missingReference && !busy
+  const missingGuardian = minor && !guardian.trim()
+  const canSave =
+    answers.allow_store_and_review &&
+    !missingEvidence &&
+    !missingReference &&
+    !missingGuardian &&
+    !busy
 
   const save = async (event: FormEvent) => {
     event.preventDefault()
@@ -92,6 +101,7 @@ export function ConsentPage() {
       ...answers,
       attribution_preference: attribution,
       ...(method === 'paper_reference' ? { paper_reference: paperReference.trim() } : {}),
+      ...(minor ? { guardian_involved: true, guardian_relationship: guardian.trim() } : {}),
     }
     try {
       await api.recordConsent(
@@ -125,6 +135,30 @@ export function ConsentPage() {
           value={attribution}
           onChange={setAttribution}
         />
+        <Choice
+          name="minor"
+          legend={t('consent.minor.legend')}
+          options={[
+            { value: 'no', label: t('consent.no') },
+            { value: 'yes', label: t('consent.yes') },
+          ]}
+          value={minor ? 'yes' : 'no'}
+          onChange={(value) => setMinor(value === 'yes')}
+        />
+        {minor && (
+          <>
+            <p className="note">{t('consent.minor.hint')}</p>
+            <label>
+              {t('consent.minor.relationship')}
+              <input
+                value={guardian}
+                onChange={(e) => setGuardian(e.target.value)}
+                maxLength={60}
+                required
+              />
+            </label>
+          </>
+        )}
         {!speaker.is_self && (
           <Choice
             name="method"

@@ -152,13 +152,19 @@ def test_withdrawing_the_demographics_answer_erases_demographics(
     assert (speaker["age_band"], speaker["region_coarse"]) == (None, None)
 
 
-def test_guardian_consent_waits_for_the_minors_policy(
-    client: TestClient, speaker_id: str, form_id: str
+def test_guardian_consent_is_accepted_unless_minors_are_turned_off(
+    client: TestClient, speaker_id: str, form_id: str, settings: Settings
 ) -> None:
+    settings.allow_minors = False
     response = _consent(
         client, speaker_id, form_id, guardian_involved=True, guardian_relationship="mother"
     )
     assert response.json()["code"] == "minors_not_enabled"
+    settings.allow_minors = True
+    response = _consent(
+        client, speaker_id, form_id, guardian_involved=True, guardian_relationship="mother"
+    )
+    assert response.status_code == 201, response.text
 
 
 def test_paper_consent_needs_its_reference(

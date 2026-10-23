@@ -2,6 +2,25 @@
 
 Status: **Draft** · Describes MVP flows at the level needed for API and UI design. Screen designs come in Milestone 3.
 
+## F0 — Sign up and profile (ADR-028)
+
+```mermaid
+flowchart TD
+    A[Open Lokdhara] --> B{Have an account?}
+    B -->|No| C[Sign up: name, username, password]
+    B -->|Yes| D[Sign in]
+    B -->|Forgot password| E[Ask a coordinator<br/>admin sends a one-time reset link]
+    C --> F[Own speaker profile made]
+    F --> G[Consent flow F2, asked once]
+    G --> H[My profile: name, phone, village<br/>dialect; age group, gender, language, area<br/>only if agreed to share]
+    H --> I[Home]
+    D --> I
+```
+
+- Sign-up makes a **contributor**. Facilitators, reviewers, researchers and admins join by an invitation link an admin makes on **People and accounts**.
+- The profile is asked once and can be changed from **My profile**. New recordings start with its dialect and area filled in.
+- At most 20 accounts per network per hour, to slow down spam.
+
 ## F1 — Contribution (main flow)
 
 ```mermaid
@@ -20,7 +39,7 @@ flowchart TD
     H --> J[Optional: add transcription]
     I --> K[Optional: add Hindi / English translation]
     J --> K
-    K --> L[Metadata: content type, dialect/region as reported, context, date]
+    K --> L[Metadata: content type, dialect/region<br/>filled in from the profile, context, date]
     L --> M[Review summary screen]
     M --> N[Save draft on device]
     N --> O[Upload]

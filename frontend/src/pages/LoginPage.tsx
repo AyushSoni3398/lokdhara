@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Navigate, useLocation, useNavigate } from 'react-router'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 
 import { errorCode } from '../api/client'
 import { useAuth } from '../auth/session'
@@ -40,7 +40,9 @@ export function LoginPage() {
   return (
     <section>
       <h1>{t('login.title')}</h1>
-      <p className="note">{t('login.inviteOnly')}</p>
+      <p className="note">
+        {t('login.newHere')} <Link to="/signup">{t('signup.title')}</Link>
+      </p>
       <form className="form" onSubmit={(event) => void submit(event)}>
         <label>
           {t('login.username')}
@@ -85,6 +87,9 @@ export function LoginPage() {
           {t('login.submit')}
         </button>
       </form>
+      <p>
+        <Link to="/forgot-password">{t('login.forgot')}</Link>
+      </p>
     </section>
   )
 }

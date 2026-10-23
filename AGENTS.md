@@ -4,7 +4,7 @@
 
 Lokdhara is a community-driven, research-oriented platform for preserving and digitising the **Mundari language** (ISO 639-3 `unr`, Jharkhand, India): consented audio recordings, Mundari text, transcriptions, Hindi/English translations, review, and versioned, consent-filtered research datasets.
 
-**MVP = language preservation only.** Do not add general cultural-heritage features (recipes, artefacts, traditions), ASR/MT, public browsing, or open sign-up. Scope: `docs/MVP_SCOPE.md`.
+**MVP = language preservation only.** Do not add general cultural-heritage features (recipes, artefacts, traditions), ASR/MT, or public browsing. Public sign-up for contributors exists (ADR-028); staff roles come only from admins. Scope: `docs/MVP_SCOPE.md`.
 
 ## Current phase
 

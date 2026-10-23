@@ -13,7 +13,7 @@ ADRs 001–019 were **Accepted** by the project owner on 2026-10-11 (ADR-019 aft
 | 005 | PostgreSQL 18 as the single system of record | Accepted |
 | 006 | S3-compatible object storage behind an interface | Accepted |
 | 007 | PostgreSQL-backed job queue, no message broker | Accepted |
-| 008 | Invite-only accounts with server-side sessions | Accepted |
+| 008 | Invite-only accounts with server-side sessions | Accepted; sign-up part superseded by ADR-028 |
 | 009 | Originals are immutable; all processing creates derived artefacts | Accepted |
 | 010 | Text stored verbatim; normalisation only in derived fields | Accepted |
 | 011 | Text layers are append-only revisions with provenance | Accepted |
@@ -29,6 +29,7 @@ ADRs 001–019 were **Accepted** by the project owner on 2026-10-11 (ADR-019 aft
 | 021 | No human reviewer: submissions are accepted after automatic checks and their text stays unverified | Accepted |
 | 022 | Withdrawals: a separate module, deletion right after an admin accepts, PATCH releases only from the replaced release | Proposed |
 | 026 | Contributors download listening copies of their own recordings, one at a time or all as a zip | Proposed |
+| 028 | Public sign-up for contributors; profile and consent asked once; minors with a guardian | Proposed |
 
 ---
 
@@ -261,3 +262,18 @@ ADRs 001–019 were **Accepted** by the project owner on 2026-10-11 (ADR-019 aft
 - **Alternatives:** Build the archive with a job into the exports bucket (survives a dropped connection, but more moving parts and a second copy of everything on the server); keep dataset releases as the only way out (leaves no way to get originals or names); keep two-person export approval (safer against one compromised admin account, but the pilot may have only one admin).
 - **Consequences:** One admin account can now take every name, contact and recording, and approve exports alone; two-step sign-in (ADR-025) and the audit log are the remaining guards. A downloaded archive is outside the withdrawal routine: the README in the zip says to delete a withdrawing speaker's data from saved copies, and admins must do so. Data erased by a completed withdrawal is gone and cannot be in an archive. A very large archive (hundreds of GB) can take hours over one connection and does not resume.
 - **Revisit when:** the professor answers the governance questions (Q-L1 to Q-L4, Q-G9), there are several admins, or the archive outgrows one download.
+
+## ADR-028 — Public sign-up for contributors; profile and consent asked once; minors with a guardian
+
+- **Status:** Proposed (decided by the project owner on 2026-10-23; awaiting the professor's view on governance). Supersedes the invite-only part of ADR-008 for contributors; sessions, password hashing and throttling stay as ADR-008 says.
+- **Context:** The project owner wants Lokdhara to work like a normal app: anyone can make an account, sign in and out, and give their details once instead of on every upload. Invite-only accounts also had no screens yet (the invitation and reset links opened "not found"). Speaker details and consent were already kept per speaker, but a contributor could not fill in their own name, phone or village, and every recording asked for dialect and area again.
+- **Decision:**
+  - `POST /auth/signup` (public) makes an account with the **contributor** role only and signs it in. It takes a username, display name, password and language, like an invitation; no email or phone is needed, because many contributors use neither, and SMS codes cost money and store phone numbers (owner's choice, 2026-10-23). Staff roles still come by invitation or by an admin's grant.
+  - Spam guard: at most `LKD_SIGNUP_MAX_PER_IP` (20) new accounts per client network in `LKD_SIGNUP_WINDOW_MINUTES` (60), counted in the `login_throttle` table under a keyed hash of the network; `429 signup_limited` after that. `LKD_OPEN_SIGNUP=false` closes sign-up (`404 signup_closed`).
+  - After sign-up the app makes the person's own speaker profile, asks for consent, then shows **My profile**: name, phone and village (restricted identity, encrypted; ACCESS_CONTROL §2 now lets speakers read and edit their own) and, only if they agreed to share demographics, age group, gender, first language and area. Dialect needs no extra consent. New recordings start with the speaker's dialect and area filled in; they can be changed per recording.
+  - **Minors take part** (owner's decision, 2026-10-23; `LKD_ALLOW_MINORS=true`). The consent screen asks whether the speaker is under 18; if so a parent or guardian agrees with them and their relationship is recorded (`guardian_involved`, `guardian_relationship`). The `minor` flag still hides an item from the catalogue when an admin sets it after a report.
+  - Forgotten passwords: there is no self-service reset, since accounts have no verified email or phone. The sign-in page says to ask a coordinator; an admin finds the account on **People and accounts** (`GET /admin/users?q=`) and makes a one-time reset link. The same page makes staff invitation links.
+- **Alternatives:** Phone number + SMS code (familiar, but costs per message, needs a paid provider and stores phone numbers; SIM-swap risk); email + password (easy resets, but many contributors do not use email); keep invite-only (no spam, but every contributor needs an admin first); a CAPTCHA (an outside service or a puzzle hard for elders on slow phones).
+- **Consequences:** Strangers can now send recordings straight into the collection, and there is no human reviewer (ADR-021): reports and admin hiding are the only checks on content, and spam accounts are limited only per network. Accounts made at a shared connection count together, so a big field session may hit the limit; raise it in the settings. The DPDP Rules 2025 call for verifiable parental consent for children's data; the app records that a guardian agreed but cannot verify who they are, so Q-L4 stays open for the professor and institution. Losing a password always needs an admin.
+- **Revisit when:** spam or abusive recordings appear, the professor or ethics committee rules on minors (Q-L4) or on open sign-up, or contributors start using email or phone numbers that could verify a reset.
+

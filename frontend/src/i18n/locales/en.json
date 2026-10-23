@@ -21,12 +21,13 @@
   },
   "login": {
     "title": "Sign in",
-    "inviteOnly": "Lokdhara is by invitation. Ask your coordinator for an account.",
     "username": "Username",
     "password": "Password",
     "submit": "Sign in",
     "code": "Code from your authenticator app",
-    "codeHint": "Two-step sign-in is on for this account. Enter the 6-digit code your authenticator app shows now, or one of your recovery codes."
+    "codeHint": "Two-step sign-in is on for this account. Enter the 6-digit code your authenticator app shows now, or one of your recovery codes.",
+    "newHere": "New here?",
+    "forgot": "Forgot your password?"
   },
   "twoStep": {
     "title": "Two-step sign-in",
@@ -81,7 +82,12 @@
     },
     "oralHint": "Record the speaker answering the questions aloud. This recording is kept separately and is never part of the collection.",
     "paperReference": "Paper form reference number",
-    "save": "Save consent"
+    "save": "Save consent",
+    "minor": {
+      "legend": "Is this person under 18?",
+      "hint": "A parent or guardian must read this form and agree together with them.",
+      "relationship": "Who is the parent or guardian? (for example: mother)"
+    }
   },
   "record": {
     "recording": "Recording",
@@ -314,7 +320,15 @@
     "submission_not_found": "This item could not be found. It may have been taken back.",
     "invalid_mfa_code": "That code is not right. Enter the newest code from the app.",
     "mfa_already_enabled": "Two-step sign-in is already on.",
-    "mfa_not_started": "Start setting up two-step sign-in first."
+    "mfa_not_started": "Start setting up two-step sign-in first.",
+    "passwords_differ": "The two passwords are not the same.",
+    "username_taken": "This username is already taken. Try another.",
+    "weak_password": "The password needs at least 10 characters and must not contain your username.",
+    "signup_limited": "Too many new accounts from this network. Please try again in an hour.",
+    "signup_closed": "New accounts are closed right now. Ask the team for an invitation.",
+    "invitation_invalid": "This invitation link does not work. It may be used or expired; ask for a new one.",
+    "reset_invalid": "This link does not work. It may be used or expired; ask for a new one.",
+    "demographics_not_consented": "Age group, area and languages can only be saved if you agreed to share them."
   },
   "status": {
     "title": "Service status",
@@ -664,5 +678,98 @@
     "romanLabel": "Type in Roman letters",
     "romanAdd": "Add to text",
     "romanHint": "Examples: naam → नाम, kitaab → किताब. Capitals for ट ठ ड ढ ण ष (T, Th, D, Dh, N, Sh), M for ं, .n for ँ. Type a between letters to keep them apart."
+  },
+  "signup": {
+    "title": "Create an account",
+    "intro": "Anyone can join Lokdhara to share Mundari speech and text. You need no email or phone number.",
+    "displayName": "Your name as others see it",
+    "displayNameHint": "You can use a nickname.",
+    "usernameHint": "3 to 40 letters or numbers; you use it to sign in. Write it down.",
+    "passwordHint_one": "At least {{count}} character, and not your username.",
+    "passwordHint_other": "At least {{count}} characters, and not your username.",
+    "repeat": "Type the password again",
+    "submit": "Create account",
+    "haveAccount": "Already have an account?"
+  },
+  "invite": {
+    "title": "Accept your invitation",
+    "intro": "Choose a username and password for your new account."
+  },
+  "reset": {
+    "title": "Choose a new password",
+    "newPassword": "New password",
+    "submit": "Save new password",
+    "done": "Your password is changed. You are signed out on every phone and computer."
+  },
+  "forgot": {
+    "title": "Forgot your password?",
+    "body": "Ask your coordinator or the Lokdhara team. After checking that the account is yours, they send you a link to choose a new password. The link works once.",
+    "username": "Tell them your username. They never need your old password."
+  },
+  "profile": {
+    "link": "My profile",
+    "title": "My profile",
+    "setupTitle": "Tell us about yourself",
+    "intro": "You fill this in once. Every recording you make for yourself uses it, and you can change it here any time.",
+    "private": "Private details",
+    "privateHint": "Only you and the project admins can see these. They are stored encrypted and never put in datasets.",
+    "fullName": "Full name (optional)",
+    "contact": "Phone number (optional)",
+    "contactHint": "Only used to contact you about your recordings.",
+    "village": "Village or town (optional)",
+    "aboutVoice": "About your speech",
+    "reusedHint": "Filled in for each new recording; you can change it there.",
+    "ageBand": "Age group",
+    "ages": {
+      "under_18": "Under 18",
+      "18-29": "18 to 29",
+      "30-44": "30 to 44",
+      "45-59": "45 to 59",
+      "60+": "60 or older",
+      "undisclosed": "Prefer not to say"
+    },
+    "gender": "Gender (optional)",
+    "genderHint": "In your own words.",
+    "firstLanguage": "First language",
+    "languages": {
+      "unr": "Mundari",
+      "hi": "Hindi",
+      "sck": "Sadri / Nagpuri",
+      "sat": "Santali",
+      "kru": "Kurukh",
+      "en": "English"
+    },
+    "notSaid": "Not given",
+    "noDemographics": "You chose not to share your age group, area and languages, so they are not asked.",
+    "changeConsent": "Change my consent",
+    "save": "Save",
+    "saved": "Saved.",
+    "finish": "Save and start",
+    "later": "Skip for now"
+  },
+  "users": {
+    "link": "People and accounts",
+    "title": "People and accounts",
+    "forgotTitle": "Someone forgot their password",
+    "forgotIntro": "First make sure the request really comes from the account owner, for example in person or through their facilitator. Then find the account and make a reset link.",
+    "search": "Username or name",
+    "find": "Find",
+    "none": "No account matches.",
+    "makeReset": "Make reset link",
+    "confirmReset": "Make a password reset link for {{username}}? Anyone with the link can set a new password.",
+    "linkOnce": "Copy this link now and send it only to this person. It is shown once and works once.",
+    "expires": "Works until {{when}}.",
+    "inviteTitle": "Invite team members",
+    "inviteIntro": "Anyone can sign up as a contributor. Facilitators, reviewers, researchers and admins join through an invitation link.",
+    "role": "Role",
+    "makeInvite": "Make invitation link",
+    "linkLabel": "One-time link"
+  },
+  "roles": {
+    "contributor": "Contributor",
+    "facilitator": "Facilitator",
+    "reviewer": "Reviewer",
+    "researcher": "Researcher",
+    "admin": "Admin"
   }
 }

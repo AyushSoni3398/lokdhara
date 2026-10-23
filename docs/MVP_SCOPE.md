@@ -4,13 +4,13 @@ Status: **Draft for approval**
 
 ## The one-sentence MVP
 
-> An invite-only web app where facilitators and contributors submit consented Mundari audio and text, automatic checks accept it with its text labelled unverified, administrators hide anything reported, and authorised researchers build versioned, consent-filtered datasets from accepted items.
+> A web app, open to anyone who signs up, where facilitators and contributors submit consented Mundari audio and text, automatic checks accept it with its text labelled unverified, administrators hide anything reported, and authorised researchers build versioned, consent-filtered datasets from accepted items.
 
 ## In scope
 
 | Area | Included in MVP | Requirement IDs |
 |------|-----------------|-----------------|
-| Accounts | Invite-only accounts, five roles, admin-assisted password reset | FR-A1–A5 |
+| Accounts | Public sign-up for contributors, invitations for staff roles, five roles, profile asked once, admin-assisted password reset (ADR-028) | FR-A1–A5 |
 | Languages of UI | Hindi and English; strings externalised for Mundari later | FR-A7, NFR-4 |
 | Speakers | Pseudonymous speaker profiles; optional restricted identity details | FR-C1–C2 |
 | Consent | Versioned forms, per-use permissions, three capture methods, guardian consent, withdrawal | FR-C3–C7 |
@@ -29,7 +29,6 @@ Status: **Draft for approval**
 | ASR / automatic transcription | No validated Mundari model; risk of unverified output treated as truth; cost. | After a checked test set exists to evaluate candidates (see ADR-014). |
 | Machine translation | Same as ASR. | Same. |
 | Public anonymous browsing / public website of recordings | Requires community and institutional approval of public access; needs governance first. | After Q-G1/Q-L1 are resolved. |
-| Open self-registration | Abuse and consent-quality risk during pilot. | After moderation capacity is proven. |
 | Native Android/iOS apps | Web app + on-device drafts covers MVP; separate codebase is too costly. | If field testing shows the browser approach fails. |
 | Fully offline-first app (service-worker sync of everything) | Complexity; drafts-on-device covers the main loss case. | Milestone after pilot if needed. |
 | Time-aligned segmentation UI | Valuable but large; schema reserves space. | Post-MVP milestone. |

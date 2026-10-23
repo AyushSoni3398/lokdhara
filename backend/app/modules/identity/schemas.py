@@ -72,6 +72,13 @@ class AcceptInvitationRequest(BaseModel):
     locale: Locale = "hi"
 
 
+class SignupRequest(BaseModel):
+    username: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]{2,39}$")
+    display_name: str = Field(min_length=1, max_length=80)
+    password: str = Password
+    locale: Locale = "hi"
+
+
 class RoleGrantRequest(BaseModel):
     role: Role
     scope: Literal["culturally_restricted"] | None = None
@@ -85,6 +92,20 @@ class PasswordResetOut(BaseModel):
 class PasswordResetUseRequest(BaseModel):
     token: str = Field(min_length=1, max_length=128)
     password: str = Password
+
+
+class AdminUserOut(BaseModel):
+    id: uuid.UUID
+    username: str
+    display_name: str
+    status: str
+    roles: list[GrantOut]
+    created_at: datetime
+    last_login_at: datetime | None
+
+
+class AdminUserListOut(BaseModel):
+    items: list[AdminUserOut]
 
 
 class RevokedSessionsOut(BaseModel):
