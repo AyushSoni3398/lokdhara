@@ -94,5 +94,19 @@ class PasswordResetUseRequest(BaseModel):
     password: str = Password
 
 
+class AdminUserOut(BaseModel):
+    id: uuid.UUID
+    username: str
+    display_name: str
+    status: str
+    roles: list[GrantOut]
+    created_at: datetime
+    last_login_at: datetime | None
+
+
+class AdminUserListOut(BaseModel):
+    items: list[AdminUserOut]
+
+
 class RevokedSessionsOut(BaseModel):
     revoked: int

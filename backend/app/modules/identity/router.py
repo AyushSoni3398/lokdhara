@@ -21,6 +21,8 @@ from app.modules.identity.deps import (
 )
 from app.modules.identity.schemas import (
     AcceptInvitationRequest,
+    AdminUserListOut,
+    AdminUserOut,
     GrantOut,
     InvitationOut,
     InvitationRequest,
@@ -167,6 +169,26 @@ def accept_invitation(body: AcceptInvitationRequest, db: DbSession, context: Con
 @router.post("/auth/password-reset", status_code=status.HTTP_204_NO_CONTENT)
 def use_password_reset(body: PasswordResetUseRequest, db: DbSession, context: Context) -> None:
     service.use_password_reset(db, token=body.token, new_password=body.password, context=context)
+
+
+@router.get("/admin/users")
+def find_users(admin: AdminUser, db: DbSession, q: str = "") -> AdminUserListOut:
+    """Finds accounts by username or display name, e.g. to make a password reset link."""
+    found = service.find_users(db, q[:80])
+    return AdminUserListOut(
+        items=[
+            AdminUserOut(
+                id=user.id,
+                username=user.username,
+                display_name=user.display_name,
+                status=user.status,
+                roles=[GrantOut(role=g.role, scope=g.scope) for g in grants],
+                created_at=user.created_at,
+                last_login_at=user.last_login_at,
+            )
+            for user, grants in found
+        ]
+    )
 
 
 @router.post("/admin/users/{user_id}/password-reset", status_code=status.HTTP_201_CREATED)

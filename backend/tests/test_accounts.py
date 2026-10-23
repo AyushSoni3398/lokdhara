@@ -163,3 +163,15 @@ def test_password_reset_changes_password_once_and_signs_out(
         "/api/v1/auth/login", json={"username": "asha", "password": "a brand new passphrase"}
     )
     assert new_login.status_code == 200
+
+
+def test_admins_find_users_to_help_them(client: TestClient, make_user: MakeUser) -> None:
+    _, headers = _admin_session(client, make_user)
+    make_user("asha_m", "contributor")
+    make_user("ravi", "facilitator")
+    found = client.get("/api/v1/admin/users?q=ASHA", headers=headers).json()["items"]
+    assert [u["username"] for u in found] == ["asha_m"]
+    assert found[0]["roles"] == [{"role": "contributor", "scope": None}]
+    assert "password_hash" not in str(found)
+    # "_" is a wildcard in SQL LIKE; here it only matches itself.
+    assert client.get("/api/v1/admin/users?q=s_", headers=headers).json()["items"] == []

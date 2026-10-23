@@ -225,6 +225,22 @@ def create_user(
     return user
 
 
+def find_users(db: Session, query: str, limit: int = 50) -> list[tuple[User, tuple[Grant, ...]]]:
+    """Users whose username or display name contains the query, newest first (admins only:
+    used to make a reset link for someone who forgot their password)."""
+    needle = query.strip().lower()
+    users = db.scalars(
+        select(User)
+        .where(
+            func.lower(User.username).contains(needle, autoescape=True)
+            | func.lower(User.display_name).contains(needle, autoescape=True)
+        )
+        .order_by(User.created_at.desc())
+        .limit(limit)
+    ).all()
+    return [(user, active_grants(db, user.id)) for user in users]
+
+
 # ---------------------------------------------------------------- login throttling
 
 
