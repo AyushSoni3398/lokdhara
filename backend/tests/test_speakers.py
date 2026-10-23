@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from app.config import Settings
 from app.modules.audit.models import AuditEvent
 from app.modules.speakers.models import Speaker, SpeakerIdentity
 from tests.conftest import MakeUser, TestUser, act_as, requires_postgres
@@ -123,14 +124,16 @@ def test_demographics_need_the_speakers_consent(
     assert (changed.json()["age_band"], changed.json()["first_language"]) == ("30-44", "unr")
 
 
-def test_minors_are_not_recorded_in_the_pilot(
-    client: TestClient, make_user: MakeUser, db: Session
+def test_minors_can_be_turned_off(
+    client: TestClient, make_user: MakeUser, db: Session, settings: Settings
 ) -> None:
     act_as(client, make_user("ravi", "facilitator"))
     speaker = _create(client, for_self=False)
     _allow_demographics(db, speaker["id"])
-    response = client.patch(f"{SPEAKERS}/{speaker['id']}", json={"age_band": "under_18"})
-    assert response.json()["code"] == "minors_not_enabled"
+    path = f"{SPEAKERS}/{speaker['id']}"
+    assert client.patch(path, json={"age_band": "under_18"}).status_code == 200
+    settings.allow_minors = False
+    assert client.patch(path, json={"age_band": "under_18"}).json()["code"] == "minors_not_enabled"
 
 
 def test_only_the_people_acting_for_a_speaker_may_edit(
