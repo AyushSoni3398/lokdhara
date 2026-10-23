@@ -356,7 +356,14 @@
     "oldestDue": "Oldest waiting since {{date}}",
     "server": "Server",
     "databaseSize": "Database size: {{size}}",
-    "disk": "Disk {{share}} full"
+    "disk": "Disk {{share}} full",
+    "archive": {
+      "title": "Download everything",
+      "intro": "One zip of all the data: every original recording, all texts, speakers' names and contacts, consent records, and items that are restricted, hidden or waiting for withdrawal. Nothing is filtered. Keep it private and encrypted, and delete a speaker's data from it if they withdraw.",
+      "reason": "Why do you need it? (kept in the audit log; no names)",
+      "needsReason": "Write a reason of at least 10 characters to download.",
+      "download": "Download all data (.zip)"
+    }
   },
   "jobs": {
     "title": "Failed checks",
