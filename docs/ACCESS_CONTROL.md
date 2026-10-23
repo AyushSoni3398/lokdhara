@@ -40,12 +40,13 @@ Roles are additive. Role grants/revocations are audit-logged.
 | Add reviewer revision | ❌ | ❌ | ✅ | ❌ | ✅ |
 | Play playback rendition | 🟡 own | 🟡 own + created | ✅ in queue/restricted per scope | ✅ approved + consent allows research | ✅ |
 | Download listening copy (one, or all as a zip; ADR-026) | 🟡 sent by them, not hidden | 🟡 sent by them, not hidden | 🟡 sent by them, not hidden | ❌ | 🟡 sent by them, not hidden |
-| Download original audio | ❌ | ❌ | ❌ | ❌ | ✅ (audited, reason required) |
+| Download original audio | ❌ | ❌ | ❌ | ❌ | ✅ (audited, reason required; in the full archive, ADR-027) |
+| Download the full archive (all data unfiltered, names included; ADR-027) | ❌ | ❌ | ❌ | ❌ | ✅ (audited, reason required) |
 | Browse the catalogue (accepted, research consent, not hidden) | ❌ | ❌ | ❌ | ✅ | ✅ |
 | Create draft dataset release | ❌ | ❌ | ❌ | ✅ | ✅ |
 | Freeze release | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Request export | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Approve export | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Approve export | ❌ | ❌ | ❌ | ❌ | ✅ (one admin, may be their own request; ADR-027) |
 | Manage users/roles, consent forms | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Process withdrawal | ❌ | ❌ | ❌ | ❌ | ✅ |
 | View audit log | ❌ | ❌ | ❌ | ❌ | ✅ |
