@@ -300,7 +300,6 @@
     "prefreeze_checks_failed": "The release did not pass its checks. Run the checks to see which ones.",
     "export_not_found": "This export request could not be found.",
     "export_decided": "This request has already been decided.",
-    "own_request": "Another admin must decide on your own request.",
     "export_not_ready": "This package is not ready yet.",
     "export_expired": "This package has expired. Ask for a new one.",
     "already_withdrawn": "This has already been taken back.",
@@ -546,7 +545,7 @@
   "exports": {
     "link": "Export requests",
     "title": "Export requests",
-    "intro": "Ask for a package of a frozen release and say what it is for. Another admin decides. A ready package can be downloaded for a few days, then it is deleted.",
+    "intro": "Ask for a package of a frozen release and say what it is for. An admin decides; that can be you. A ready package can be downloaded for a few days, then it is deleted.",
     "none": "No export requests.",
     "request": "Ask for a package",
     "purposeStatement": "What will you use it for?",

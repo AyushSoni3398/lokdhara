@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import i18n from '../i18n'
-import { fakeServer, problem, SESSION } from '../test/fakeServer'
+import { fakeServer, SESSION } from '../test/fakeServer'
 import { renderApp } from '../test/render'
 
 const RESEARCHER = { ...SESSION, roles: [{ role: 'researcher', scope: null }] }
@@ -58,15 +58,17 @@ describe('export requests', () => {
     expect(requests.find((r) => r.method === 'POST')?.body).toEqual({})
   })
 
-  it('explains why an admin cannot approve their own request', async () => {
+  it('lets an admin approve their own request', async () => {
     fakeServer({
       'GET /auth/me': () => ({ body: ADMIN }),
-      'GET /exports': () => ({ body: { items: [REQUEST] } }),
-      'POST /admin/exports/exp1/approve': () => problem(403, 'own_request'),
+      'GET /exports': () => ({ body: { items: [{ ...REQUEST, mine: true }] } }),
+      'POST /admin/exports/exp1/approve': () => ({
+        body: { ...REQUEST, mine: true, status: 'approved' },
+      }),
     })
     renderApp('/exports')
     await userEvent.click(await screen.findByRole('button', { name: 'Approve' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('Another admin must decide')
+    expect(await screen.findByText(/Approved, being prepared/)).toBeInTheDocument()
   })
 
   it('gives the requester a download link with the checksum', async () => {

@@ -95,7 +95,7 @@ function ExportCard({
         </p>
       )}
 
-      {isAdmin && !item.mine && item.status === 'requested' && (
+      {isAdmin && item.status === 'requested' && (
         <>
           <label>
             {t('reports.note')}
