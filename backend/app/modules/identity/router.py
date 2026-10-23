@@ -34,6 +34,7 @@ from app.modules.identity.schemas import (
     Role,
     RoleGrantRequest,
     SessionOut,
+    SignupRequest,
     UserOut,
 )
 from app.modules.identity.service import AuthenticatedUser
@@ -51,6 +52,18 @@ def _session_out(settings: Settings, user: AuthenticatedUser) -> SessionOut:
     )
 
 
+def _set_session_cookie(response: Response, settings: Settings, user: AuthenticatedUser) -> None:
+    response.set_cookie(
+        SESSION_COOKIE,
+        user.session_token,
+        max_age=int(settings.session_absolute_days * 86400),
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+        path="/",
+    )
+
+
 @router.post("/auth/login")
 def login(
     body: LoginRequest, response: Response, db: DbSession, settings: SettingsDep, context: Context
@@ -63,15 +76,29 @@ def login(
         code=body.code,
         context=context,
     )
-    response.set_cookie(
-        SESSION_COOKIE,
-        user.session_token,
-        max_age=int(settings.session_absolute_days * 86400),
-        httponly=True,
-        secure=settings.cookie_secure,
-        samesite="lax",
-        path="/",
+    _set_session_cookie(response, settings, user)
+    return _session_out(settings, user)
+
+
+@router.post("/auth/signup", status_code=status.HTTP_201_CREATED)
+def signup(
+    body: SignupRequest,
+    response: Response,
+    db: DbSession,
+    settings: SettingsDep,
+    context: Context,
+) -> SessionOut:
+    """Anyone may make a contributor account (ADR-028); it is signed in straight away."""
+    user = service.signup(
+        db,
+        settings,
+        username=body.username,
+        display_name=body.display_name,
+        password=body.password,
+        preferred_locale=body.locale,
+        context=context,
     )
+    _set_session_cookie(response, settings, user)
     return _session_out(settings, user)
 
 
