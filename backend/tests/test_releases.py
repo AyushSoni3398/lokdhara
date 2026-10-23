@@ -293,10 +293,10 @@ def test_researchers_request_exports_and_another_admin_decides(
     assert job is not None
     assert str(job.target_id) == request["id"]
 
-    # An admin's own request needs another admin.
+    # One approval is enough, even for an admin's own request (ADR-027).
     own = client.post(exports_url, json=PURPOSE).json()
     response = client.post(f"/api/v1/admin/exports/{own['id']}/approve", json={})
-    assert response.json()["code"] == "own_request"
+    assert response.json()["status"] == "approved"
     actions = set(db.scalars(select(AuditEvent.action).where(AuditEvent.action.like("export.%"))))
     assert actions == {"export.request", "export.approve", "export.reject"}
 

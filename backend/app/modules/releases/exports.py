@@ -1,10 +1,10 @@
 """Export requests for frozen releases (docs/DATASET_VERSIONING.md, docs/API_SPECIFICATION.md §8).
 
-A researcher asks for a release's package and says what it is for; another admin approves or
-rejects the request. Approval queues the `dataset.export` job, which builds the package in the
-`exports` bucket. A package can be downloaded until it expires; every download is recorded.
-Nothing is exported from a retracted release, or from one an item was withdrawn from after it
-was frozen.
+A researcher or admin asks for a release's package and says what it is for; one admin, who
+may be the one who asked, approves or rejects the request (ADR-027). Approval queues the
+`dataset.export` job, which builds the package in the `exports` bucket. A package can be
+downloaded until it expires; every download is recorded. Nothing is exported from a retracted
+release, or from one an item was withdrawn from after it was frozen.
 """
 
 import uuid
@@ -107,8 +107,6 @@ def _to_decide(db: Session, admin: AuthenticatedUser, export_id: uuid.UUID) -> E
     request = get_export(db, admin, export_id, for_update=True)
     if request.status != "requested":
         raise ApiError(409, "export_decided", "This request has already been decided.")
-    if request.requested_by == admin.id:
-        raise ApiError(403, "own_request", "Another admin must decide on your own request.")
     return request
 
 
