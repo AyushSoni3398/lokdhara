@@ -7,7 +7,7 @@ import { AdminStatusPage } from './pages/AdminStatusPage'
 import { AdminUsersPage } from './pages/AdminUsersPage'
 import { AdminWithdrawalsPage } from './pages/AdminWithdrawalsPage'
 import { CataloguePage } from './pages/CataloguePage'
-import { ChooseSpeakerPage } from './pages/ChooseSpeakerPage'
+import { StartContributionPage } from './pages/StartContributionPage'
 import { ConsentPage } from './pages/ConsentPage'
 import { ExportsPage } from './pages/ExportsPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
@@ -41,7 +41,7 @@ export const routes: RouteObject[] = [
       { path: 'invite', element: <InvitePage /> },
       { path: 'reset-password', element: <ResetPasswordPage /> },
       { path: 'forgot-password', element: <ForgotPasswordPage /> },
-      { path: 'contribute', element: signedIn(<ChooseSpeakerPage />) },
+      { path: 'contribute', element: signedIn(<StartContributionPage />) },
       { path: 'contribute/:speakerId/new', element: signedIn(<NewSubmissionPage />) },
       { path: 'drafts/:draftId', element: signedIn(<NewSubmissionPage />) },
       { path: 'speakers/:speakerId/consent', element: signedIn(<ConsentPage />) },
