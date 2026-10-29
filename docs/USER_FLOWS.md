@@ -25,8 +25,13 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[Open Lokdhara, signed in] --> C[Use my own speaker profile<br/>made the first time]
+    A[Open Lokdhara, signed in] --> B{Facilitator or admin?}
+    B -->|No| C[Use my own speaker profile<br/>made the first time]
+    B -->|Yes| B2{Whose voice or text?}
+    B2 -->|Mine| C
+    B2 -->|Someone else's| D[Pick or create speaker profile<br/>pseudonymous code]
     C --> E{Active consent<br/>on file?}
+    D --> E
     E -->|No| F[Consent flow F2]
     F --> G
     E -->|Yes| G{Submit what?}
@@ -52,19 +57,16 @@ Notes:
 1. Steps 1–8 of the brief map to: open (A), choose type (G), content + metadata (H–L), consent (E/F), validation and storage (O–Q), reports and hiding (F4), authorised access (F5), export (F6).
 2. Consent is checked *before* content entry so that a speaker who declines is not recorded first and asked later. A facilitator may still capture consent at the end of a session if that matches field practice; in that case the draft cannot be uploaded until consent is attached. Which order is used in the field is open question Q-G4.
 3. The draft is saved on the device before any upload starts (FR-S6).
-4. The app does not ask "whose voice or text is this?": every new recording or text is the signed-in user's own (owner's decision, 2026-10-29). Recording other people through the app, for example by a facilitator, is open question Q-G12.
+4. Only facilitators and admins are asked "whose voice or text is this?", because recording other people is their job (owner's decision 2026-10-29, Q-G12, ADR-032). Contributors always record their own voice or text.
 
 ## F2 — Consent capture
 
 ```mermaid
 flowchart TD
     A[Show current consent form version<br/>in chosen language] --> B[Read aloud / play audio explanation<br/>facilitator]
-    B --> C[Ask each permission separately:<br/>store & review / research / public / AI training / name credit]
-    C --> D{Speaker under 18?}
-    D -->|Yes| E[Guardian details + guardian answers]
-    D -->|No| F
-    E --> F{Method}
-    F -->|In-app confirmation| G[Speaker or guardian confirms on screen]
+    B --> C[List every use, one I accept tick<br/>ADR-031]
+    C --> F{Method}
+    F -->|In-app confirmation| G[Speaker confirms on screen]
     F -->|Oral consent recording| H[Record consent statement<br/>stored in restricted bucket]
     F -->|Paper form| I[Enter paper form reference ID<br/>paper kept offline by institution]
     G --> J[Consent record created: active]
@@ -72,7 +74,7 @@ flowchart TD
     I --> J
 ```
 
-- Every permission defaults to **No** except "store and review", which is required to participate at all.
+- The "I accept" tick starts empty and agrees to every use at once (ADR-031); there is no age or guardian question (ADR-032).
 - The consent record stores the form version, answers, method, who obtained it, and when.
 
 ## F3 — Withdrawal or change of consent

@@ -10,8 +10,9 @@ clears what they said, keeping only what is needed to show that the request was 
 - the `items.jsonl` and `metadata.csv` kept for each frozen release that held an item, since
   its packages can no longer be built anyway;
 - for a full withdrawal, the restricted identity details and demographics of the speaker, and
-  the free-text notes of their consent records. The recording of an oral consent stays while
-  `LKD_WITHDRAWAL_KEEP_CONSENT_EVIDENCE` is on (Q-G8).
+  the free-text notes of their consent records. The recording of an oral consent is kept as
+  proof for `LKD_WITHDRAWAL_CONSENT_EVIDENCE_DAYS` (one month, Q-G8); after that the daily
+  `withdrawal.expire_consent_evidence` job deletes it. With 0 days it goes right away.
 
 The database part runs as `app_erasure` with `lkd.erasure` set, the only way past the
 append-only triggers. Files are deleted before the database changes are committed, so a job
@@ -19,6 +20,7 @@ that fails half way simply runs again.
 """
 
 import uuid
+from datetime import datetime, timedelta
 from functools import lru_cache
 from typing import Any
 
@@ -45,6 +47,10 @@ from app.object_store import Bucket, ObjectStore, get_object_store
 
 # The scopes whose items are deleted; a narrowed consent deletes nothing.
 ERASED_SCOPES = ("full", "specific_items")
+# Recorded in `actions_taken` once the proof of consent of a full withdrawal is deleted.
+EVIDENCE_DELETED = "consent_evidence_deleted"
+# Requests per run of `withdrawal.expire_consent_evidence`; the next daily run takes the rest.
+EVIDENCE_BATCH_SIZE = 100
 
 
 @lru_cache
@@ -84,6 +90,16 @@ def _erase_files(
     for bucket, key in files:
         store.erase(bucket, key)
     return len(files)
+
+
+def _evidence_keys(db: Session, speaker_id: uuid.UUID) -> list[str]:
+    return [
+        key
+        for key in db.scalars(
+            select(ConsentRecord.evidence_object_key).where(ConsentRecord.speaker_id == speaker_id)
+        )
+        if key
+    ]
 
 
 def _erase_speaker(db: Session, speaker: Speaker) -> None:
@@ -132,16 +148,8 @@ def erase(db: Session, store: ObjectStore, request_id: uuid.UUID) -> dict[str, A
         )
     )
     evidence_keys: list[str] = []
-    if full and not settings.withdrawal_keep_consent_evidence:
-        evidence_keys = [
-            key
-            for key in db.scalars(
-                select(ConsentRecord.evidence_object_key).where(
-                    ConsentRecord.speaker_id == speaker.id
-                )
-            )
-            if key
-        ]
+    if full and settings.withdrawal_consent_evidence_days == 0:
+        evidence_keys = _evidence_keys(db, speaker.id)
 
     files = _erase_files(store, recordings, renditions, release_ids, evidence_keys)
     for recording in recordings:
@@ -197,6 +205,44 @@ def erase(db: Session, store: ObjectStore, request_id: uuid.UUID) -> dict[str, A
     return done
 
 
+def expire_consent_evidence(db: Session, store: ObjectStore, now: datetime) -> int:
+    """Deletes the oral consent recordings of speakers whose full withdrawal was erased more
+    than `withdrawal_consent_evidence_days` ago (Q-G8). The consent records and the request
+    stay, without notes, as the record that the withdrawal was honoured. `db` must be an
+    erasure session; the caller commits. Returns how many requests were done."""
+    cutoff = now - timedelta(days=get_settings().withdrawal_consent_evidence_days)
+    requests = db.scalars(
+        select(WithdrawalRequest)
+        .where(
+            WithdrawalRequest.requested_scope == "full",
+            WithdrawalRequest.erased_at <= cutoff,
+            ~WithdrawalRequest.actions_taken.contains([{"action": EVIDENCE_DELETED}]),
+        )
+        .order_by(WithdrawalRequest.erased_at)
+        .limit(EVIDENCE_BATCH_SIZE)
+        .with_for_update(skip_locked=True)
+    ).all()
+    for request in requests:
+        keys = _evidence_keys(db, request.speaker_id) if request.speaker_id else []
+        for key in keys:
+            store.erase(Bucket.CONSENT_EVIDENCE, key)
+        request.actions_taken = [
+            *request.actions_taken,
+            {"action": EVIDENCE_DELETED, "at": now.isoformat(), "files": len(keys)},
+        ]
+        audit.record(
+            db,
+            action="withdrawal.expire_consent_evidence",
+            context=None,
+            actor_user_id=None,
+            actor_type="worker",
+            target_type="withdrawal_request",
+            target_id=request.id,
+            details={"files": len(keys)},
+        )
+    return len(requests)
+
+
 @handler("withdrawal.erase")
 def erase_withdrawn(context: JobContext) -> JobResult:
     request_id = context.target_id
@@ -208,3 +254,16 @@ def erase_withdrawn(context: JobContext) -> JobResult:
     if done is None:
         return JobResult(output_summary={"skipped": True})
     return JobResult(output_summary={k: v for k, v in done.items() if k not in ("action", "at")})
+
+
+@handler("withdrawal.expire_consent_evidence")
+def expire_consent_evidence_job(context: JobContext) -> JobResult:
+    context.db.rollback()
+    with Session(erasure_engine(context)) as db, db.begin():
+        done = expire_consent_evidence(db, get_object_store(), utcnow())
+    return JobResult(
+        output_summary={
+            "requests": done,
+            "retention_days": get_settings().withdrawal_consent_evidence_days,
+        }
+    )

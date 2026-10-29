@@ -61,7 +61,7 @@ A controlled list is **pending linguist input (Q-X1)**. Until then: free text, p
 | `third_party_voice` | Non-consenting person audible | Excluded from all releases. |
 | `contains_pii` | Personal details spoken/written | Excluded from public and AI-training releases. |
 | `culturally_restricted` | Content the community restricts | Excluded from all releases without explicit community approval (Q-G3). |
-| `minor` | Speaker under 18 | Excluded until guardian process confirmed (Q-L4). |
+| `minor` | Speaker under 18 | Set by an admin after a report; excluded from releases. Minors may contribute without a guardian (Q-L4, ADR-032). |
 
 As built (M7): until these rules are confirmed (Q-G3), an item with **any** flag is left out of every dataset release. The narrower per-purpose exclusions above would only ever let more items in, so they wait for that decision.
 

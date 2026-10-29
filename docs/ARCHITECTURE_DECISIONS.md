@@ -29,9 +29,11 @@ ADRs 001–019 were **Accepted** by the project owner on 2026-10-11 (ADR-019 aft
 | 021 | No human reviewer: submissions are accepted after automatic checks and their text stays unverified | Accepted |
 | 022 | Withdrawals: a separate module, deletion right after an admin accepts, PATCH releases only from the replaced release | Proposed |
 | 026 | Contributors download listening copies of their own recordings, one at a time or all as a zip | Proposed |
-| 028 | Public sign-up for contributors; profile and consent asked once; minors with a guardian | Proposed |
+| 028 | Public sign-up for contributors; profile and consent asked once; minors with a guardian (guardian part replaced by ADR-032) | Proposed |
 | 029 | Every download says what each recording is: full item details, spreadsheets, tags in the audio | Proposed |
 | 030 | Topics: a list admins extend, chosen per item and carried into every download | Proposed |
+| 031 | One "I accept" tick on the consent page | Accepted |
+| 032 | Owner's answers of 2026-10-29: no ethics approval, minors without a guardian, nothing restricted, consent proof kept one month, facilitators record others | Accepted |
 
 ---
 
@@ -194,7 +196,7 @@ ADRs 001–019 were **Accepted** by the project owner on 2026-10-11 (ADR-019 aft
   - Frozen releases are not changed. Their items get `withdrawn_after_release_at`, their ready packages are deleted and new export requests are refused. The release shows how many items were withdrawn.
   - A PATCH release is a draft that names the release it replaces. It can only take items of that release (so withdrawn, hidden and no longer allowed items stay out), keeps its purpose, and freezes as the same MAJOR.MINOR with a higher PATCH. Its data card starts with a notice.
   - A narrower consent (fewer uses) is a new consent record; it marks frozen releases for the purposes it no longer allows. Widening consent later does not unmark them.
-  - The consent records, the request and the oral consent recording are kept by default (`LKD_WITHDRAWAL_KEEP_CONSENT_EVIDENCE=true`) until Q-G8 is answered.
+  - The consent records and the request are kept. The oral consent recording is kept for one month and then deleted (`LKD_WITHDRAWAL_CONSENT_EVIDENCE_DAYS=30`, ADR-032, Q-G8).
 - **Alternatives:** A 30-day delay before deletion (a speaker could change their mind, but data stays longer and a second admin step is needed); rewriting frozen releases (breaks reproducibility of published results); a PATCH draft with fresh selection criteria (could add new items, which is a MINOR change); deleting consent evidence at once (cannot be undone if the institution needs proof).
 - **Consequences:** A mistaken acceptance cannot be undone except from backups, so admins must check the requester first. Export holders are not notified by the system yet; that waits for the data-use agreement (Q-G5). Backups keep deleted data until they age out (DATA_RETENTION_AND_DELETION §2).
 - **Revisit when:** the ethics committee answers Q-G8 or asks for a cooling-off period, or legal holds (§5) need to pause deletions.
@@ -310,13 +312,28 @@ ADRs 001–019 were **Accepted** by the project owner on 2026-10-11 (ADR-019 aft
 
 ## ADR-031 — One "I accept" tick on the consent page
 
-- **Status:** Proposed (decided by the project owner on 2026-10-29; awaiting the professor's and ethics committee's view, Q-G13). Changes how CONSENT_AND_DATA_GOVERNANCE §3.1 is shown, not what is stored.
+- **Status:** Accepted (decided by the project owner on 2026-10-29, who also answered Q-G13: one tick is enough). Changes how CONSENT_AND_DATA_GOVERNANCE §3.1 is shown, not what is stored.
 - **Context:** The consent page asked six Yes/No questions and a credit question, each starting at No. The project owner found this long and unusual for contributors, who expect one page to read and one box to tick, as on most websites.
 - **Decision:**
   - The page shows the consent form, then a plain list of everything the speaker agrees to: keeping and reviewing the recording, research use, public access, building computer tools, use by companies, recording age group, area and languages, and credit by a code instead of the name. Then one **"I have read the above and I accept"** tick, which starts empty. Save stays disabled until it is ticked.
   - Saving sends every permission as `true` and `attribution_preference: pseudonymous`. The server, the database and the consent record are unchanged; old consent records with mixed answers keep working.
-  - The under-18 question and the parent or guardian field stay, and so do the facilitator's "how was consent given" choices.
+  - The facilitator's "how was consent given" choices stay. The under-18 question and the parent or guardian field were removed later the same day (ADR-032).
   - Releases still need their own approval: public and AI-training releases are only made when governance approves them (§4), so a tick alone does not publish anything.
 - **Alternatives:** Keep separate questions (most protective, but long); one tick for the required part with the other uses as switches that start off (short and still specific per purpose; this was recommended and the owner chose the single tick instead).
 - **Consequences:** Every new speaker agrees to all uses, including public access and use by companies; a speaker who wants only part of them cannot say so in the app and has to withdraw instead. India's DPDP Act asks for consent that is specific to each purpose, and an ethics committee may ask for separate choices, so this is open as Q-G13. Speakers can no longer choose to be credited by name or not at all (Q-G2).
 - **Revisit when:** the professor or ethics committee answers Q-G13, or speakers ask to share only part of their data.
+
+## ADR-032 — Owner's answers of 2026-10-29: no ethics approval, minors without a guardian, nothing restricted, consent proof kept one month, facilitators record others
+
+- **Status:** Accepted (decided by the project owner on 2026-10-29). Answers Q-L3, Q-L4, Q-G3, Q-G8, Q-G12 and Q-G13. Replaces the guardian part of ADR-028 and the "only the signed-in user's own voice" choice made earlier the same day.
+- **Context:** These questions were waiting for the professor and an ethics committee. The project owner answered them so the app can be finished for the pilot.
+- **Decision:**
+  - **Ethics approval (Q-L3):** none is needed from anyone.
+  - **Minors (Q-L4):** anyone may contribute, minors included, and no parent or guardian is asked for. The consent page no longer asks whether the speaker is under 18. The server still accepts `guardian_involved` and `guardian_relationship`, so old records stay valid and the question can come back. `LKD_ALLOW_MINORS` stays `true`.
+  - **Restricted content (Q-G3):** nothing is culturally restricted for now. The `culturally_restricted` flag and scope stay in the code, unused unless an admin sets the flag after a report.
+  - **Proof of consent after a withdrawal (Q-G8):** kept for one month. `LKD_WITHDRAWAL_CONSENT_EVIDENCE_DAYS` (default 30) replaces `LKD_WITHDRAWAL_KEEP_CONSENT_EVIDENCE`. A daily job, `withdrawal.expire_consent_evidence` (migration `0019`), deletes every stored version of the oral consent recordings of speakers whose full withdrawal was erased that long ago, and notes it in the request's `actions_taken` and the audit log. The request and the consent records stay, without notes or identity, as the record that the withdrawal was honoured. With 0 days the recording is deleted together with everything else.
+  - **Recording other people (Q-G12):** facilitators and admins see "Whose voice or text is this?" again when they start a new recording: their own, someone they registered, or a new person, whose consent they then record (in the app, orally or on paper). Contributors still go straight to their own voice.
+  - **One tick (Q-G13):** enough; ADR-031 is accepted.
+- **Alternatives:** Wait for the professor and an ethics committee (slower, and the owner says none is needed); keep the guardian field as optional (less friction than before, but the owner wants no guardian step); keep proof of consent for years (stronger proof, but holds a withdrawn person's voice longer).
+- **Consequences:** India's DPDP Rules 2025 call for verifiable parental consent for children's data, and research use without ethics approval can limit where results are published; the owner carries both risks. After one month there is no recording left to show that an oral consent was given; the consent record (method, form version, date) remains.
+- **Revisit when:** the institution, a journal or a funder asks for ethics approval, a guardian complains, or the community names restricted content.

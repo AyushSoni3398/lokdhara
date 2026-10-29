@@ -45,11 +45,17 @@
     "done": "I have written them down",
     "alreadyOn": "Two-step sign-in is on for your account. If you lose your phone and your recovery codes, ask the server maintainer to reset it."
   },
+  "speaker": {
+    "title": "Whose voice or text is this?",
+    "myself": "Mine",
+    "newPerson": "Someone else (new person)",
+    "registered": "People you registered",
+    "hasConsent": "Consent recorded",
+    "needsConsent": "Consent needed first"
+  },
   "consent": {
     "title": "Consent for {{code}}",
     "testForm": "Test form: do not use it to record anyone for real.",
-    "yes": "Yes",
-    "no": "No",
     "listIntro": "Please read this. By ticking \"I accept\" you agree to all of the following:",
     "uses": {
       "allow_store_and_review": "Lokdhara keeps the recording safely, and trained reviewers listen to it and check the writing.",
@@ -70,12 +76,7 @@
     },
     "oralHint": "Record the speaker answering the questions aloud. This recording is kept separately and is never part of the collection.",
     "paperReference": "Paper form reference number",
-    "save": "Save consent",
-    "minor": {
-      "legend": "Is this person under 18?",
-      "hint": "A parent or guardian must read this form and agree together with them.",
-      "relationship": "Who is the parent or guardian? (for example: mother)"
-    }
+    "save": "Save consent"
   },
   "record": {
     "recording": "Recording",

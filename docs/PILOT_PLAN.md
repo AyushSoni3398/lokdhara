@@ -22,9 +22,9 @@ correctly, and that the recordings are usable, before inviting more people.
 | # | Gate | Owner | Where it is tracked |
 |---|------|-------|---------------------|
 | 1 | Data steward and ownership decided (Q-L1, Q-L2) | Professor, institution | ASSUMPTIONS_AND_OPEN_QUESTIONS.md |
-| 2 | Ethics approval, or a written statement that none is needed (Q-L3) | Professor | same |
-| 3 | DPDP position confirmed (Q-L8); minors excluded (Q-L4) | Legal adviser | same |
-| 4 | What is kept after a withdrawal (Q-G8) | Professor, ethics committee | same |
+| 2 | Ethics approval, or a written statement that none is needed (Q-L3) | Owner | Done 2026-10-29: none needed (ADR-032) |
+| 3 | DPDP position confirmed (Q-L8); minors take part without a guardian (Q-L4, ADR-032) | Legal adviser | same |
+| 4 | What is kept after a withdrawal (Q-G8) | Owner | Done 2026-10-29: proof of consent for one month (ADR-032) |
 | 5 | Final consent form approved, translated into Mundari/Hindi and loaded into the app | Professor, Claude + owner | app admin |
 | 6 | Hosting chosen (Q-L7, Q-P5) and the server set up per [RUNBOOK](ops/RUNBOOK.md) | Owner | RUNBOOK §2 |
 | 7 | Server checks in [SECURITY_REVIEW.md](ops/SECURITY_REVIEW.md) §4 pass, including a restore drill on the server | Owner | restore-drills.md |

@@ -55,7 +55,7 @@ The consent explanation must also state: what Lokdhara is, who runs it, where da
 
 ### 3.4 Minors
 
-Until Q-L4 is answered: **no recordings from speakers under 18 are collected in the pilot.** The schema and flows still support guardian consent (`guardian_involved`, `guardian_relationship`, `minor` flag) so the policy can be enabled once approved, without redesign.
+*Owner's decision (2026-10-29, ADR-032, Q-L4):* anyone may contribute, including people under 18, and **no parent or guardian is asked for**. The consent page does not ask for age. The schema still has `guardian_involved` and `guardian_relationship`, so a guardian step can come back without redesign; the `minor` flag still lets an admin keep an item out of releases after a report.
 
 ### 3.5 Recording of other people
 

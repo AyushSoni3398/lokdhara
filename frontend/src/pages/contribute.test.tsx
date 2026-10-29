@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -67,28 +67,16 @@ describe('consent', () => {
 })
 
 describe('consent for someone under 18', () => {
-  it('needs the parent or guardian and sends it with the answers', async () => {
-    const { requests } = fakeServer({
+  it('does not ask for a parent or guardian', async () => {
+    fakeServer({
       'GET /auth/me': () => ({ body: SESSION }),
       'GET /speakers/s1': () => ({ body: { ...SPEAKER, has_active_consent: false } }),
       'GET /consent-forms/current.*': () => ({ body: FORM }),
-      'POST /speakers/s1/consents': () => ({ status: 201, body: {} }),
-      'GET /submissions.*': () => ({ body: { items: [] } }),
     })
     renderApp('/speakers/s1/consent?next=/submissions')
-    const minor = await screen.findByRole('group', { name: 'Is this person under 18?' })
-    await userEvent.click(screen.getByRole('checkbox', { name: /I accept/ }))
-    await userEvent.click(within(minor).getByRole('radio', { name: 'Yes' }))
-    const save = screen.getByRole('button', { name: 'Save consent' })
-    expect(save).toBeDisabled()
-    await userEvent.type(screen.getByLabelText(/parent or guardian\?/), 'mother')
-    await userEvent.click(save)
-    await waitFor(() => expect(requests.some((r) => r.method === 'POST')).toBe(true))
-    const sent = requests.find((r) => r.method === 'POST')?.body as FormData
-    expect(JSON.parse(String(sent.get('consent')))).toMatchObject({
-      guardian_involved: true,
-      guardian_relationship: 'mother',
-    })
+    await screen.findByRole('checkbox', { name: /I accept/ })
+    expect(screen.queryByText(/under 18/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/guardian/)).not.toBeInTheDocument()
   })
 })
 
@@ -124,6 +112,47 @@ describe('new recording', () => {
       'GET /submissions\\?.*': () => ({ body: { items: [] } }),
     })
     const { router } = renderApp('/contribute')
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/contribute/s1/new'),
+    )
+  })
+})
+
+describe('new recording by a facilitator', () => {
+  const FACILITATOR = { ...SESSION, roles: [{ role: 'facilitator', scope: null }] }
+
+  it('asks whose voice it is, so they can record someone else', async () => {
+    const { requests } = fakeServer({
+      'GET /auth/me': () => ({ body: FACILITATOR }),
+      'GET /speakers\\?mine=true': () => ({ body: { items: [SPEAKER] } }),
+      'POST /speakers': () => ({
+        status: 201,
+        body: { ...SPEAKER, id: 's2', is_self: false, has_active_consent: false },
+      }),
+      'GET /speakers/s2': () => ({
+        body: { ...SPEAKER, id: 's2', is_self: false, has_active_consent: false },
+      }),
+      'GET /consent-forms/current.*': () => ({ body: FORM }),
+    })
+    const { router } = renderApp('/contribute')
+
+    await screen.findByRole('heading', { name: 'Whose voice or text is this?' })
+    await userEvent.click(screen.getByRole('button', { name: /Someone else/ }))
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/speakers/s2/consent'),
+    )
+    expect(requests.find((r) => r.method === 'POST')?.body).toEqual({ for_self: false })
+  })
+
+  it('can still record their own voice', async () => {
+    fakeServer({
+      'GET /auth/me': () => ({ body: FACILITATOR }),
+      'GET /speakers\\?mine=true': () => ({ body: { items: [SPEAKER] } }),
+      'GET /speakers/s1': () => ({ body: SPEAKER }),
+      'GET /submissions\\?.*': () => ({ body: { items: [] } }),
+    })
+    const { router } = renderApp('/contribute')
+    await userEvent.click(await screen.findByRole('button', { name: /Mine/ }))
     await waitFor(() =>
       expect(router.state.location.pathname).toBe('/contribute/s1/new'),
     )

@@ -75,7 +75,7 @@ Priority: **M** = must have for MVP, **S** = should have if time allows, **F** =
 | FR-C3 | Consent is captured against a specific, versioned consent form in a language the speaker understands, with separate yes/no answers for each permitted use (see [CONSENT_AND_DATA_GOVERNANCE.md](CONSENT_AND_DATA_GOVERNANCE.md)). | M |
 | FR-C4 | Consent can be captured as an in-app confirmation, an audio-recorded oral consent, or a reference to a paper form held offline. Evidence files are stored in restricted storage, never in the repository. | M |
 | FR-C5 | A submission without an active consent record cannot be submitted for review. | M |
-| FR-C6 | For a speaker under 18, guardian consent is required and the record notes who gave it; the exact procedure awaits institutional guidance (see open question Q-L4). | M (block until resolved) |
+| FR-C6 | Speakers under 18 may contribute without a parent or guardian (owner's decision 2026-10-29, Q-L4, ADR-032). The record can still note a guardian if one takes part. | M |
 | FR-C7 | A speaker or their representative can withdraw or narrow consent; the system records the request and propagates it (see [DATA_RETENTION_AND_DELETION.md](DATA_RETENTION_AND_DELETION.md)). | M |
 
 ### 5.3 Submissions

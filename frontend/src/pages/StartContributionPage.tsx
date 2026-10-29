@@ -4,7 +4,9 @@ import { useNavigate } from 'react-router'
 import { ApiError } from '../api/client'
 import * as api from '../api/endpoints'
 import type { Speaker } from '../api/types'
+import { hasRole, useSession } from '../auth/session'
 import { ErrorMessage } from '../components/ErrorMessage'
+import { ChooseSpeakerPage } from './ChooseSpeakerPage'
 
 /** Finds the signed-in user's own speaker profile, making it the first time. */
 async function ownSpeaker(): Promise<Speaker> {
@@ -22,10 +24,16 @@ async function ownSpeaker(): Promise<Speaker> {
 }
 
 /**
- * "New recording" always records the signed-in user's own voice or text (docs/USER_FLOWS.md F1),
- * so there is no "whose voice?" question: go straight to consent or the recording.
+ * "New recording" (docs/USER_FLOWS.md F1). Facilitators and admins choose whose voice it is,
+ * since recording other people is their job (Q-G12). Everyone else records their own voice or
+ * text, so they go straight to consent or the recording.
  */
 export function StartContributionPage() {
+  const session = useSession()
+  return hasRole(session, 'facilitator', 'admin') ? <ChooseSpeakerPage /> : <OwnVoice />
+}
+
+function OwnVoice() {
   const navigate = useNavigate()
   const [error, setError] = useState<unknown>(null)
 

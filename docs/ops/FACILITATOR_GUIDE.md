@@ -16,7 +16,7 @@ happens to their voice.
 |------|------|--------------|
 | Why Lokdhara exists | 10 min | Preserving Mundari; who runs the project; where recordings are kept. |
 | Consent, by role-play | 40 min | Each trainee explains the consent form to another trainee, in Mundari or Hindi, including saying "no" to some questions. The trainer stops anything that sounds like pressure. |
-| The app, hands-on | 40 min | Each trainee, on their own phone with a **test** account: give consent for their own voice, make one recording in each mode (free, prompted, read), add a text, find it under "My submissions", and send a draft after switching mobile data off and on. |
+| The app, hands-on | 40 min | Each trainee, on their own phone with a **test** account: create a speaker for another trainee, record their oral consent, make one recording in each mode (free, prompted, read), add a text, find it under "My submissions", and send a draft after switching mobile data off and on. |
 | Hard cases | 20 min | Go through §4 together. |
 | Device care and questions | 10 min | §5, then the field card (§6) is handed out. |
 
