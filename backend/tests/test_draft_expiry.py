@@ -160,13 +160,14 @@ def test_a_lost_quarantine_copy_of_a_draft_can_be_uploaded_again(
 def test_the_sweeps_are_queued_once_an_hour(db: Session) -> None:
     sweeps = ["cleanup.expire_drafts", "cleanup.expire_exports"]
     now = queue.utcnow()
-    assert schedule.enqueue_due(db, now) == [*sweeps, "ops.digest"]
+    daily = ["ops.digest", "withdrawal.expire_consent_evidence"]
+    assert schedule.enqueue_due(db, now) == [*sweeps, *daily]
     assert schedule.enqueue_due(db, now) == []  # still pending
     db.execute(text("UPDATE jobs SET status = 'succeeded'"))
     db.commit()
     assert schedule.enqueue_due(db, now + timedelta(minutes=59)) == []
     assert schedule.enqueue_due(db, now + timedelta(minutes=61)) == sweeps
-    assert schedule.enqueue_due(db, now + timedelta(hours=24, minutes=1))[-1] == "ops.digest"
+    assert schedule.enqueue_due(db, now + timedelta(hours=24, minutes=1))[-2:] == daily
 
 
 def test_the_scheduler_checks_at_most_once_a_minute(engine: Engine, db: Session) -> None:

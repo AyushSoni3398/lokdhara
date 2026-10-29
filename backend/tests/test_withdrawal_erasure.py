@@ -4,6 +4,7 @@
 import json
 import uuid
 from collections.abc import Callable, Iterator
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +19,7 @@ from app.modules.audit.models import AuditEvent
 from app.modules.consents import service as consents
 from app.modules.consents.models import ConsentRecord, WithdrawalRequest
 from app.modules.processing import queue
+from app.modules.processing.models import ProcessingRun
 from app.modules.releases.freeze import stored_file_key
 from app.modules.speakers.models import Speaker, SpeakerIdentity
 from app.modules.submissions import processing
@@ -230,7 +232,7 @@ def test_a_request_is_completed_once_its_items_are_deleted(
     assert db.scalar(select(AuditEvent).where(AuditEvent.action == "withdrawal.complete"))
 
 
-def test_consent_evidence_is_deleted_when_the_project_does_not_keep_it(
+def test_consent_evidence_is_deleted_at_once_when_kept_for_zero_days(
     client: TestClient,
     engine: Engine,
     db: Session,
@@ -239,7 +241,7 @@ def test_consent_evidence_is_deleted_when_the_project_does_not_keep_it(
     world: dict[str, Any],
     admin: TestUser,
 ) -> None:
-    settings.withdrawal_keep_consent_evidence = False
+    settings.withdrawal_consent_evidence_days = 0
     request_id = verified(client, admin, scope="full", speaker_id=world["speaker"])
     run_jobs(engine)
     record = db.scalar(
@@ -249,6 +251,59 @@ def test_consent_evidence_is_deleted_when_the_project_does_not_keep_it(
     assert object_store.head(Bucket.CONSENT_EVIDENCE, record.evidence_object_key or "") is None
     request = db.get_one(WithdrawalRequest, uuid.UUID(request_id), populate_existing=True)
     assert request.actions_taken[-1]["consent_evidence"] == "deleted"
+
+
+def test_consent_evidence_is_deleted_a_month_after_a_full_withdrawal(
+    client: TestClient,
+    engine: Engine,
+    db: Session,
+    object_store: ObjectStore,
+    settings: Settings,
+    world: dict[str, Any],
+    admin: TestUser,
+) -> None:
+    assert settings.withdrawal_consent_evidence_days == 30
+    request_id = uuid.UUID(verified(client, admin, scope="full", speaker_id=world["speaker"]))
+    run_jobs(engine)
+    record = db.scalar(
+        select(ConsentRecord).where(ConsentRecord.speaker_id == uuid.UUID(world["speaker"]))
+    )
+    assert record is not None and record.evidence_object_key
+    key = record.evidence_object_key
+    erased_at = db.get_one(WithdrawalRequest, request_id, populate_existing=True).erased_at
+    assert erased_at is not None
+
+    def expire(after: timedelta) -> int:
+        with Session(engine) as erasure_db, erasure_db.begin():
+            erasure_db.execute(text("SET LOCAL ROLE app_erasure"))
+            erasure_db.execute(text("SET LOCAL lkd.erasure = 'on'"))
+            return erasure.expire_consent_evidence(erasure_db, object_store, erased_at + after)
+
+    assert expire(timedelta(days=29)) == 0
+    assert object_store.head(Bucket.CONSENT_EVIDENCE, key)
+
+    assert expire(timedelta(days=30, minutes=1)) == 1
+    assert object_store.head(Bucket.CONSENT_EVIDENCE, key) is None
+    request = db.get_one(WithdrawalRequest, request_id, populate_existing=True)
+    assert request.actions_taken[-1]["action"] == erasure.EVIDENCE_DELETED
+    assert request.actions_taken[-1]["files"] == 1
+    assert db.scalar(
+        select(AuditEvent).where(AuditEvent.action == "withdrawal.expire_consent_evidence")
+    )
+    # The consent record itself stays, as the record that the withdrawal was honoured.
+    assert db.get(ConsentRecord, record.id) is not None
+    assert expire(timedelta(days=60)) == 0  # done once only
+
+
+def test_the_consent_evidence_job_runs_on_the_queue(engine: Engine, db: Session) -> None:
+    queue.enqueue(db, "withdrawal.expire_consent_evidence")
+    db.commit()
+    run_jobs(engine)
+    run = db.scalar(
+        select(ProcessingRun).where(ProcessingRun.job_type == "withdrawal.expire_consent_evidence")
+    )
+    assert run is not None and run.status == "succeeded"
+    assert run.output_summary == {"requests": 0, "retention_days": 30}
 
 
 def test_one_withdrawn_item_is_erased_and_the_rest_kept(
