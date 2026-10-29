@@ -16,6 +16,7 @@ from app.modules.releases.router import router as releases_router
 from app.modules.reports.router import router as reports_router
 from app.modules.speakers.router import router as speakers_router
 from app.modules.submissions.router import router as submissions_router
+from app.modules.topics.router import router as topics_router
 from app.modules.withdrawals.router import router as withdrawals_router
 from app.object_store.router import router as local_storage_router
 
@@ -41,6 +42,7 @@ def create_app() -> FastAPI:
     app.include_router(speakers_router, prefix=API_PREFIX)
     app.include_router(consents_router, prefix=API_PREFIX)
     app.include_router(prompts_router, prefix=API_PREFIX)
+    app.include_router(topics_router, prefix=API_PREFIX)
     app.include_router(submissions_router, prefix=API_PREFIX)
     app.include_router(reports_router, prefix=API_PREFIX)
     app.include_router(catalogue_router, prefix=API_PREFIX)

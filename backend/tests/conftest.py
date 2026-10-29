@@ -4,11 +4,14 @@ Each test session creates a throwaway database next to LKD_TEST_DATABASE_URL, mi
 and drops it afterwards, so a developer's local data is never touched.
 """
 
+import importlib.util
 import os
 import uuid
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
+from functools import cache
 from pathlib import Path
+from typing import Any
 
 import pytest
 from alembic import command
@@ -78,6 +81,27 @@ def engine(migrated_engine: Engine) -> Iterator[Engine]:
             )
         ).scalar_one()
         connection.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))
+        # Rows the migrations seed, which every test starts with.
+        connection.execute(
+            text(
+                "INSERT INTO topics (key, label_en, label_hi, sort_order) "
+                "VALUES (:key, :en, :hi, :order)"
+            ),
+            [
+                {"key": key, "en": en, "hi": hi, "order": order * 10}
+                for order, (key, en, hi) in enumerate(_migration("0018_topics").INITIAL_TOPICS)
+            ],
+        )
+
+
+@cache
+def _migration(name: str) -> Any:
+    path = Path(__file__).parents[1] / "migrations" / "versions" / f"{name}.py"
+    spec = importlib.util.spec_from_file_location(f"migration_{name}", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 @pytest.fixture

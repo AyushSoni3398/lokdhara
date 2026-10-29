@@ -48,6 +48,7 @@ from app.modules.submissions.models import (
     TextLayer,
     TextRevision,
 )
+from app.modules.topics.models import Topic
 from app.object_store import Bucket, ObjectNotFound, ObjectStore
 
 # File name in the zip -> table. Each line of a file is one row, every column but those below.
@@ -59,6 +60,7 @@ TABLES: dict[str, type[Base]] = {
     "consent_records": ConsentRecord,
     "withdrawal_requests": WithdrawalRequest,
     "prompts": Prompt,
+    "topics": Topic,
     "submissions": Submission,
     "related_items": RelatedItem,
     "recordings": Recording,
