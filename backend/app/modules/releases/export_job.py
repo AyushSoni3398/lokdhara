@@ -12,12 +12,14 @@ import hashlib
 import json
 import tempfile
 from collections.abc import Iterator
+from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.audio import flac_tags
 from app.config import get_settings
 from app.modules.processing.models import Job
 from app.modules.processing.queue import (
@@ -67,13 +69,58 @@ def _checked(store: ObjectStore, bucket: Bucket, key: str, sha256: str) -> packa
     return chunks
 
 
-def _audio_keys(db: Session, release: DatasetRelease) -> dict[str, str]:
+def _tagged(
+    store: ObjectStore, key: str, raw_sha256: str, comments: list[tuple[str, str]], sha256: str
+) -> package.Chunks:
+    """Reads an audio copy, writes the item's tags into it (ADR-029), and fails unless the
+    copy is the one frozen and the result is the file the manifest names."""
+
+    def chunks() -> Iterator[bytes]:
+        raw = _checked(store, Bucket.DERIVED, key, raw_sha256)
+        digest = hashlib.sha256()
+        try:
+            for chunk in flac_tags.tagged(raw(), comments):
+                digest.update(chunk)
+                yield chunk
+        except flac_tags.NotFlac:
+            raise JobError("package_file_changed", retryable=False) from None
+        if digest.hexdigest() != sha256:
+            raise JobError("package_file_changed", retryable=False)
+
+    return chunks
+
+
+@dataclass(frozen=True)
+class _Audio:
+    object_key: str
+    sha256: str
+
+
+def _audio(db: Session, release: DatasetRelease) -> dict[str, _Audio]:
     rows = db.execute(
-        select(DatasetReleaseItem.submission_id, Rendition.object_key)
+        select(DatasetReleaseItem.submission_id, Rendition.object_key, Rendition.sha256)
         .join(Rendition, Rendition.id == DatasetReleaseItem.rendition_id)
         .where(DatasetReleaseItem.release_id == release.id)
     ).all()
-    return {package.audio_path(str(submission_id)): key for submission_id, key in rows}
+    return {package.audio_path(str(sid)): _Audio(key, sha) for sid, key, sha in rows}
+
+
+def _comments(
+    store: ObjectStore, release: DatasetRelease, sha256: str
+) -> dict[str, list[tuple[str, str]]]:
+    """Each audio file's tags, from the items.jsonl frozen with the release."""
+    content = _read(store, Bucket.EXPORTS, stored_file_key(release.id, "items.jsonl"))
+    if hashlib.sha256(content).hexdigest() != sha256:
+        raise JobError("package_file_changed", "items.jsonl", retryable=False)
+    name = f"{release.slug} {release.version}"
+    comments = {}
+    for line in content.decode().splitlines():
+        record = json.loads(line)
+        if record["audio"]:
+            comments[record["audio"]["path"]] = package.flac_comments(
+                record, release_name=name, licence=release.licence
+            )
+    return comments
 
 
 def _files(
@@ -82,15 +129,30 @@ def _files(
     manifest_bytes = _read(store, Bucket.EXPORTS, stored_file_key(release.id, "manifest.json"))
     if hashlib.sha256(manifest_bytes).hexdigest() != release.manifest_sha256:
         raise JobError("package_file_changed", "manifest.json", retryable=False)
-    listed: list[dict[str, Any]] = json.loads(manifest_bytes)["files"]
-    audio = _audio_keys(db, release)
+    manifest = json.loads(manifest_bytes)
+    listed: list[dict[str, Any]] = manifest["files"]
+    audio = _audio(db, release)
+    tags = manifest["export_format_version"] not in package.UNTAGGED_FORMATS
+    comments: dict[str, list[tuple[str, str]]] = {}
+    if tags:
+        items = next(f for f in listed if f["path"] == "items.jsonl")
+        comments = _comments(store, release, items["sha256"])
     files: list[tuple[str, package.Chunks]] = []
     for file in listed:
         path = file["path"]
         if path.startswith("audio/"):
             if path not in audio:
                 raise JobError("package_file_missing", retryable=False)
-            files.append((path, _checked(store, Bucket.DERIVED, audio[path], file["sha256"])))
+            source = audio[path]
+            if not tags:  # frozen before format 1.1: the copy as stored
+                chunks = _checked(store, Bucket.DERIVED, source.object_key, file["sha256"])
+            elif path in comments:
+                chunks = _tagged(
+                    store, source.object_key, source.sha256, comments[path], file["sha256"]
+                )
+            else:
+                raise JobError("package_file_missing", "items.jsonl", retryable=False)
+            files.append((path, chunks))
         else:
             key = stored_file_key(release.id, path)
             files.append((path, _checked(store, Bucket.EXPORTS, key, file["sha256"])))

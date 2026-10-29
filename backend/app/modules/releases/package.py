@@ -6,16 +6,21 @@ Every exported field comes from an explicit allow-list here (check D6). Names, c
 IDs, object keys, review notes, and collection notes are never in it.
 """
 
+import csv
 import hashlib
+import io
 import json
 import zipfile
 from collections import Counter
 from collections.abc import Callable, Iterable, Iterator, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from typing import IO, Any
 
-EXPORT_FORMAT_VERSION = "1"
+# 1.1 added fields to items.jsonl, metadata.csv and tags inside the FLAC files (ADR-029).
+# Packages of releases frozen earlier are still rebuilt in the format they were frozen with.
+EXPORT_FORMAT_VERSION = "1.1"
+UNTAGGED_FORMATS = frozenset({"1"})
 ITEM_FIELDS = frozenset(
     {
         "item_id",
@@ -34,10 +39,41 @@ ITEM_FIELDS = frozenset(
         "translations",
         "quality_flags",
         "consent_permissions",
+        "collection_context",
+        "area",
+        "topics",
     }
 )
 AUDIO_FIELDS = frozenset(
-    {"path", "duration_ms", "sample_rate_hz", "is_lossy_source", "sha256", "bytes"}
+    {
+        "path",
+        "duration_ms",
+        "sample_rate_hz",
+        "is_lossy_source",
+        "sha256",
+        "bytes",
+        "original",
+        "quality",
+    }
+)
+# What the uploaded file was, as measured when it was checked (docs/DATA_DICTIONARY.md §1).
+ORIGINAL_FIELDS = (
+    "container",
+    "codec",
+    "sample_rate_hz",
+    "channels",
+    "bit_depth",
+    "bytes",
+    "source",
+)
+# app.audio.quality.Metrics, measured on the original.
+QUALITY_FIELDS = (
+    "peak_dbfs",
+    "rms_dbfs",
+    "integrated_lufs",
+    "true_peak_dbtp",
+    "clipping_ratio",
+    "silence_ratio",
 )
 TEXT_FIELDS = frozenset(
     {
@@ -51,8 +87,14 @@ TEXT_FIELDS = frozenset(
     }
 )
 TRANSLATION_FIELDS = TEXT_FIELDS | {"source_revision_id"}
-PROMPT_FIELDS = frozenset({"id", "key", "version", "type"})
+PROMPT_FIELDS = frozenset(
+    {"id", "key", "version", "type", "text", "language", "script", "topic_tags"}
+)
+# docs/DATA_DICTIONARY.md §3. `notes` is never exported: it may contain personal details.
+COLLECTION_CONTEXT_FIELDS = ("setting", "speaker_count", "equipment")
 CONSENT_FIELDS = ("research", "public", "ai_training", "commercial")
+# Shared only when the speaker agreed to share demographics (ADR-029).
+SPEAKER_FIELDS = ("age_band", "gender", "first_language", "other_languages", "region")
 DEFAULT_LICENCE = (
     "Internal research use only, within the Lokdhara project. Do not share, publish, or use "
     "this data for training AI models. Speakers can withdraw their contributions; see README.md."
@@ -67,6 +109,9 @@ class AudioFile:
     size_bytes: int
     duration_ms: int | None
     is_lossy_source: bool | None
+    # ORIGINAL_FIELDS and QUALITY_FIELDS; missing ones are exported as null.
+    original: Mapping[str, Any] = field(default_factory=dict)
+    quality: Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -98,6 +143,13 @@ class ItemSource:
     texts: tuple[TextVersion, ...]
     quality_flags: tuple[str, ...]
     consent: Mapping[str, bool]
+    collection_context: Mapping[str, Any] = field(default_factory=dict)
+    # SPEAKER_FIELDS other than age_band, and the area the item was recorded in. Empty and
+    # None unless the speaker agreed to share demographics and the purpose allows it.
+    speaker_details: Mapping[str, Any] = field(default_factory=dict)
+    area: str | None = None
+    # Keys from the topic list (ADR-030).
+    topics: tuple[str, ...] = ()
 
 
 def audio_path(item_id: str) -> str:
@@ -118,6 +170,12 @@ def _text(version: TextVersion, fields: frozenset[str]) -> dict[str, Any]:
     return {key: values[key] for key in sorted(fields)}
 
 
+def _speaker(item: ItemSource) -> dict[str, Any]:
+    values = {**item.speaker_details, "age_band": item.age_band}
+    found = {key: values.get(key) for key in SPEAKER_FIELDS}
+    return {key: value for key, value in found.items() if value not in (None, [], "")}
+
+
 def item_record(item: ItemSource) -> dict[str, Any]:
     """One line of items.jsonl, built only from allow-listed fields."""
     main = {v.layer_type: v for v in item.texts if v.layer_type != "translation"}
@@ -134,13 +192,15 @@ def item_record(item: ItemSource) -> dict[str, Any]:
             "is_lossy_source": item.audio.is_lossy_source,
             "sha256": item.audio.sha256,
             "bytes": item.audio.size_bytes,
+            "original": {key: item.audio.original.get(key) for key in ORIGINAL_FIELDS},
+            "quality": {key: item.audio.quality.get(key) for key in QUALITY_FIELDS},
         }
     record = {
         "item_id": item.item_id,
         "language": item.language,
         "speaker_code": item.speaker_code,
-        # Only with the speaker's consent to share demographics; never more than the age band.
-        "speaker": {"age_band": item.age_band} if item.age_band else {},
+        # Only with the speaker's consent to share demographics (ADR-029).
+        "speaker": _speaker(item),
         "dialect_label": item.dialect_label,
         "content_type": item.content_type,
         "collection_method": item.collection_method,
@@ -157,6 +217,13 @@ def item_record(item: ItemSource) -> dict[str, Any]:
         "translations": [_text(v, TRANSLATION_FIELDS) for v in translations],
         "quality_flags": sorted(item.quality_flags),
         "consent_permissions": {key: bool(item.consent.get(key)) for key in CONSENT_FIELDS},
+        "area": item.area,
+        "topics": sorted(item.topics),
+        "collection_context": {
+            key: item.collection_context[key]
+            for key in COLLECTION_CONTEXT_FIELDS
+            if item.collection_context.get(key) is not None
+        },
     }
     if record.keys() != ITEM_FIELDS:  # pragma: no cover - a programming error
         raise ValueError("an item record does not match the export allow-list")
@@ -172,6 +239,181 @@ def items_jsonl(records: Iterable[Mapping[str, Any]]) -> bytes:
         json.dumps(r, ensure_ascii=False, sort_keys=True, separators=(",", ":")) for r in records
     )
     return "".join(f"{line}\n" for line in lines).encode()
+
+
+# ------------------------------------------------------------------ tags inside the audio
+
+
+def flac_comments(
+    record: Mapping[str, Any], *, release_name: str, licence: str | None
+) -> list[tuple[str, str]]:
+    """The tags written inside an item's FLAC file, so a copied file still says what it is.
+    Built only from the item's record; demographics and the area stay in items.jsonl and
+    metadata.csv, where the release's terms travel with them."""
+    prompt = record["prompt"] or {}
+    transcription = record["transcription"] or {}
+    allowed = [key for key in CONSENT_FIELDS if record["consent_permissions"][key]]
+    comments = [
+        ("TITLE", f"{record['content_type']} {record['item_id']}"),
+        ("ALBUM", release_name),
+        ("ARTIST", record["speaker_code"]),
+        ("DATE", record["recorded_on"]),
+        ("GENRE", record["content_type"]),
+        ("TOPICS", ",".join(record["topics"])),
+        ("LANGUAGE", record["language"]),
+        ("ORGANIZATION", "Lokdhara"),
+        ("LICENSE", licence or DEFAULT_LICENCE),
+        ("LOKDHARA_ITEM_ID", record["item_id"]),
+        ("SPEAKER_CODE", record["speaker_code"]),
+        ("DIALECT", record["dialect_label"]),
+        ("RECORDING_MODE", record["recording_mode"]),
+        ("COLLECTION_METHOD", record["collection_method"]),
+        ("PROMPT_KEY", prompt.get("key")),
+        ("PROMPT_TEXT", prompt.get("text")),
+        ("TRANSCRIPTION", transcription.get("text")),
+        ("TRANSCRIPTION_SCRIPT", transcription.get("script")),
+        ("TRANSCRIPTION_STATUS", transcription.get("verification_status")),
+        *(
+            (f"TRANSLATION_{t['language'].upper().replace('-', '_')}", t["text"])
+            for t in record["translations"]
+        ),
+        ("CONSENT", ",".join(allowed) or "none"),
+    ]
+    return [(name, str(value)) for name, value in comments if value not in (None, "")]
+
+
+# ------------------------------------------------------------------ spreadsheet
+
+# metadata.csv: the same items as items.jsonl, one row each, for people who open it in a
+# spreadsheet. Translations get one column per language found in the release.
+CSV_COLUMNS = (
+    "item_id",
+    "audio_path",
+    "duration_seconds",
+    "speaker_code",
+    "age_band",
+    "gender",
+    "first_language",
+    "other_languages",
+    "speaker_region",
+    "area",
+    "dialect_label",
+    "language",
+    "content_type",
+    "collection_method",
+    "recording_mode",
+    "topics",
+    "recorded_on",
+    "prompt_key",
+    "prompt_version",
+    "prompt_type",
+    "prompt_text",
+    "prompt_topics",
+    "setting",
+    "speaker_count",
+    "equipment",
+    "source",
+    "original_container",
+    "original_codec",
+    "original_sample_rate_hz",
+    "original_channels",
+    "is_lossy_source",
+    "quality_flags",
+    *(f"quality_{key}" for key in QUALITY_FIELDS),
+    "transcription_script",
+    "transcription_status",
+    "transcription",
+    "text_script",
+    "text_status",
+    "text",
+    *(f"consent_{key}" for key in CONSENT_FIELDS),
+)
+# A spreadsheet runs a cell starting with these as a formula; such text cells get a leading '.
+_FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
+
+
+def csv_cell(value: Any) -> Any:
+    """A value as a spreadsheet cell: lists joined, formula-like text escaped."""
+    if isinstance(value, bool):
+        return "yes" if value else "no"
+    if isinstance(value, list):
+        value = ";".join(str(v) for v in value)
+    if isinstance(value, str) and value.startswith(_FORMULA_START):
+        return "'" + value
+    return "" if value is None else value
+
+
+def _csv_row(record: Mapping[str, Any], languages: list[str]) -> list[Any]:
+    audio = record["audio"] or {}
+    original = audio.get("original") or {}
+    quality = audio.get("quality") or {}
+    prompt = record["prompt"] or {}
+    speaker = record["speaker"]
+    context = record["collection_context"]
+    transcription = record["transcription"] or {}
+    text = record["text"] or {}
+    duration = audio.get("duration_ms")
+    values: dict[str, Any] = {
+        "item_id": record["item_id"],
+        "audio_path": audio.get("path"),
+        "duration_seconds": round(duration / 1000, 3) if duration is not None else None,
+        "speaker_code": record["speaker_code"],
+        "age_band": speaker.get("age_band"),
+        "gender": speaker.get("gender"),
+        "first_language": speaker.get("first_language"),
+        "other_languages": speaker.get("other_languages"),
+        "speaker_region": speaker.get("region"),
+        "area": record["area"],
+        "dialect_label": record["dialect_label"],
+        "language": record["language"],
+        "content_type": record["content_type"],
+        "collection_method": record["collection_method"],
+        "recording_mode": record["recording_mode"],
+        "topics": record["topics"],
+        "recorded_on": record["recorded_on"],
+        "prompt_key": prompt.get("key"),
+        "prompt_version": prompt.get("version"),
+        "prompt_type": prompt.get("type"),
+        "prompt_text": prompt.get("text"),
+        "prompt_topics": prompt.get("topic_tags"),
+        "setting": context.get("setting"),
+        "speaker_count": context.get("speaker_count"),
+        "equipment": context.get("equipment"),
+        "source": original.get("source"),
+        "original_container": original.get("container"),
+        "original_codec": original.get("codec"),
+        "original_sample_rate_hz": original.get("sample_rate_hz"),
+        "original_channels": original.get("channels"),
+        "is_lossy_source": audio.get("is_lossy_source"),
+        "quality_flags": record["quality_flags"],
+        **{f"quality_{key}": quality.get(key) for key in QUALITY_FIELDS},
+        "transcription_script": transcription.get("script"),
+        "transcription_status": transcription.get("verification_status"),
+        "transcription": transcription.get("text"),
+        "text_script": text.get("script"),
+        "text_status": text.get("verification_status"),
+        "text": text.get("text"),
+        **{f"consent_{key}": record["consent_permissions"][key] for key in CONSENT_FIELDS},
+    }
+    row = [values[column] for column in CSV_COLUMNS]
+    for language in languages:
+        found = [t["text"] for t in record["translations"] if t["language"] == language]
+        row.append(" | ".join(found) if found else None)
+    return [csv_cell(value) for value in row]
+
+
+def metadata_csv(records: Iterable[Mapping[str, Any]]) -> bytes:
+    """UTF-8 with a byte order mark, so spreadsheet programs show Devanagari and Nag Mundari
+    correctly. items.jsonl stays the exact copy: here lists are joined and formula-like text
+    is escaped."""
+    ordered = sorted(records, key=lambda r: r["item_id"])
+    languages = sorted({t["language"] for r in ordered for t in r["translations"]})
+    out = io.StringIO()
+    writer = csv.writer(out, lineterminator="\r\n")
+    writer.writerow([*CSV_COLUMNS, *(f"translation_{language}" for language in languages)])
+    for record in ordered:
+        writer.writerow(_csv_row(record, languages))
+    return ("\ufeff" + out.getvalue()).encode("utf-8")
 
 
 # ------------------------------------------------------------------ data card
@@ -216,6 +458,9 @@ def statistics(records: list[dict[str, Any]], speaker_share_warning: float) -> d
             sorted(Counter(r["recording_mode"] or "(text only)" for r in records).items())
         ),
         "by_script": dict(sorted(main_scripts.items())),
+        "by_topic": dict(
+            sorted(Counter(t for r in records for t in r["topics"] or ["(none)"]).items())
+        ),
         "with_audio": sum(1 for r in records if r["audio"]),
         "lossy_sources": sum(1 for r in records if (r["audio"] or {}).get("is_lossy_source")),
         "texts": len(texts),
@@ -255,6 +500,7 @@ def data_card_markdown(info: ReleaseInfo, stats: Mapping[str, Any]) -> str:
         _table("Dialect label (as reported)", stats["by_dialect_label"]),
         _table("Recording mode", stats["by_recording_mode"]),
         _table("Script of the main text", stats["by_script"]),
+        _table("Topic (an item may have several)", stats["by_topic"]),
         "## Consent and permitted uses\n",
         f"Purpose: `{info.purpose}`. Every item's speaker agreed to this use, checked when the "
         "release was frozen. See LICENSE.txt for the terms.\n",
@@ -265,8 +511,11 @@ def data_card_markdown(info: ReleaseInfo, stats: Mapping[str, Any]) -> str:
         "- Dialect labels are as reported by contributors, not a controlled list.\n"
         f"- {bias}\n",
         "## Preprocessing\n",
-        "Audio is a 16 kHz mono FLAC copy of each original, without metadata. Text is exactly "
-        "as written; nothing was corrected or normalised.\n",
+        "Audio is a 16 kHz mono FLAC copy of each original. None of the original's own tags are "
+        "kept; each file is tagged with its item's ID, speaker code, dialect, recording mode, "
+        "prompt, transcription, translations, permitted uses and licence. Text is exactly as "
+        "written; nothing was corrected or normalised. metadata.csv holds the same items as "
+        "items.jsonl for spreadsheets; there, formula-like text starts with an added `'`.\n",
         "## Withdrawal\n",
         "Speakers can withdraw their contributions. Items withdrawn after this release was "
         "frozen must be deleted from every copy; holders are told.\n",
@@ -370,6 +619,7 @@ def assemble(
     as stored) and a way to read it."""
     texts = {
         "items.jsonl": items_jsonl(records),
+        "metadata.csv": metadata_csv(records),
         "README.md": data_card_markdown(info, stats).encode(),
         "datacard.json": data_card_json(info, stats),
         "LICENSE.txt": ((info.licence or DEFAULT_LICENCE) + "\n").encode(),

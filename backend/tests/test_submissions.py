@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.prompts.models import Prompt
 from app.modules.submissions.models import Submission
+from app.modules.topics.models import Topic
 from tests.conftest import MakeUser, TestUser, act_as, requires_postgres
 from tests.submission_helpers import SUBMISSIONS, create_draft, draft_body, own_speaker
 
@@ -28,7 +29,13 @@ def speaker_id(client: TestClient, asha: TestUser) -> str:
     return own_speaker(client)
 
 
-def _prompt(db: Session, author: uuid.UUID, prompt_type: str, status: str = "approved") -> str:
+def _prompt(
+    db: Session,
+    author: uuid.UUID,
+    prompt_type: str,
+    status: str = "approved",
+    topic_tags: tuple[str, ...] = (),
+) -> str:
     prompt = Prompt(
         prompt_key=f"test-{uuid.uuid4().hex[:8]}",
         version=1,
@@ -37,6 +44,7 @@ def _prompt(db: Session, author: uuid.UUID, prompt_type: str, status: str = "app
         text_language_tag="hi",
         script_code="Deva",
         source_and_licence="test",
+        topic_tags=list(topic_tags),
         status=status,
         approved_by=None if status == "draft" else author,
         created_by=author,
@@ -150,6 +158,38 @@ def test_prompts_must_be_approved_and_fit_the_mode(
     db.commit()
     assert attempt("read", sentence) == "prompt_retired"
     assert attempt("prompted", situation) is None  # created
+
+
+def test_items_carry_topics_from_the_list(
+    client: TestClient, speaker_id: str, make_user: MakeUser, db: Session
+) -> None:
+    chosen = create_draft(client, speaker_id, topics=["health_and_medicine", "agriculture"])
+    assert chosen["topics"] == ["agriculture", "health_and_medicine"]
+    assert create_draft(client, speaker_id)["topics"] == []
+    unknown = client.post(SUBMISSIONS, json=draft_body(speaker_id, topics=["astrology"]))
+    assert unknown.json()["code"] == "unknown_topic"
+    too_many = draft_body(speaker_id, topics=[f"t{i}x" for i in range(11)])
+    assert client.post(SUBMISSIONS, json=too_many).status_code == 422
+
+    # A prompt's tags that are on the list become the starting topics.
+    tags = ("forest-and-nature", "seasons")
+    prompt_id = _prompt(db, make_user("admin", "admin").id, "situation", topic_tags=tags)
+    prompted = create_draft(client, speaker_id, recording_mode="prompted", prompt_id=prompt_id)
+    assert prompted["topics"] == ["forest_and_nature"]
+    own = create_draft(
+        client, speaker_id, recording_mode="prompted", prompt_id=prompt_id, topics=["education"]
+    )
+    assert own["topics"] == ["education"]
+
+    # A topic retired after it was chosen may stay on the item, but cannot be chosen anew.
+    db.execute(update(Topic).where(Topic.key == "agriculture").values(retired_at=datetime.now(UTC)))
+    db.commit()
+    path = f"{SUBMISSIONS}/{chosen['id']}"
+    kept = client.patch(path, json={"topics": ["agriculture", "education"]})
+    assert kept.json()["topics"] == ["agriculture", "education"]
+    other = f"{SUBMISSIONS}/{prompted['id']}"
+    assert client.patch(other, json={"topics": ["agriculture"]}).json()["code"] == "unknown_topic"
+    assert client.patch(path, json={"title": "x"}).json()["topics"] == ["agriculture", "education"]
 
 
 # ------------------------------------------------------------------ seeing drafts

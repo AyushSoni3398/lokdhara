@@ -7,7 +7,9 @@ stores the package's text files and manifest. Every later export is built from t
 checked against the manifest.
 """
 
+import hashlib
 import uuid
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC
 from typing import Any
@@ -16,7 +18,7 @@ from sqlalchemy import select, tuple_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.audio import renditions
+from app.audio import flac_tags, renditions
 from app.config import Settings
 from app.errors import ApiError
 from app.modules.audit import service as audit
@@ -44,7 +46,9 @@ SNAPSHOT_USES = {
     "ai_training": "allow_ai_training",
     "commercial": "allow_commercial_use",
 }
-TEXT_FILES = ("items.jsonl", "README.md", "datacard.json", "LICENSE.txt")
+TEXT_FILES = ("items.jsonl", "metadata.csv", "README.md", "datacard.json", "LICENSE.txt")
+# The stored files that list items one by one; a withdrawal's deletion routine erases them.
+ITEM_FILES = ("items.jsonl", "metadata.csv")
 
 
 def stored_file_key(release_id: uuid.UUID, path: str) -> str:
@@ -88,7 +92,34 @@ def _consent_steps(db: Session, submission: Submission) -> list[ConsentStep]:
     ]
 
 
-def _gather(db: Session, submission: Submission) -> Gathered:
+def _original(recording: Recording) -> dict[str, Any]:
+    return {
+        "container": recording.detected_container,
+        "codec": recording.detected_codec,
+        "sample_rate_hz": recording.sample_rate_hz,
+        "channels": recording.channels,
+        "bit_depth": recording.bit_depth,
+        "bytes": recording.size_bytes,
+        "source": recording.recorded_device_hint,
+    }
+
+
+# Purposes whose packages carry the speaker's gender, languages and area, not only the age band
+# (ADR-029). Wider uses wait for governance approval (Q-G1, Q-G5).
+FULL_DEMOGRAPHICS_PURPOSES = frozenset({"internal_research"})
+
+
+def _speaker_details(speaker: Speaker, submission: Submission) -> dict[str, Any]:
+    return {
+        "gender": speaker.gender_self_described,
+        "first_language": speaker.first_language,
+        "other_languages": sorted(speaker.other_languages or []),
+        "region": speaker.region_coarse,
+        "area": submission.region_coarse,
+    }
+
+
+def _gather(db: Session, submission: Submission, *, full_demographics: bool = False) -> Gathered:
     speaker = db.get(Speaker, submission.speaker_id)
     if speaker is None:  # pragma: no cover - a foreign key guarantees it
         raise RuntimeError("submission without speaker")
@@ -117,6 +148,9 @@ def _gather(db: Session, submission: Submission) -> Gathered:
         .order_by(TextLayer.created_at)
     ).all()
     steps = _consent_steps(db, submission)
+    shared = full_demographics and speaker.demographics_consented
+    details = _speaker_details(speaker, submission) if shared else {}
+    area = details.pop("area", None)
     consent = {name: use_allowed(steps, column) for name, column in SNAPSHOT_USES.items()}
     source = package.ItemSource(
         item_id=str(submission.id),
@@ -133,6 +167,11 @@ def _gather(db: Session, submission: Submission) -> Gathered:
                 "key": prompt.prompt_key,
                 "version": prompt.version,
                 "type": prompt.prompt_type,
+                # What the speaker was shown or asked to read; prompts hold no personal data.
+                "text": prompt.text,
+                "language": prompt.text_language_tag,
+                "script": prompt.script_code,
+                "topic_tags": sorted(prompt.topic_tags),
             }
             if prompt
             else None
@@ -144,6 +183,8 @@ def _gather(db: Session, submission: Submission) -> Gathered:
                 size_bytes=rendition.size_bytes,
                 duration_ms=recording.duration_ms if recording else None,
                 is_lossy_source=recording.is_lossy_source if recording else None,
+                original=_original(recording) if recording else {},
+                quality=(recording.quality_metrics or {}) if recording else {},
             )
             if rendition
             else None
@@ -166,6 +207,10 @@ def _gather(db: Session, submission: Submission) -> Gathered:
         ),
         quality_flags=tuple(recording.quality_flags if recording else ()),
         consent=consent,
+        collection_context=submission.collection_context,
+        speaker_details=details,
+        area=area,
+        topics=tuple(submission.topics),
     )
     return Gathered(
         submission=submission,
@@ -210,7 +255,8 @@ def _file_ok(store: ObjectStore, rendition: Rendition) -> bool:
 def run_checks(
     db: Session, store: ObjectStore, settings: Settings, release: DatasetRelease
 ) -> CheckRun:
-    items = [_gather(db, s) for s in db.scalars(service.selection(release))]
+    full = release.purpose in FULL_DEMOGRAPHICS_PURPOSES
+    items = [_gather(db, s, full_demographics=full) for s in db.scalars(service.selection(release))]
     records = [item.record for item in items]
     stats = package.statistics(records, settings.release_speaker_share_warning)
     use = PURPOSE_PERMISSIONS[release.purpose]
@@ -333,16 +379,19 @@ def freeze(
         code_version=settings.git_commit,
         data_card_markdown=release.data_card_markdown,
     )
-    audio = {
-        package.audio_path(str(i.submission.id)): (
-            package.FileEntry(
-                package.audio_path(str(i.submission.id)), i.rendition.sha256, i.rendition.size_bytes
-            ),
-            _no_read,
+    release_name = f"{release.slug} {version}"
+    audio = {}
+    for item in run.items:
+        if item.rendition is None:
+            continue
+        path = package.audio_path(str(item.submission.id))
+        comments = package.flac_comments(
+            item.record, release_name=release_name, licence=release.licence
         )
-        for i in run.items
-        if i.rendition is not None
-    }
+        audio[path] = (_tagged_entry(store, path, item.rendition, comments), _no_read)
+        # items.jsonl describes the file in the package: the tagged copy.
+        item.record["audio"]["sha256"] = audio[path][0].sha256
+        item.record["audio"]["bytes"] = audio[path][0].size_bytes
     built = package.assemble(info, [i.record for i in run.items], run.stats, audio)
     _store_text_files(store, release.id, built)
 
@@ -391,6 +440,35 @@ def freeze(
     return release
 
 
+def _tagged_entry(
+    store: ObjectStore, path: str, rendition: Rendition, comments: list[tuple[str, str]]
+) -> package.FileEntry:
+    """Reads the audio copy once, checking it is the one D4 checked, and measures the tagged
+    file the export will write (ADR-029)."""
+    raw, out, size = hashlib.sha256(), hashlib.sha256(), 0
+
+    def chunks() -> Iterator[bytes]:
+        for chunk in store.open(Bucket.DERIVED, rendition.object_key):
+            raw.update(chunk)
+            yield chunk
+
+    try:
+        for chunk in flac_tags.tagged(chunks(), comments):
+            out.update(chunk)
+            size += len(chunk)
+    except (ObjectNotFound, flac_tags.NotFlac) as exc:
+        raise _audio_changed() from exc
+    if raw.hexdigest() != rendition.sha256:
+        raise _audio_changed()
+    return package.FileEntry(path, out.hexdigest(), size)
+
+
+def _audio_changed() -> ApiError:
+    return ApiError(
+        422, "prefreeze_checks_failed", "The release did not pass its checks.", "Failed: D4"
+    )
+
+
 def _no_read() -> Any:  # pragma: no cover - freezing never reads audio, the export does
     raise RuntimeError("audio is read when the export is built")
 
@@ -405,6 +483,9 @@ class _Bytes:
         return chunk
 
 
+_CONTENT_TYPES = {"json": "application/json", "jsonl": "application/json", "csv": "text/csv"}
+
+
 def _store_text_files(store: ObjectStore, release_id: uuid.UUID, built: package.Package) -> None:
     """Everything except the audio, kept as long as the release record (§5)."""
     for path, chunks in built.files:
@@ -415,5 +496,5 @@ def _store_text_files(store: ObjectStore, release_id: uuid.UUID, built: package.
             Bucket.EXPORTS,
             stored_file_key(release_id, path),
             _Bytes(content),
-            content_type="application/json" if path.endswith("json") else "text/plain",
+            content_type=_CONTENT_TYPES.get(path.rsplit(".", 1)[-1], "text/plain"),
         )

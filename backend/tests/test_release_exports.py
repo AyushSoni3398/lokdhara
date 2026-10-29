@@ -5,6 +5,9 @@ Synthetic data only: one text item and one recording of a tone made by FFmpeg.
 
 import hashlib
 import io
+import json
+import shutil
+import subprocess
 import uuid
 import zipfile
 from collections.abc import Iterator
@@ -21,9 +24,10 @@ from app.config import Settings
 from app.modules.audit.models import AuditEvent
 from app.modules.processing import queue
 from app.modules.processing.models import Job
-from app.modules.releases import export_job, freeze
+from app.modules.releases import export_job, freeze, package
 from app.modules.releases.models import ExportRequest
 from app.modules.submissions import processing
+from app.modules.submissions.models import Rendition
 from app.object_store import Bucket, ObjectStore
 from tests.audio_fixtures import make_audio, requires_ffmpeg
 from tests.conftest import MakeUser, TestUser, act_as, requires_postgres
@@ -80,7 +84,8 @@ def release(
     act_as(client, make_user("asha", "contributor"))
     speaker = own_speaker(client)
     give_consent(client, db, speaker, allow_research=True)
-    draft = create_draft(client, speaker)
+    context = {"setting": "outdoor", "equipment": "phone_builtin_mic", "notes": "at Somra's"}
+    draft = create_draft(client, speaker, collection_context=context)
     assert upload(client, draft["id"], make_audio(tmp_path / "a", seconds=2)).status_code == 202
     assert client.post(f"{SUBMISSIONS}/{draft['id']}/submit").status_code == 200
     accepted_text_item(client, engine, speaker, "नदी के किनारे")
@@ -147,6 +152,103 @@ def test_approved_exports_are_built_from_the_frozen_files(
     second = _approved(client, release, researcher, admin)
     run_jobs(engine)
     assert _package(object_store, db, second) == content
+
+
+def _files(content: bytes) -> dict[str, bytes]:
+    archive = zipfile.ZipFile(io.BytesIO(content))
+    return {name.split("/", 1)[1]: archive.read(name) for name in archive.namelist()}
+
+
+def test_audio_files_carry_their_items_tags(
+    client: TestClient,
+    engine: Engine,
+    db: Session,
+    object_store: ObjectStore,
+    release: dict[str, Any],
+    researcher: TestUser,
+    admin: TestUser,
+    tmp_path: Path,
+) -> None:
+    export_id = _approved(client, release, researcher, admin)
+    run_jobs(engine)
+    files = _files(_package(object_store, db, export_id))
+
+    records = [json.loads(line) for line in files["items.jsonl"].decode().splitlines()]
+    recording = next(r for r in records if r["audio"])
+    flac = files[recording["audio"]["path"]]
+    # items.jsonl describes the file in the package, tags included.
+    assert hashlib.sha256(flac).hexdigest() == recording["audio"]["sha256"]
+    assert len(flac) == recording["audio"]["bytes"]
+    assert recording["collection_context"] == {
+        "setting": "outdoor",
+        "equipment": "phone_builtin_mic",
+    }
+    assert recording["audio"]["original"]["source"] == "browser_recorder"
+    assert recording["audio"]["original"]["codec"] == "opus"
+    assert recording["audio"]["quality"]["peak_dbfs"] is not None
+
+    path = tmp_path / "item.flac"
+    path.write_bytes(flac)
+    probed = subprocess.run(  # noqa: S603 - test helper, fixed program
+        [shutil.which("ffprobe") or "ffprobe", "-v", "error", "-of", "json", "-show_format", path],
+        check=True,
+        capture_output=True,
+        timeout=60,
+    )
+    tags = {k.upper(): v for k, v in json.loads(probed.stdout)["format"]["tags"].items()}
+    assert tags["LOKDHARA_ITEM_ID"] == recording["item_id"]
+    assert tags["SPEAKER_CODE"] == recording["speaker_code"]
+    assert tags["ALBUM"] == "mundari-pilot 0.1.0"
+    assert tags["CONSENT"] == "research"
+    assert "Internal research use only" in tags["LICENSE"]
+    assert "Somra" not in json.dumps(tags) + files["items.jsonl"].decode()
+
+    sheet = files["metadata.csv"].decode("utf-8-sig").splitlines()
+    assert len(sheet) == 3 and sheet[0].startswith("item_id,audio_path,")
+
+
+def test_releases_frozen_before_tags_are_rebuilt_without_them(
+    client: TestClient,
+    engine: Engine,
+    db: Session,
+    make_user: MakeUser,
+    object_store: ObjectStore,
+    researcher: TestUser,
+    admin: TestUser,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A format 1 release: its manifest lists the audio copies as stored, untagged."""
+    act_as(client, make_user("asha", "contributor"))
+    speaker = own_speaker(client)
+    give_consent(client, db, speaker, allow_research=True)
+    draft = create_draft(client, speaker)
+    assert upload(client, draft["id"], make_audio(tmp_path / "a", seconds=2)).status_code == 202
+    assert client.post(f"{SUBMISSIONS}/{draft['id']}/submit").status_code == 200
+    run_jobs(engine)
+
+    act_as(client, admin)
+    made = client.post(DATASETS, json={"slug": "old-pilot", "purpose": "internal_research"})
+    with monkeypatch.context() as patch:
+        patch.setattr(package, "EXPORT_FORMAT_VERSION", "1")
+        patch.setattr(
+            freeze,
+            "_tagged_entry",
+            lambda _store, path, rendition, _comments: package.FileEntry(
+                path, rendition.sha256, rendition.size_bytes
+            ),
+        )
+        frozen = client.post(f"{DATASETS}/{made.json()['id']}/freeze", json={"version": "0.1.0"})
+    assert frozen.status_code == 200, frozen.text
+
+    export_id = _approved(client, frozen.json(), researcher, admin)
+    run_jobs(engine)
+    assert client.get(f"/api/v1/exports/{export_id}").json()["status"] == "ready"
+    files = _files(_package(object_store, db, export_id))
+    flac = next(content for name, content in files.items() if name.startswith("audio/"))
+    rendition = db.scalar(select(Rendition).where(Rendition.kind == "analysis_flac_16k_mono"))
+    assert rendition is not None
+    assert hashlib.sha256(flac).hexdigest() == rendition.sha256
 
 
 def test_a_changed_file_fails_the_build_and_a_retry_reopens_it(

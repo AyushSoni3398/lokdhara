@@ -42,7 +42,7 @@ Status: **Proposed.** Retention periods are placeholders until the data steward 
 - **Verify and restrict:** the admin writes how the requester was checked and accepts. In the same step the speaker (for *everything*), their active consent and the submissions become `withdrawn`, and release items are marked (step 4). Or the admin refuses with a reason.
 - **Delete:** accepting queues the `withdrawal.erase` job at once (no 30-day wait). It deletes the files and every stored version, empties the text, the title and context, report notes and, for *everything*, the identity details, demographics and consent notes. `erased_at` and `actions_taken` record what was deleted.
 - **Close:** once `erased_at` is set, the admin closes the request with how the person was told. The contributor sees each request's state in plain words.
-- **Kept:** the request, the consent records and, until Q-G8 is answered, the oral consent recording (`LKD_WITHDRAWAL_KEEP_CONSENT_EVIDENCE`). Release manifests stay; the `items.jsonl` of releases with withdrawn items is deleted because it holds their text.
+- **Kept:** the request, the consent records and, until Q-G8 is answered, the oral consent recording (`LKD_WITHDRAWAL_KEEP_CONSENT_EVIDENCE`). Release manifests stay; the `items.jsonl` and `metadata.csv` of releases with withdrawn items are deleted because they hold their text.
 - **Not built yet:** notifying export holders (step 5, waits for Q-G5), the 2-working-day target, legal holds (§5), account deletion (§4).
 
 ## 3. Restriction without deletion

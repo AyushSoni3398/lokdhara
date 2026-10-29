@@ -7,8 +7,8 @@ clears what they said, keeping only what is needed to show that the request was 
 - the original recording, its quarantine copy and every derived file, in every stored version;
 - the text of every revision (the rows stay as tombstones, so release manifests stay readable);
 - the title and collection notes of each submission, and the notes of reports about it;
-- the `items.jsonl` kept for each frozen release that held an item, since its packages can no
-  longer be built anyway;
+- the `items.jsonl` and `metadata.csv` kept for each frozen release that held an item, since
+  its packages can no longer be built anyway;
 - for a full withdrawal, the restricted identity details and demographics of the speaker, and
   the free-text notes of their consent records. The recording of an oral consent stays while
   `LKD_WITHDRAWAL_KEEP_CONSENT_EVIDENCE` is on (Q-G8).
@@ -29,7 +29,7 @@ from app.config import get_settings
 from app.modules.audit import service as audit
 from app.modules.consents.models import ConsentRecord, WithdrawalRequest
 from app.modules.processing.queue import JobContext, JobResult, handler, utcnow
-from app.modules.releases.freeze import stored_file_key
+from app.modules.releases.freeze import ITEM_FILES, stored_file_key
 from app.modules.releases.models import DatasetReleaseItem
 from app.modules.reports.models import Report
 from app.modules.speakers import service as speakers
@@ -77,7 +77,9 @@ def _erase_files(
     files = [(Bucket.QUARANTINE, r.original_object_key) for r in recordings]
     files += [(Bucket.ORIGINALS, r.original_object_key) for r in recordings]
     files += [(Bucket.DERIVED, r.object_key) for r in renditions]
-    files += [(Bucket.EXPORTS, stored_file_key(i, "items.jsonl")) for i in release_ids]
+    files += [
+        (Bucket.EXPORTS, stored_file_key(i, path)) for i in release_ids for path in ITEM_FILES
+    ]
     files += [(Bucket.CONSENT_EVIDENCE, key) for key in evidence_keys]
     for bucket, key in files:
         store.erase(bucket, key)

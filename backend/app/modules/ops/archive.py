@@ -10,9 +10,12 @@ The tables are read inside the request; the files are read from storage while th
 so the zip is never held in memory or on disk.
 """
 
+import csv
+import io
 import json
 import uuid
 import zipfile
+from collections import defaultdict
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -31,6 +34,7 @@ from app.modules.identity.models import User, UserRole
 from app.modules.identity.service import AuthenticatedUser
 from app.modules.prompts.models import Prompt
 from app.modules.releases.models import DatasetRelease, DatasetReleaseItem, ExportRequest
+from app.modules.releases.package import csv_cell
 from app.modules.reports.models import Report
 from app.modules.review.models import ReviewEvent
 from app.modules.speakers.crypto import IdentityCipher
@@ -44,6 +48,7 @@ from app.modules.submissions.models import (
     TextLayer,
     TextRevision,
 )
+from app.modules.topics.models import Topic
 from app.object_store import Bucket, ObjectNotFound, ObjectStore
 
 # File name in the zip -> table. Each line of a file is one row, every column but those below.
@@ -55,6 +60,7 @@ TABLES: dict[str, type[Base]] = {
     "consent_records": ConsentRecord,
     "withdrawal_requests": WithdrawalRequest,
     "prompts": Prompt,
+    "topics": Topic,
     "submissions": Submission,
     "related_items": RelatedItem,
     "recordings": Recording,
@@ -87,6 +93,9 @@ filters of a dataset release:
 - consent_evidence/     recorded oral consents, named <consent record id>.<format>
 - prompts/              prompt images and audio, named <prompt id>-image|audio.<format>
 - files.jsonl           which stored file each entry came from, and any that were missing
+- recordings_overview.csv   one row per recording (and per text-only item) with its speaker,
+                        name, consent, prompt, details, file name, quality and current texts,
+                        for opening in a spreadsheet. data/*.jsonl stay the exact copy.
 
 It includes recordings marked culturally restricted, hidden after a report, waiting for a
 withdrawal, and recordings whose speaker did not agree to research, public or AI use. Look at
@@ -183,6 +192,174 @@ def _files(db: Session) -> list[ArchiveFile]:
     return files
 
 
+OVERVIEW_COLUMNS = (
+    "submission_id",
+    "recording_id",
+    "file",
+    "submission_status",
+    "restriction_flags",
+    "upload_status",
+    "sent_by",
+    "speaker_code",
+    "speaker_name",
+    "speaker_contact",
+    "speaker_village",
+    "age_band",
+    "gender",
+    "first_language",
+    "other_languages",
+    "speaker_region",
+    "demographics_consented",
+    "title",
+    "kind",
+    "content_type",
+    "language",
+    "dialect_label",
+    "area",
+    "recording_mode",
+    "topics",
+    "collection_method",
+    "recorded_on",
+    "submitted_at",
+    "prompt_key",
+    "prompt_version",
+    "prompt_text",
+    "setting",
+    "speaker_count",
+    "equipment",
+    "collection_notes",
+    "source",
+    "container",
+    "codec",
+    "sample_rate_hz",
+    "channels",
+    "bit_depth",
+    "duration_seconds",
+    "size_bytes",
+    "is_lossy_source",
+    "sha256_original",
+    "quality_flags",
+    "consent_status",
+    "consent_research",
+    "consent_public",
+    "consent_ai_training",
+    "consent_commercial",
+    "guardian_involved",
+    "transcription",
+    "text",
+    "translations",
+)
+
+
+def _texts(db: Session) -> dict[uuid.UUID, dict[str, list[str]]]:
+    """Each submission's current texts by layer type; translations as `language: text`."""
+    found: dict[uuid.UUID, dict[str, list[str]]] = defaultdict(lambda: defaultdict(list))
+    rows = db.execute(
+        select(TextLayer, TextRevision)
+        .join(TextRevision, TextRevision.id == TextLayer.current_revision_id)
+        .order_by(TextLayer.created_at, TextLayer.id)
+    )
+    for layer, revision in rows:
+        text = revision.content_original
+        if layer.layer_type == "translation":
+            text = f"{layer.language_tag}: {text}"
+        found[layer.submission_id][layer.layer_type].append(text)
+    return found
+
+
+def overview_csv(db: Session, identities: list[dict[str, Any]]) -> bytes:
+    """recordings_overview.csv: the tables joined, so the archive is usable without code."""
+    speakers = {s.id: s for s in db.scalars(select(Speaker))}
+    names = {uuid.UUID(row["speaker_id"]): row for row in identities}
+    users = {user_id: name for user_id, name in db.execute(select(User.id, User.username))}
+    prompts = {p.id: p for p in db.scalars(select(Prompt))}
+    consents = {c.id: c for c in db.scalars(select(ConsentRecord))}
+    recordings: dict[uuid.UUID, list[Recording]] = defaultdict(list)
+    for stored in db.scalars(select(Recording).order_by(Recording.created_at, Recording.id)):
+        recordings[stored.submission_id].append(stored)
+    texts = _texts(db)
+
+    out = io.StringIO()
+    writer = csv.writer(out, lineterminator="\r\n")
+    writer.writerow(OVERVIEW_COLUMNS)
+    order = (Submission.created_at, Submission.id)
+    for submission in db.scalars(select(Submission).order_by(*order)):
+        speaker = speakers[submission.speaker_id]
+        identity = names.get(speaker.id, {})
+        prompt = prompts.get(submission.prompt_id) if submission.prompt_id else None
+        consent = (
+            consents.get(submission.consent_record_id) if submission.consent_record_id else None
+        )
+        context = submission.collection_context or {}
+        own = texts.get(submission.id, {})
+        common: dict[str, Any] = {
+            "submission_id": submission.id,
+            "submission_status": submission.status,
+            "restriction_flags": submission.restriction_flags,
+            "sent_by": users.get(submission.submitted_by),
+            "speaker_code": speaker.speaker_code,
+            "speaker_name": identity.get("full_name"),
+            "speaker_contact": identity.get("contact"),
+            "speaker_village": identity.get("village"),
+            "age_band": speaker.age_band,
+            "gender": speaker.gender_self_described,
+            "first_language": speaker.first_language,
+            "other_languages": speaker.other_languages,
+            "speaker_region": speaker.region_coarse,
+            "demographics_consented": speaker.demographics_consented,
+            "title": submission.title,
+            "kind": submission.kind,
+            "content_type": submission.content_type,
+            "language": submission.language_tag,
+            "dialect_label": submission.dialect_label,
+            "area": submission.region_coarse,
+            "recording_mode": submission.recording_mode,
+            "topics": submission.topics,
+            "collection_method": submission.collection_method,
+            "recorded_on": submission.recorded_on,
+            "submitted_at": submission.submitted_at,
+            "prompt_key": prompt.prompt_key if prompt else None,
+            "prompt_version": prompt.version if prompt else None,
+            "prompt_text": prompt.text if prompt else None,
+            "setting": context.get("setting"),
+            "speaker_count": context.get("speaker_count"),
+            "equipment": context.get("equipment"),
+            "collection_notes": context.get("notes"),
+            "consent_status": consent.status if consent else None,
+            "consent_research": consent.allow_research if consent else None,
+            "consent_public": consent.allow_public_access if consent else None,
+            "consent_ai_training": consent.allow_ai_training if consent else None,
+            "consent_commercial": consent.allow_commercial_use if consent else None,
+            "guardian_involved": consent.guardian_involved if consent else None,
+            "transcription": " | ".join(own.get("transcription", [])),
+            "text": " | ".join(own.get("standalone", [])),
+            "translations": " | ".join(own.get("translation", [])),
+        }
+        found: list[Recording | None] = [*recordings.get(submission.id, [])]
+        for recording in found or [None]:
+            row = dict(common)
+            if recording is not None:
+                duration = recording.duration_ms
+                row |= {
+                    "recording_id": recording.id,
+                    "file": f"originals/{recording.id}{_suffix(recording.original_object_key)}",
+                    "upload_status": recording.upload_status,
+                    "source": recording.recorded_device_hint,
+                    "container": recording.detected_container,
+                    "codec": recording.detected_codec,
+                    "sample_rate_hz": recording.sample_rate_hz,
+                    "channels": recording.channels,
+                    "bit_depth": recording.bit_depth,
+                    "duration_seconds": round(duration / 1000, 3) if duration else None,
+                    "size_bytes": recording.size_bytes,
+                    "is_lossy_source": recording.is_lossy_source,
+                    "sha256_original": recording.sha256_original,
+                    "quality_flags": recording.quality_flags,
+                }
+            writer.writerow([csv_cell(_json_value(row.get(c))) for c in OVERVIEW_COLUMNS])
+    return ("\ufeff" + out.getvalue()).encode("utf-8")
+
+
 def collect(
     db: Session,
     cipher: IdentityCipher,
@@ -201,7 +378,9 @@ def collect(
     }
     for name, model in TABLES.items():
         entries[f"data/{name}.jsonl"] = _jsonl(_rows(db, name, model))
-    entries["data/speaker_identities.jsonl"] = _jsonl(_identities(db, cipher))
+    identities = _identities(db, cipher)
+    entries["data/speaker_identities.jsonl"] = _jsonl(identities)
+    entries["recordings_overview.csv"] = overview_csv(db, identities)
     files = _files(db)
     audit.record(
         db,

@@ -149,6 +149,7 @@ Implemented by migrations `0005` (prompts, submissions, related items) and `0006
 | collection_method 🔎 | text CHECK IN ('self_recorded','facilitator_field','facilitator_remote','imported_archive') | |
 | collection_context 🗂 | jsonb DEFAULT '{}' | Setting, number of speakers, equipment. |
 | status 🔎 | text (see state machine) | Migration `0010` adds `accepted`, set when every automatic check succeeds (ADR-021). The review statuses stay allowed but unused. |
+| topics 🔎 | text[] NOT NULL DEFAULT '{}' | Keys from `topics` (checked by the app, at most 10; GIN index). Migration `0018`. Prompted and read items start with their prompt's matching tags. |
 | restriction_flags 🔎 | text[] DEFAULT '{}' | `sensitive`, `third_party_voice`, `contains_pii`, `culturally_restricted`, `minor`. An admin sets one to hide a reported item. |
 | created_at, submitted_at, updated_at | timestamptz | |
 
@@ -242,6 +243,18 @@ Search indexes: GIN `to_tsvector('simple', content_nfc)`, GIN `content_nfc gin_t
 | status 🔎 | text CHECK IN ('draft','approved','retired') | Only `status` and `approved_by` change after insert; approved or retired prompts need `approved_by` (for a draft retired without approval, the admin who retired it). At most one approved version per `prompt_key`: approving a new version retires the old one. |
 | approved_by | uuid FK users NULL | |
 | created_by, created_at | | |
+
+### `topics` (migration `0018`, ADR-030)
+| Column | Type | Notes |
+|--------|------|-------|
+| key | text PK CHECK `^[a-z][a-z0-9_]{1,39}$` | Never changes, so exported topic keys keep their meaning. |
+| label_en, label_hi | text NOT NULL | Shown in the topic dropdown; 1 to 80 characters. |
+| sort_order | int DEFAULT 1000 | Display order. |
+| retired_at | timestamptz NULL | Retired topics are not offered any more but stay on items that have them. |
+| created_by | uuid FK users NULL | NULL for the 23 topics the migration adds (provisional list, Q-X5). |
+| created_at | timestamptz | |
+
+Admins add, rename, reorder and retire topics; nobody deletes one.
 
 ### `related_items`
 `id, submission_a, submission_b, relation ('same_story_retake','possible_duplicate','continuation'), created_by, created_at`.
