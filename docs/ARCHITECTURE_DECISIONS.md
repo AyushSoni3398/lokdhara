@@ -307,3 +307,16 @@ ADRs 001–019 were **Accepted** by the project owner on 2026-10-11 (ADR-019 aft
 - **Consequences:** The contributor screens still need the dropdown (frontend work, later). Items recorded before this have no topics. Topic counts in a data card count an item once per topic.
 - **Revisit when:** a linguist and the community review the list (Q-X5), or topics need sub-topics.
 
+
+## ADR-031 — One "I accept" tick on the consent page
+
+- **Status:** Proposed (decided by the project owner on 2026-10-29; awaiting the professor's and ethics committee's view, Q-G13). Changes how CONSENT_AND_DATA_GOVERNANCE §3.1 is shown, not what is stored.
+- **Context:** The consent page asked six Yes/No questions and a credit question, each starting at No. The project owner found this long and unusual for contributors, who expect one page to read and one box to tick, as on most websites.
+- **Decision:**
+  - The page shows the consent form, then a plain list of everything the speaker agrees to: keeping and reviewing the recording, research use, public access, building computer tools, use by companies, recording age group, area and languages, and credit by a code instead of the name. Then one **"I have read the above and I accept"** tick, which starts empty. Save stays disabled until it is ticked.
+  - Saving sends every permission as `true` and `attribution_preference: pseudonymous`. The server, the database and the consent record are unchanged; old consent records with mixed answers keep working.
+  - The under-18 question and the parent or guardian field stay, and so do the facilitator's "how was consent given" choices.
+  - Releases still need their own approval: public and AI-training releases are only made when governance approves them (§4), so a tick alone does not publish anything.
+- **Alternatives:** Keep separate questions (most protective, but long); one tick for the required part with the other uses as switches that start off (short and still specific per purpose; this was recommended and the owner chose the single tick instead).
+- **Consequences:** Every new speaker agrees to all uses, including public access and use by companies; a speaker who wants only part of them cannot say so in the app and has to withdraw instead. India's DPDP Act asks for consent that is specific to each purpose, and an ethics committee may ask for separate choices, so this is open as Q-G13. Speakers can no longer choose to be credited by name or not at all (Q-G2).
+- **Revisit when:** the professor or ethics committee answers Q-G13, or speakers ask to share only part of their data.
