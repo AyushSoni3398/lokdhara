@@ -200,3 +200,18 @@ def test_the_data_card_counts_items_and_states_its_limitations() -> None:
     assert "SPK-AAAAA" in card
     assert "| song | 1 |" in card
     assert json.loads(package.data_card_json(INFO, stats))["texts_verified_by_reviewer"] is False
+
+
+def test_prompted_items_say_what_the_prompt_was() -> None:
+    prompt = {
+        "id": "p1",
+        "key": "img-farming-012",
+        "version": 2,
+        "type": "image",
+        "text": "खेत में क्या हो रहा है?",
+        "language": "hi",
+        "script": "Deva",
+        "topic_tags": ["farming", "seasons"],
+    }
+    record = package.item_record(_item("b2", recording_mode="prompted", prompt=prompt))
+    assert record["prompt"] == prompt

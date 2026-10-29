@@ -145,6 +145,11 @@ def _gather(db: Session, submission: Submission) -> Gathered:
                 "key": prompt.prompt_key,
                 "version": prompt.version,
                 "type": prompt.prompt_type,
+                # What the speaker was shown or asked to read; prompts hold no personal data.
+                "text": prompt.text,
+                "language": prompt.text_language_tag,
+                "script": prompt.script_code,
+                "topic_tags": sorted(prompt.topic_tags),
             }
             if prompt
             else None

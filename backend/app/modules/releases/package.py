@@ -80,7 +80,9 @@ TEXT_FIELDS = frozenset(
     }
 )
 TRANSLATION_FIELDS = TEXT_FIELDS | {"source_revision_id"}
-PROMPT_FIELDS = frozenset({"id", "key", "version", "type"})
+PROMPT_FIELDS = frozenset(
+    {"id", "key", "version", "type", "text", "language", "script", "topic_tags"}
+)
 # docs/DATA_DICTIONARY.md §3. `notes` is never exported: it may contain personal details.
 COLLECTION_CONTEXT_FIELDS = ("setting", "speaker_count", "equipment")
 CONSENT_FIELDS = ("research", "public", "ai_training", "commercial")
