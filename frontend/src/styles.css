@@ -105,6 +105,8 @@ input:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visib
   background: #fff; border: 1px solid #e6d9cc; border-radius: var(--radius);
   padding: 16px; font-size: 1.25rem;
 }
+/* A picture wider than the phone shrinks to fit instead of pushing the page sideways. */
+.prompt-card img { display: block; max-width: 100%; height: auto; border-radius: 8px; }
 
 /* Wizard */
 .wizard-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 24px 0 8px; }
