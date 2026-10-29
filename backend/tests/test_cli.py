@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app import cli
 from app.config import Settings
 from app.modules.identity.models import User, UserRole
+from app.object_store import ObjectStore
 from tests.conftest import requires_postgres
 
 
@@ -37,9 +38,14 @@ def test_create_admin_reads_password_from_stdin(
 
 @requires_postgres
 def test_seed_dev_creates_one_account_per_role_once(
-    monkeypatch: pytest.MonkeyPatch, engine: Engine, db: Session, capsys: pytest.CaptureFixture[str]
+    monkeypatch: pytest.MonkeyPatch,
+    engine: Engine,
+    db: Session,
+    object_store: ObjectStore,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     monkeypatch.setattr(cli, "get_engine", lambda: engine)
+    monkeypatch.setattr(cli, "get_object_store", lambda: object_store)
     monkeypatch.setattr(cli, "get_settings", lambda: Settings(_env_file=None, env="development"))
     assert cli.main(["seed-dev"]) == 0
     assert cli.main(["seed-dev"]) == 0
@@ -50,12 +56,17 @@ def test_seed_dev_creates_one_account_per_role_once(
 
 @requires_postgres
 def test_seed_dev_adds_test_consent_forms_and_prompts_once(
-    monkeypatch: pytest.MonkeyPatch, engine: Engine, db: Session, capsys: pytest.CaptureFixture[str]
+    monkeypatch: pytest.MonkeyPatch,
+    engine: Engine,
+    db: Session,
+    object_store: ObjectStore,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     from app.modules.consents.models import ConsentForm
     from app.modules.prompts.models import Prompt
 
     monkeypatch.setattr(cli, "get_engine", lambda: engine)
+    monkeypatch.setattr(cli, "get_object_store", lambda: object_store)  # the test pictures
     monkeypatch.setattr(cli, "get_settings", lambda: Settings(_env_file=None, env="development"))
     assert cli.main(["seed-dev"]) == 0
     assert "not for real data" in capsys.readouterr().out
@@ -63,7 +74,7 @@ def test_seed_dev_adds_test_consent_forms_and_prompts_once(
     forms = list(db.scalars(select(ConsentForm)))
     assert sorted(f.language for f in forms) == ["en", "hi"]
     assert all(f.is_test_form for f in forms)
-    assert len(list(db.scalars(select(Prompt.id)))) == 4
+    assert len(list(db.scalars(select(Prompt.id)))) == 12
 
 
 @requires_postgres

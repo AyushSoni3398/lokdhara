@@ -24,6 +24,7 @@ from app.modules.consents import service as consents
 from app.modules.identity import service as identity
 from app.modules.identity.models import UserRole
 from app.modules.prompts import service as prompts
+from app.object_store import get_object_store
 
 BACKEND = Path(__file__).resolve().parent.parent
 RESULTS = Path(__file__).resolve().parent / "results"
@@ -52,7 +53,7 @@ def create_accounts(url: str, count: int) -> list[dict[str, str]]:
             db, username="load-admin", display_name="Load Admin", password=secrets.token_hex(16)
         )
         db.add(UserRole(user_id=admin.id, role="admin", granted_at=identity.utcnow()))
-        prompts.ensure_dev_prompts(db, admin.id)
+        prompts.ensure_dev_prompts(db, get_object_store(), get_settings(), admin.id)
         for number in range(1, count + 1):
             account = {"username": f"load-{number:03}", "password": secrets.token_hex(16)}
             user = identity.create_user(
