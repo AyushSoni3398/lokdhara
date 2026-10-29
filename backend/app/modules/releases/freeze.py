@@ -166,6 +166,7 @@ def _gather(db: Session, submission: Submission) -> Gathered:
         ),
         quality_flags=tuple(recording.quality_flags if recording else ()),
         consent=consent,
+        collection_context=submission.collection_context,
     )
     return Gathered(
         submission=submission,

@@ -85,6 +85,23 @@ def test_item_records_hold_only_allow_listed_fields() -> None:
     assert package.item_record(_item("b3"))["speaker"] == {}
 
 
+def test_the_collection_context_is_exported_without_its_notes() -> None:
+    context = {
+        "setting": "outdoor",
+        "speaker_count": 2,
+        "equipment": "phone_builtin_mic",
+        "notes": "recorded at Somra's house",
+    }
+    record = package.item_record(_item("b2", collection_context=context))
+    assert record["collection_context"] == {
+        "setting": "outdoor",
+        "speaker_count": 2,
+        "equipment": "phone_builtin_mic",
+    }
+    assert "Somra" not in json.dumps(record)
+    assert package.item_record(_item("b3"))["collection_context"] == {}
+
+
 def _build(items: list[ItemSource]) -> bytes:
     records = [package.item_record(item) for item in items]
     stats = package.statistics(records, speaker_share_warning=0.6)

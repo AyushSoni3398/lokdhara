@@ -11,7 +11,7 @@ import json
 import zipfile
 from collections import Counter
 from collections.abc import Callable, Iterable, Iterator, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from typing import IO, Any
 
@@ -34,6 +34,7 @@ ITEM_FIELDS = frozenset(
         "translations",
         "quality_flags",
         "consent_permissions",
+        "collection_context",
     }
 )
 AUDIO_FIELDS = frozenset(
@@ -52,6 +53,8 @@ TEXT_FIELDS = frozenset(
 )
 TRANSLATION_FIELDS = TEXT_FIELDS | {"source_revision_id"}
 PROMPT_FIELDS = frozenset({"id", "key", "version", "type"})
+# docs/DATA_DICTIONARY.md §3. `notes` is never exported: it may contain personal details.
+COLLECTION_CONTEXT_FIELDS = ("setting", "speaker_count", "equipment")
 CONSENT_FIELDS = ("research", "public", "ai_training", "commercial")
 DEFAULT_LICENCE = (
     "Internal research use only, within the Lokdhara project. Do not share, publish, or use "
@@ -98,6 +101,7 @@ class ItemSource:
     texts: tuple[TextVersion, ...]
     quality_flags: tuple[str, ...]
     consent: Mapping[str, bool]
+    collection_context: Mapping[str, Any] = field(default_factory=dict)
 
 
 def audio_path(item_id: str) -> str:
@@ -157,6 +161,11 @@ def item_record(item: ItemSource) -> dict[str, Any]:
         "translations": [_text(v, TRANSLATION_FIELDS) for v in translations],
         "quality_flags": sorted(item.quality_flags),
         "consent_permissions": {key: bool(item.consent.get(key)) for key in CONSENT_FIELDS},
+        "collection_context": {
+            key: item.collection_context[key]
+            for key in COLLECTION_CONTEXT_FIELDS
+            if item.collection_context.get(key) is not None
+        },
     }
     if record.keys() != ITEM_FIELDS:  # pragma: no cover - a programming error
         raise ValueError("an item record does not match the export allow-list")
