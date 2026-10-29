@@ -1,6 +1,7 @@
 """The export package (docs/DATASET_VERSIONING.md §4 and §5): allow-listed fields, a data card with
 the counts and limitations, and identical bytes when built again. Synthetic data only."""
 
+import csv
 import hashlib
 import io
 import json
@@ -166,6 +167,7 @@ def test_the_same_release_always_gives_the_same_bytes() -> None:
         "datacard.json",
         "items.jsonl",
         "manifest.json",
+        "metadata.csv",
     }
     assert all(info.date_time == (1980, 1, 1, 0, 0, 0) for info in archive.infolist())
 
@@ -241,3 +243,32 @@ def test_speaker_details_hold_only_what_was_shared() -> None:
         _item("b3", speaker_details={"gender": None, "other_languages": []})
     )
     assert (empty["speaker"], empty["area"]) == ({}, None)
+
+
+def test_metadata_csv_has_one_row_per_item_for_spreadsheets() -> None:
+    hindi = TextVersion(
+        revision_id="r3",
+        layer_type="translation",
+        language="hi",
+        script="Deva",
+        text='=HYPERLINK("x")',
+        origin="human_contributor",
+        verification_status="unverified",
+        uncertainty_markup=False,
+        source_revision_id="r1",
+    )
+    items = [_item("b2", texts=(TEXT, hindi)), _item("a1", speaker="SPK-BBBBB", audio=None)]
+    content = package.metadata_csv([package.item_record(i) for i in items])
+    assert content.startswith("﻿".encode())
+    rows = list(csv.DictReader(io.StringIO(content.decode("utf-8-sig"))))
+    assert [r["item_id"] for r in rows] == ["a1", "b2"]
+    assert list(rows[0])[-2:] == ["translation_en", "translation_hi"]
+    b2 = rows[1]
+    assert b2["audio_path"] == "audio/b2.flac"
+    assert b2["duration_seconds"] == "4.0"
+    assert b2["transcription"] == TEXT.text
+    assert b2["quality_flags"] == "very_quiet"
+    assert b2["consent_research"] == "yes"
+    # A cell a spreadsheet would run as a formula is escaped; items.jsonl keeps it exactly.
+    assert b2["translation_hi"] == '\'=HYPERLINK("x")'
+    assert rows[0]["audio_path"] == "" and rows[0]["translation_en"] == "This is a test sentence."

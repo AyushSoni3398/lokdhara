@@ -44,7 +44,9 @@ SNAPSHOT_USES = {
     "ai_training": "allow_ai_training",
     "commercial": "allow_commercial_use",
 }
-TEXT_FILES = ("items.jsonl", "README.md", "datacard.json", "LICENSE.txt")
+TEXT_FILES = ("items.jsonl", "metadata.csv", "README.md", "datacard.json", "LICENSE.txt")
+# The stored files that list items one by one; a withdrawal's deletion routine erases them.
+ITEM_FILES = ("items.jsonl", "metadata.csv")
 
 
 def stored_file_key(release_id: uuid.UUID, path: str) -> str:
@@ -446,6 +448,9 @@ class _Bytes:
         return chunk
 
 
+_CONTENT_TYPES = {"json": "application/json", "jsonl": "application/json", "csv": "text/csv"}
+
+
 def _store_text_files(store: ObjectStore, release_id: uuid.UUID, built: package.Package) -> None:
     """Everything except the audio, kept as long as the release record (§5)."""
     for path, chunks in built.files:
@@ -456,5 +461,5 @@ def _store_text_files(store: ObjectStore, release_id: uuid.UUID, built: package.
             Bucket.EXPORTS,
             stored_file_key(release_id, path),
             _Bytes(content),
-            content_type="application/json" if path.endswith("json") else "text/plain",
+            content_type=_CONTENT_TYPES.get(path.rsplit(".", 1)[-1], "text/plain"),
         )

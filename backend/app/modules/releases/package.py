@@ -6,7 +6,9 @@ Every exported field comes from an explicit allow-list here (check D6). Names, c
 IDs, object keys, review notes, and collection notes are never in it.
 """
 
+import csv
 import hashlib
+import io
 import json
 import zipfile
 from collections import Counter
@@ -232,6 +234,137 @@ def items_jsonl(records: Iterable[Mapping[str, Any]]) -> bytes:
     return "".join(f"{line}\n" for line in lines).encode()
 
 
+# ------------------------------------------------------------------ spreadsheet
+
+# metadata.csv: the same items as items.jsonl, one row each, for people who open it in a
+# spreadsheet. Translations get one column per language found in the release.
+CSV_COLUMNS = (
+    "item_id",
+    "audio_path",
+    "duration_seconds",
+    "speaker_code",
+    "age_band",
+    "gender",
+    "first_language",
+    "other_languages",
+    "speaker_region",
+    "area",
+    "dialect_label",
+    "language",
+    "content_type",
+    "collection_method",
+    "recording_mode",
+    "recorded_on",
+    "prompt_key",
+    "prompt_version",
+    "prompt_type",
+    "prompt_text",
+    "prompt_topics",
+    "setting",
+    "speaker_count",
+    "equipment",
+    "source",
+    "original_container",
+    "original_codec",
+    "original_sample_rate_hz",
+    "original_channels",
+    "is_lossy_source",
+    "quality_flags",
+    *(f"quality_{key}" for key in QUALITY_FIELDS),
+    "transcription_script",
+    "transcription_status",
+    "transcription",
+    "text_script",
+    "text_status",
+    "text",
+    *(f"consent_{key}" for key in CONSENT_FIELDS),
+)
+# A spreadsheet runs a cell starting with these as a formula; such text cells get a leading '.
+_FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _cell(value: Any) -> Any:
+    if isinstance(value, bool):
+        return "yes" if value else "no"
+    if isinstance(value, list):
+        value = ";".join(str(v) for v in value)
+    if isinstance(value, str) and value.startswith(_FORMULA_START):
+        return "'" + value
+    return "" if value is None else value
+
+
+def _csv_row(record: Mapping[str, Any], languages: list[str]) -> list[Any]:
+    audio = record["audio"] or {}
+    original = audio.get("original") or {}
+    quality = audio.get("quality") or {}
+    prompt = record["prompt"] or {}
+    speaker = record["speaker"]
+    context = record["collection_context"]
+    transcription = record["transcription"] or {}
+    text = record["text"] or {}
+    duration = audio.get("duration_ms")
+    values: dict[str, Any] = {
+        "item_id": record["item_id"],
+        "audio_path": audio.get("path"),
+        "duration_seconds": round(duration / 1000, 3) if duration is not None else None,
+        "speaker_code": record["speaker_code"],
+        "age_band": speaker.get("age_band"),
+        "gender": speaker.get("gender"),
+        "first_language": speaker.get("first_language"),
+        "other_languages": speaker.get("other_languages"),
+        "speaker_region": speaker.get("region"),
+        "area": record["area"],
+        "dialect_label": record["dialect_label"],
+        "language": record["language"],
+        "content_type": record["content_type"],
+        "collection_method": record["collection_method"],
+        "recording_mode": record["recording_mode"],
+        "recorded_on": record["recorded_on"],
+        "prompt_key": prompt.get("key"),
+        "prompt_version": prompt.get("version"),
+        "prompt_type": prompt.get("type"),
+        "prompt_text": prompt.get("text"),
+        "prompt_topics": prompt.get("topic_tags"),
+        "setting": context.get("setting"),
+        "speaker_count": context.get("speaker_count"),
+        "equipment": context.get("equipment"),
+        "source": original.get("source"),
+        "original_container": original.get("container"),
+        "original_codec": original.get("codec"),
+        "original_sample_rate_hz": original.get("sample_rate_hz"),
+        "original_channels": original.get("channels"),
+        "is_lossy_source": audio.get("is_lossy_source"),
+        "quality_flags": record["quality_flags"],
+        **{f"quality_{key}": quality.get(key) for key in QUALITY_FIELDS},
+        "transcription_script": transcription.get("script"),
+        "transcription_status": transcription.get("verification_status"),
+        "transcription": transcription.get("text"),
+        "text_script": text.get("script"),
+        "text_status": text.get("verification_status"),
+        "text": text.get("text"),
+        **{f"consent_{key}": record["consent_permissions"][key] for key in CONSENT_FIELDS},
+    }
+    row = [values[column] for column in CSV_COLUMNS]
+    for language in languages:
+        found = [t["text"] for t in record["translations"] if t["language"] == language]
+        row.append(" | ".join(found) if found else None)
+    return [_cell(value) for value in row]
+
+
+def metadata_csv(records: Iterable[Mapping[str, Any]]) -> bytes:
+    """UTF-8 with a byte order mark, so spreadsheet programs show Devanagari and Ol Chiki
+    correctly. items.jsonl stays the exact copy: here lists are joined and formula-like text
+    is escaped."""
+    ordered = sorted(records, key=lambda r: r["item_id"])
+    languages = sorted({t["language"] for r in ordered for t in r["translations"]})
+    out = io.StringIO()
+    writer = csv.writer(out, lineterminator="\r\n")
+    writer.writerow([*CSV_COLUMNS, *(f"translation_{language}" for language in languages)])
+    for record in ordered:
+        writer.writerow(_csv_row(record, languages))
+    return ("\ufeff" + out.getvalue()).encode("utf-8")
+
+
 # ------------------------------------------------------------------ data card
 
 
@@ -428,6 +561,7 @@ def assemble(
     as stored) and a way to read it."""
     texts = {
         "items.jsonl": items_jsonl(records),
+        "metadata.csv": metadata_csv(records),
         "README.md": data_card_markdown(info, stats).encode(),
         "datacard.json": data_card_json(info, stats),
         "LICENSE.txt": ((info.licence or DEFAULT_LICENCE) + "\n").encode(),

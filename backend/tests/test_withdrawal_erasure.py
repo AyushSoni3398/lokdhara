@@ -168,7 +168,9 @@ def test_a_full_withdrawal_deletes_the_speakers_files_and_words(
     assert len(files) == 5  # the original and four derived files
     release_id = uuid.UUID(world["release"])
     items_list = stored_file_key(release_id, "items.jsonl")
+    spreadsheet = stored_file_key(release_id, "metadata.csv")
     assert object_store.head(Bucket.EXPORTS, items_list) is not None
+    assert object_store.head(Bucket.EXPORTS, spreadsheet) is not None
 
     request_id = verified(client, admin, scope="full", speaker_id=world["speaker"])
     run_jobs(engine)
@@ -176,6 +178,7 @@ def test_a_full_withdrawal_deletes_the_speakers_files_and_words(
 
     assert all(object_store.head(bucket, key) is None for bucket, key in files)
     assert object_store.head(Bucket.EXPORTS, items_list) is None
+    assert object_store.head(Bucket.EXPORTS, spreadsheet) is None
     assert object_store.head(Bucket.EXPORTS, stored_file_key(release_id, "manifest.json"))
     assert {r.upload_status for r in db.scalars(select(Recording))} == {"erased"}
     assert texts_of(db, world["story"]) == [""]
@@ -197,7 +200,7 @@ def test_a_full_withdrawal_deletes_the_speakers_files_and_words(
         "erased",
         2,
         1,
-        7,  # quarantine copy, original, four derived files, one release item list
+        8,  # quarantine copy, original, four derived files, a release's two item lists
     )
     assert (done["identity_deleted"], done["consent_evidence"]) == (True, "kept")
     event = db.scalar(select(AuditEvent).where(AuditEvent.action == "withdrawal.erase"))
