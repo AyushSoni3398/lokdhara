@@ -181,7 +181,7 @@ def test_the_same_release_always_gives_the_same_bytes() -> None:
 
     manifest = json.loads(archive.read(root + "manifest.json"))
     assert manifest["item_count"] == 2
-    assert manifest["export_format_version"] == "1"
+    assert manifest["export_format_version"] == "1.1"
     assert "manifest.json" not in [f["path"] for f in manifest["files"]]
     items_lines = archive.read(root + "items.jsonl").decode().splitlines()
     assert [json.loads(line)["item_id"] for line in items_lines] == ["a1", "b2"]
@@ -272,3 +272,23 @@ def test_metadata_csv_has_one_row_per_item_for_spreadsheets() -> None:
     # A cell a spreadsheet would run as a formula is escaped; items.jsonl keeps it exactly.
     assert b2["translation_hi"] == '\'=HYPERLINK("x")'
     assert rows[0]["audio_path"] == "" and rows[0]["translation_en"] == "This is a test sentence."
+
+
+def test_flac_tags_describe_the_item_but_not_the_speaker() -> None:
+    record = package.item_record(
+        _item(
+            "b2",
+            age_band="30-44",
+            speaker_details={"gender": "woman", "region": "Khunti"},
+            area="Khunti",
+        )
+    )
+    tags = dict(package.flac_comments(record, release_name="pilot 0.1.0", licence=None))
+    assert tags["LOKDHARA_ITEM_ID"] == "b2"
+    assert tags["ARTIST"] == tags["SPEAKER_CODE"] == "SPK-AAAAA"
+    assert tags["TRANSCRIPTION"] == TEXT.text
+    assert tags["TRANSLATION_EN"] == "This is a test sentence."
+    assert tags["CONSENT"] == "research"
+    assert tags["LICENSE"] == package.DEFAULT_LICENCE
+    assert "PROMPT_KEY" not in tags  # empty values are left out
+    assert not {"30-44", "woman", "Khunti"} & set(tags.values())

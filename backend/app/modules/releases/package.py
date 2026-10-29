@@ -17,7 +17,10 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import IO, Any
 
-EXPORT_FORMAT_VERSION = "1"
+# 1.1 added fields to items.jsonl, metadata.csv and tags inside the FLAC files (ADR-029).
+# Packages of releases frozen earlier are still rebuilt in the format they were frozen with.
+EXPORT_FORMAT_VERSION = "1.1"
+UNTAGGED_FORMATS = frozenset({"1"})
 ITEM_FIELDS = frozenset(
     {
         "item_id",
@@ -232,6 +235,46 @@ def items_jsonl(records: Iterable[Mapping[str, Any]]) -> bytes:
         json.dumps(r, ensure_ascii=False, sort_keys=True, separators=(",", ":")) for r in records
     )
     return "".join(f"{line}\n" for line in lines).encode()
+
+
+# ------------------------------------------------------------------ tags inside the audio
+
+
+def flac_comments(
+    record: Mapping[str, Any], *, release_name: str, licence: str | None
+) -> list[tuple[str, str]]:
+    """The tags written inside an item's FLAC file, so a copied file still says what it is.
+    Built only from the item's record; demographics and the area stay in items.jsonl and
+    metadata.csv, where the release's terms travel with them."""
+    prompt = record["prompt"] or {}
+    transcription = record["transcription"] or {}
+    allowed = [key for key in CONSENT_FIELDS if record["consent_permissions"][key]]
+    comments = [
+        ("TITLE", f"{record['content_type']} {record['item_id']}"),
+        ("ALBUM", release_name),
+        ("ARTIST", record["speaker_code"]),
+        ("DATE", record["recorded_on"]),
+        ("GENRE", record["content_type"]),
+        ("LANGUAGE", record["language"]),
+        ("ORGANIZATION", "Lokdhara"),
+        ("LICENSE", licence or DEFAULT_LICENCE),
+        ("LOKDHARA_ITEM_ID", record["item_id"]),
+        ("SPEAKER_CODE", record["speaker_code"]),
+        ("DIALECT", record["dialect_label"]),
+        ("RECORDING_MODE", record["recording_mode"]),
+        ("COLLECTION_METHOD", record["collection_method"]),
+        ("PROMPT_KEY", prompt.get("key")),
+        ("PROMPT_TEXT", prompt.get("text")),
+        ("TRANSCRIPTION", transcription.get("text")),
+        ("TRANSCRIPTION_SCRIPT", transcription.get("script")),
+        ("TRANSCRIPTION_STATUS", transcription.get("verification_status")),
+        *(
+            (f"TRANSLATION_{t['language'].upper().replace('-', '_')}", t["text"])
+            for t in record["translations"]
+        ),
+        ("CONSENT", ",".join(allowed) or "none"),
+    ]
+    return [(name, str(value)) for name, value in comments if value not in (None, "")]
 
 
 # ------------------------------------------------------------------ spreadsheet
@@ -456,8 +499,11 @@ def data_card_markdown(info: ReleaseInfo, stats: Mapping[str, Any]) -> str:
         "- Dialect labels are as reported by contributors, not a controlled list.\n"
         f"- {bias}\n",
         "## Preprocessing\n",
-        "Audio is a 16 kHz mono FLAC copy of each original, without metadata. Text is exactly "
-        "as written; nothing was corrected or normalised.\n",
+        "Audio is a 16 kHz mono FLAC copy of each original. None of the original's own tags are "
+        "kept; each file is tagged with its item's ID, speaker code, dialect, recording mode, "
+        "prompt, transcription, translations, permitted uses and licence. Text is exactly as "
+        "written; nothing was corrected or normalised. metadata.csv holds the same items as "
+        "items.jsonl for spreadsheets; there, formula-like text starts with an added `'`.\n",
         "## Withdrawal\n",
         "Speakers can withdraw their contributions. Items withdrawn after this release was "
         "frozen must be deleted from every copy; holders are told.\n",

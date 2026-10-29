@@ -7,7 +7,9 @@ stores the package's text files and manifest. Every later export is built from t
 checked against the manifest.
 """
 
+import hashlib
 import uuid
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC
 from typing import Any
@@ -16,7 +18,7 @@ from sqlalchemy import select, tuple_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.audio import renditions
+from app.audio import flac_tags, renditions
 from app.config import Settings
 from app.errors import ApiError
 from app.modules.audit import service as audit
@@ -376,16 +378,19 @@ def freeze(
         code_version=settings.git_commit,
         data_card_markdown=release.data_card_markdown,
     )
-    audio = {
-        package.audio_path(str(i.submission.id)): (
-            package.FileEntry(
-                package.audio_path(str(i.submission.id)), i.rendition.sha256, i.rendition.size_bytes
-            ),
-            _no_read,
+    release_name = f"{release.slug} {version}"
+    audio = {}
+    for item in run.items:
+        if item.rendition is None:
+            continue
+        path = package.audio_path(str(item.submission.id))
+        comments = package.flac_comments(
+            item.record, release_name=release_name, licence=release.licence
         )
-        for i in run.items
-        if i.rendition is not None
-    }
+        audio[path] = (_tagged_entry(store, path, item.rendition, comments), _no_read)
+        # items.jsonl describes the file in the package: the tagged copy.
+        item.record["audio"]["sha256"] = audio[path][0].sha256
+        item.record["audio"]["bytes"] = audio[path][0].size_bytes
     built = package.assemble(info, [i.record for i in run.items], run.stats, audio)
     _store_text_files(store, release.id, built)
 
@@ -432,6 +437,35 @@ def freeze(
         db.rollback()
         raise ApiError(409, "version_exists", "This version already exists.") from exc
     return release
+
+
+def _tagged_entry(
+    store: ObjectStore, path: str, rendition: Rendition, comments: list[tuple[str, str]]
+) -> package.FileEntry:
+    """Reads the audio copy once, checking it is the one D4 checked, and measures the tagged
+    file the export will write (ADR-029)."""
+    raw, out, size = hashlib.sha256(), hashlib.sha256(), 0
+
+    def chunks() -> Iterator[bytes]:
+        for chunk in store.open(Bucket.DERIVED, rendition.object_key):
+            raw.update(chunk)
+            yield chunk
+
+    try:
+        for chunk in flac_tags.tagged(chunks(), comments):
+            out.update(chunk)
+            size += len(chunk)
+    except (ObjectNotFound, flac_tags.NotFlac) as exc:
+        raise _audio_changed() from exc
+    if raw.hexdigest() != rendition.sha256:
+        raise _audio_changed()
+    return package.FileEntry(path, out.hexdigest(), size)
+
+
+def _audio_changed() -> ApiError:
+    return ApiError(
+        422, "prefreeze_checks_failed", "The release did not pass its checks.", "Failed: D4"
+    )
 
 
 def _no_read() -> Any:  # pragma: no cover - freezing never reads audio, the export does
