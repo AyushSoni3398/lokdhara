@@ -326,7 +326,8 @@ CSV_COLUMNS = (
 _FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
 
 
-def _cell(value: Any) -> Any:
+def csv_cell(value: Any) -> Any:
+    """A value as a spreadsheet cell: lists joined, formula-like text escaped."""
     if isinstance(value, bool):
         return "yes" if value else "no"
     if isinstance(value, list):
@@ -391,7 +392,7 @@ def _csv_row(record: Mapping[str, Any], languages: list[str]) -> list[Any]:
     for language in languages:
         found = [t["text"] for t in record["translations"] if t["language"] == language]
         row.append(" | ".join(found) if found else None)
-    return [_cell(value) for value in row]
+    return [csv_cell(value) for value in row]
 
 
 def metadata_csv(records: Iterable[Mapping[str, Any]]) -> bytes:
