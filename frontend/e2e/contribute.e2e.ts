@@ -19,20 +19,19 @@ async function startAsNewContributor(page: Page) {
 
   await page.getByRole('link', { name: /New recording/ }).click()
 
-  // Consent before anything is recorded; every answer starts as No.
+  // Consent before anything is recorded: one I accept tick that starts empty.
   await expect(page.getByText(/Test form/)).toBeVisible()
   const save = page.getByRole('button', { name: 'Save consent' })
   await expect(save).toBeDisabled()
-  await page
-    .getByRole('group', { name: /keep the recording safely/ })
-    .getByText('Yes')
-    .click()
+  await page.getByRole('checkbox', { name: /I accept/ }).check()
   await save.click()
 }
 
 async function record(page: Page) {
   await page.getByRole('button', { name: /Start recording/ }).click()
-  await expect(page.getByRole('status')).toContainText('0:02', { timeout: 10_000 })
+  await expect(page.getByRole('status')).toContainText('0:02', {
+    timeout: 10_000,
+  })
   await page.getByRole('button', { name: 'Stop' }).click()
   await expect(page.getByText(/Recording ready/)).toBeVisible()
 }

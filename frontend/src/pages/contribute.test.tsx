@@ -29,7 +29,7 @@ beforeEach(async () => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('consent', () => {
-  it('starts every answer at No and needs permission to keep the recording', async () => {
+  it('lists every use and saves them all with one I accept tick', async () => {
     const { requests } = fakeServer({
       'GET /auth/me': () => ({ body: SESSION }),
       'GET /speakers/s1': () => ({ body: { ...SPEAKER, has_active_consent: false } }),
@@ -41,14 +41,13 @@ describe('consent', () => {
 
     expect(await screen.findByText(/Test form/)).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'About the project' })).toBeInTheDocument()
-    const groups = screen.getAllByRole('group').filter((g) => g.tagName === 'FIELDSET')
-    for (const group of groups.slice(0, 6)) {
-      expect(within(group).getByRole('radio', { name: 'No' })).toBeChecked()
-    }
+    expect(screen.getByText(/Companies may use it/)).toBeInTheDocument()
+    const accept = screen.getByRole('checkbox', { name: /I accept/ })
+    expect(accept).not.toBeChecked()
     const save = screen.getByRole('button', { name: 'Save consent' })
     expect(save).toBeDisabled()
 
-    await userEvent.click(within(groups[0]!).getByRole('radio', { name: 'Yes' }))
+    await userEvent.click(accept)
     await userEvent.click(save)
     await waitFor(() => expect(router.state.location.pathname).toBe('/submissions'))
 
@@ -57,10 +56,11 @@ describe('consent', () => {
       consent_form_id: 'f1',
       method: 'in_app',
       allow_store_and_review: true,
-      allow_research: false,
-      allow_public_access: false,
-      allow_ai_training: false,
-      allow_commercial_use: false,
+      allow_research: true,
+      allow_public_access: true,
+      allow_ai_training: true,
+      allow_commercial_use: true,
+      demographics_consented: true,
       attribution_preference: 'pseudonymous',
     })
   })
@@ -77,8 +77,7 @@ describe('consent for someone under 18', () => {
     })
     renderApp('/speakers/s1/consent?next=/submissions')
     const minor = await screen.findByRole('group', { name: 'Is this person under 18?' })
-    const groups = screen.getAllByRole('group').filter((g) => g.tagName === 'FIELDSET')
-    await userEvent.click(within(groups[0]!).getByRole('radio', { name: 'Yes' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: /I accept/ }))
     await userEvent.click(within(minor).getByRole('radio', { name: 'Yes' }))
     const save = screen.getByRole('button', { name: 'Save consent' })
     expect(save).toBeDisabled()

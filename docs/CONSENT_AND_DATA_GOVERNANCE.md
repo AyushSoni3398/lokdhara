@@ -21,7 +21,9 @@ Status: **Proposed design, not legal advice.** Nothing in this document claims t
 
 ## 3. Consent model
 
-### 3.1 What is asked (separately, each defaulting to **No** except the first)
+### 3.1 What is asked
+
+Each permission below is stored separately. *Since 2026-10-29 (ADR-031, Q-G13):* the app lists them all on one page and a single "I accept" tick, which starts empty, agrees to all of them, with credit by a code. The questions below are kept as the plain-language wording of each use.
 
 | # | Permission | Field | Plain-language question (draft, to be translated and approved) |
 |---|------------|-------|---------------------------------------------------------------|
