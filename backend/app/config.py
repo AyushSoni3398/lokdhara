@@ -94,9 +94,10 @@ class Settings(BaseSettings):
     # this URL as a member of app_erasure, the only role that may clear append-only rows; when
     # it is empty it uses database_url, which then must be allowed to SET ROLE app_erasure.
     erasure_database_url: str | None = None
-    # Proof of consent is kept after a withdrawal until the institution says otherwise (Q-G8):
-    # the recording of an oral consent stays in the consent-evidence bucket.
-    withdrawal_keep_consent_evidence: bool = True
+    # Proof of consent is kept for this many days after a full withdrawal, then deleted by the
+    # daily `withdrawal.expire_consent_evidence` job (owner's decision 2026-10-29, Q-G8: one
+    # month). 0 deletes the recording of an oral consent together with everything else.
+    withdrawal_consent_evidence_days: int = Field(default=30, ge=0)
 
     # Prompt library media made by the team (docs/RECORDING_MODES.md)
     prompt_image_max_bytes: int = Field(default=5 * 1024 * 1024, gt=0)
