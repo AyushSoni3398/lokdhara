@@ -396,7 +396,7 @@ def _csv_row(record: Mapping[str, Any], languages: list[str]) -> list[Any]:
 
 
 def metadata_csv(records: Iterable[Mapping[str, Any]]) -> bytes:
-    """UTF-8 with a byte order mark, so spreadsheet programs show Devanagari and Ol Chiki
+    """UTF-8 with a byte order mark, so spreadsheet programs show Devanagari and Nag Mundari
     correctly. items.jsonl stays the exact copy: here lists are joined and formula-like text
     is escaped."""
     ordered = sorted(records, key=lambda r: r["item_id"])

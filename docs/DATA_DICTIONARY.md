@@ -14,11 +14,11 @@ Principle: **collect the minimum.** Every optional personal or demographic field
 | Dialect / regional variety | `submissions.dialect_label`, `speakers.dialect_label` | Contributor/facilitator as **reported**; never inferred | No | Low–medium | Yes (if research consent) |
 | Original audio location | `recordings.original_object_key` | System | Yes for audio | **Restricted** | No (export uses package-relative paths) |
 | Transcript and translation versions | `text_layers` + `text_revisions.revision_number`, `current_revision_id` | System | — | Low | Yes (selected revision IDs) |
-| Duration and technical metadata | `recordings.duration_ms`, `sample_rate_hz`, `channels`, `bit_depth`, `detected_codec`, `detected_container`, `size_bytes`, `is_lossy_source` | System (ffprobe) | Yes for audio | Low | Yes |
+| Duration and technical metadata | `recordings.duration_ms`, `sample_rate_hz`, `channels`, `bit_depth`, `detected_codec`, `detected_container`, `size_bytes`, `is_lossy_source`, `quality_metrics`, `quality_flags` | System (ffprobe) | Yes for audio | Low | Yes (`audio.original`, `audio.quality`) |
 | Contributor reference | `submissions.submitted_by` → users | System | Yes | Medium | **No** (replaced by a per-release pseudonymous contributor code if needed) |
 | Speaker reference | `speakers.speaker_code` | System | Yes | Medium | Yes as code only (if research consent) |
 | Collection context | `submissions.collection_context` (JSONB, schema below) | Contributor/facilitator | Partly | Low–medium | Yes, allow-listed keys only |
-| Demographics (optional) | `speakers.age_band`, `gender_self_described`, `first_language`, `other_languages`, `region_coarse` | Speaker via facilitator | No | **Medium–high** | Only if consented and release purpose allows |
+| Demographics (optional) | `speakers.age_band`, `gender_self_described`, `first_language`, `other_languages`, `region_coarse`; `submissions.region_coarse` (area recorded) | Speaker via facilitator | No | **Medium–high** | Only if consented: age band for any purpose; the rest for `internal_research` only (ADR-029). Never in audio tags |
 | Consent status and permitted uses | `consent_records.status`, `allow_*`, `attribution_preference` | Facilitator/speaker | Yes | Medium | Yes as a **snapshot of permissions only** |
 | Source and collection method | `submissions.collection_method`, `recording_mode`, `prompt_id`, `recordings.recorded_device_hint` | Contributor/system | Yes | Low | Yes |
 | Processing history | `processing_runs` (job type, tool versions, timestamps, outcome) | System | Yes | Low | Summary in manifest |

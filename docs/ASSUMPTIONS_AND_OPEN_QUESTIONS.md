@@ -51,6 +51,7 @@ These are assumptions the plan currently relies on. Each one can change the desi
 | Q-G6 | How is benefit returned to the community (access to materials, educational outputs)? | Professor + community | Later | — |
 | Q-G9 | May contributors download the **original** of their own recordings, not only the listening copy? Should a facilitator be able to download what they recorded of other speakers? | Professor | Later | *Provisional (2026-10-22, ADR-026):* only the listening copy, only of recordings the user sent, never of items an admin hid. |
 | Q-G10 | Is **open sign-up** acceptable: anyone may make a contributor account and send recordings, with no human reviewer (ADR-021)? Are spam limits per network and admin hiding after reports enough? | Professor + ethics committee | Blocks the pilot (M8) | *Owner's decision (2026-10-23, ADR-028):* public sign-up for contributors, staff by invitation, 20 accounts per network per hour. |
+| Q-G11 | May **internal research** releases carry a speaker's gender, languages, region and the recording's area, when the speaker agreed to share demographics? In a small community these together with the age band may point to a person. | Professor + ethics committee | Before the first internal release | *Provisional (2026-10-29, ADR-029):* yes for internal research with demographics consent; other purposes get the age band only; never in the audio files' tags. |
 
 ### Linguistic
 
