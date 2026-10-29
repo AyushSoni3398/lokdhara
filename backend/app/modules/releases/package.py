@@ -38,7 +38,35 @@ ITEM_FIELDS = frozenset(
     }
 )
 AUDIO_FIELDS = frozenset(
-    {"path", "duration_ms", "sample_rate_hz", "is_lossy_source", "sha256", "bytes"}
+    {
+        "path",
+        "duration_ms",
+        "sample_rate_hz",
+        "is_lossy_source",
+        "sha256",
+        "bytes",
+        "original",
+        "quality",
+    }
+)
+# What the uploaded file was, as measured when it was checked (docs/DATA_DICTIONARY.md §1).
+ORIGINAL_FIELDS = (
+    "container",
+    "codec",
+    "sample_rate_hz",
+    "channels",
+    "bit_depth",
+    "bytes",
+    "source",
+)
+# app.audio.quality.Metrics, measured on the original.
+QUALITY_FIELDS = (
+    "peak_dbfs",
+    "rms_dbfs",
+    "integrated_lufs",
+    "true_peak_dbtp",
+    "clipping_ratio",
+    "silence_ratio",
 )
 TEXT_FIELDS = frozenset(
     {
@@ -70,6 +98,9 @@ class AudioFile:
     size_bytes: int
     duration_ms: int | None
     is_lossy_source: bool | None
+    # ORIGINAL_FIELDS and QUALITY_FIELDS; missing ones are exported as null.
+    original: Mapping[str, Any] = field(default_factory=dict)
+    quality: Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -138,6 +169,8 @@ def item_record(item: ItemSource) -> dict[str, Any]:
             "is_lossy_source": item.audio.is_lossy_source,
             "sha256": item.audio.sha256,
             "bytes": item.audio.size_bytes,
+            "original": {key: item.audio.original.get(key) for key in ORIGINAL_FIELDS},
+            "quality": {key: item.audio.quality.get(key) for key in QUALITY_FIELDS},
         }
     record = {
         "item_id": item.item_id,

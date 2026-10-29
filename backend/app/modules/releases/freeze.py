@@ -88,6 +88,18 @@ def _consent_steps(db: Session, submission: Submission) -> list[ConsentStep]:
     ]
 
 
+def _original(recording: Recording) -> dict[str, Any]:
+    return {
+        "container": recording.detected_container,
+        "codec": recording.detected_codec,
+        "sample_rate_hz": recording.sample_rate_hz,
+        "channels": recording.channels,
+        "bit_depth": recording.bit_depth,
+        "bytes": recording.size_bytes,
+        "source": recording.recorded_device_hint,
+    }
+
+
 def _gather(db: Session, submission: Submission) -> Gathered:
     speaker = db.get(Speaker, submission.speaker_id)
     if speaker is None:  # pragma: no cover - a foreign key guarantees it
@@ -144,6 +156,8 @@ def _gather(db: Session, submission: Submission) -> Gathered:
                 size_bytes=rendition.size_bytes,
                 duration_ms=recording.duration_ms if recording else None,
                 is_lossy_source=recording.is_lossy_source if recording else None,
+                original=_original(recording) if recording else {},
+                quality=(recording.quality_metrics or {}) if recording else {},
             )
             if rendition
             else None

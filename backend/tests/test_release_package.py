@@ -102,6 +102,37 @@ def test_the_collection_context_is_exported_without_its_notes() -> None:
     assert package.item_record(_item("b3"))["collection_context"] == {}
 
 
+def test_audio_records_say_what_the_original_was_and_how_it_measured() -> None:
+    audio = AudioFile(
+        "ab" * 32,
+        len(FLAC),
+        4000,
+        True,
+        original={
+            "container": "mov,mp4,m4a",
+            "codec": "aac",
+            "sample_rate_hz": 48000,
+            "channels": 1,
+            "source": "file_upload",
+            "object_key": "2026/10/x.m4a",
+        },
+        quality={"peak_dbfs": -3.1, "silence_ratio": 0.12, "unknown": 1},
+    )
+    record = package.item_record(_item("b2", audio=audio))["audio"]
+    assert record["original"] == {
+        "container": "mov,mp4,m4a",
+        "codec": "aac",
+        "sample_rate_hz": 48000,
+        "channels": 1,
+        "bit_depth": None,
+        "bytes": None,
+        "source": "file_upload",
+    }
+    assert record["quality"]["peak_dbfs"] == -3.1
+    assert record["quality"]["integrated_lufs"] is None
+    assert record["quality"].keys() == set(package.QUALITY_FIELDS)
+
+
 def _build(items: list[ItemSource]) -> bytes:
     records = [package.item_record(item) for item in items]
     stats = package.statistics(records, speaker_share_warning=0.6)
