@@ -93,6 +93,44 @@ describe('consent for someone under 18', () => {
   })
 })
 
+describe('new recording', () => {
+  it('makes the own speaker profile and asks for consent without asking whose voice', async () => {
+    const { requests } = fakeServer({
+      'GET /auth/me': () => ({ body: SESSION }),
+      'GET /speakers\\?mine=true': () => ({ body: { items: [] } }),
+      'POST /speakers': () => ({
+        status: 201,
+        body: { ...SPEAKER, has_active_consent: false },
+      }),
+      'GET /speakers/s1': () => ({ body: { ...SPEAKER, has_active_consent: false } }),
+      'GET /consent-forms/current.*': () => ({ body: FORM }),
+    })
+    const { router } = renderApp('/contribute')
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/speakers/s1/consent'),
+    )
+    expect(router.state.location.search).toBe(
+      `?next=${encodeURIComponent('/contribute/s1/new')}`,
+    )
+    expect(requests.find((r) => r.method === 'POST')?.body).toEqual({ for_self: true })
+    expect(screen.queryByText(/Whose voice/)).not.toBeInTheDocument()
+  })
+
+  it('goes straight to the recording once consent is on file', async () => {
+    fakeServer({
+      'GET /auth/me': () => ({ body: SESSION }),
+      'GET /speakers\\?mine=true': () => ({ body: { items: [SPEAKER] } }),
+      'GET /speakers/s1': () => ({ body: SPEAKER }),
+      'GET /submissions\\?.*': () => ({ body: { items: [] } }),
+    })
+    const { router } = renderApp('/contribute')
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/contribute/s1/new'),
+    )
+  })
+})
+
 describe('profile details', () => {
   it('fill in dialect and area for a new recording', async () => {
     fakeServer({
