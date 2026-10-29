@@ -62,6 +62,29 @@ describe('app shell and sign-in', () => {
     expect(logout?.headers.get('X-CSRF-Token')).toBe('csrf-1')
   })
 
+  it('starts the next person at home after a sign-out, not on the last page', async () => {
+    let signedIn = true
+    fakeServer({
+      'GET /auth/me': () => (signedIn ? { body: SESSION } : problem(401, 'not_authenticated')),
+      'POST /auth/logout': () => {
+        signedIn = false
+        return { status: 204 }
+      },
+      'POST /auth/login': () => {
+        signedIn = true
+        return { body: SESSION }
+      },
+      'GET /submissions.*': () => ({ body: { items: [] } }),
+    })
+    renderApp('/submissions')
+    expect(await screen.findByRole('heading', { name: 'मेरी प्रविष्टियाँ' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'साइन आउट' }))
+    await userEvent.type(await screen.findByLabelText('यूज़रनेम'), 'ravi')
+    await userEvent.type(screen.getByLabelText('पासवर्ड'), 'a long password')
+    await userEvent.click(screen.getByRole('button', { name: 'साइन इन करें' }))
+    expect(await screen.findByText('स्वागत है, Asha')).toBeInTheDocument()
+  })
+
   it('shows a not-found page for unknown routes', async () => {
     fakeServer({ 'GET /auth/me': () => problem(401, 'not_authenticated') })
     renderApp('/does-not-exist')
