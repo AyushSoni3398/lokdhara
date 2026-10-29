@@ -35,6 +35,7 @@ ITEM_FIELDS = frozenset(
         "quality_flags",
         "consent_permissions",
         "collection_context",
+        "area",
     }
 )
 AUDIO_FIELDS = frozenset(
@@ -86,6 +87,8 @@ PROMPT_FIELDS = frozenset(
 # docs/DATA_DICTIONARY.md §3. `notes` is never exported: it may contain personal details.
 COLLECTION_CONTEXT_FIELDS = ("setting", "speaker_count", "equipment")
 CONSENT_FIELDS = ("research", "public", "ai_training", "commercial")
+# Shared only when the speaker agreed to share demographics (ADR-029).
+SPEAKER_FIELDS = ("age_band", "gender", "first_language", "other_languages", "region")
 DEFAULT_LICENCE = (
     "Internal research use only, within the Lokdhara project. Do not share, publish, or use "
     "this data for training AI models. Speakers can withdraw their contributions; see README.md."
@@ -135,6 +138,10 @@ class ItemSource:
     quality_flags: tuple[str, ...]
     consent: Mapping[str, bool]
     collection_context: Mapping[str, Any] = field(default_factory=dict)
+    # SPEAKER_FIELDS other than age_band, and the area the item was recorded in. Empty and
+    # None unless the speaker agreed to share demographics and the purpose allows it.
+    speaker_details: Mapping[str, Any] = field(default_factory=dict)
+    area: str | None = None
 
 
 def audio_path(item_id: str) -> str:
@@ -153,6 +160,12 @@ def _text(version: TextVersion, fields: frozenset[str]) -> dict[str, Any]:
         "source_revision_id": version.source_revision_id,
     }
     return {key: values[key] for key in sorted(fields)}
+
+
+def _speaker(item: ItemSource) -> dict[str, Any]:
+    values = {**item.speaker_details, "age_band": item.age_band}
+    found = {key: values.get(key) for key in SPEAKER_FIELDS}
+    return {key: value for key, value in found.items() if value not in (None, [], "")}
 
 
 def item_record(item: ItemSource) -> dict[str, Any]:
@@ -178,8 +191,8 @@ def item_record(item: ItemSource) -> dict[str, Any]:
         "item_id": item.item_id,
         "language": item.language,
         "speaker_code": item.speaker_code,
-        # Only with the speaker's consent to share demographics; never more than the age band.
-        "speaker": {"age_band": item.age_band} if item.age_band else {},
+        # Only with the speaker's consent to share demographics (ADR-029).
+        "speaker": _speaker(item),
         "dialect_label": item.dialect_label,
         "content_type": item.content_type,
         "collection_method": item.collection_method,
@@ -196,6 +209,7 @@ def item_record(item: ItemSource) -> dict[str, Any]:
         "translations": [_text(v, TRANSLATION_FIELDS) for v in translations],
         "quality_flags": sorted(item.quality_flags),
         "consent_permissions": {key: bool(item.consent.get(key)) for key in CONSENT_FIELDS},
+        "area": item.area,
         "collection_context": {
             key: item.collection_context[key]
             for key in COLLECTION_CONTEXT_FIELDS

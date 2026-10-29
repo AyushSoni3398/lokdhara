@@ -100,7 +100,22 @@ def _original(recording: Recording) -> dict[str, Any]:
     }
 
 
-def _gather(db: Session, submission: Submission) -> Gathered:
+# Purposes whose packages carry the speaker's gender, languages and area, not only the age band
+# (ADR-029). Wider uses wait for governance approval (Q-G1, Q-G5).
+FULL_DEMOGRAPHICS_PURPOSES = frozenset({"internal_research"})
+
+
+def _speaker_details(speaker: Speaker, submission: Submission) -> dict[str, Any]:
+    return {
+        "gender": speaker.gender_self_described,
+        "first_language": speaker.first_language,
+        "other_languages": sorted(speaker.other_languages or []),
+        "region": speaker.region_coarse,
+        "area": submission.region_coarse,
+    }
+
+
+def _gather(db: Session, submission: Submission, *, full_demographics: bool = False) -> Gathered:
     speaker = db.get(Speaker, submission.speaker_id)
     if speaker is None:  # pragma: no cover - a foreign key guarantees it
         raise RuntimeError("submission without speaker")
@@ -129,6 +144,9 @@ def _gather(db: Session, submission: Submission) -> Gathered:
         .order_by(TextLayer.created_at)
     ).all()
     steps = _consent_steps(db, submission)
+    shared = full_demographics and speaker.demographics_consented
+    details = _speaker_details(speaker, submission) if shared else {}
+    area = details.pop("area", None)
     consent = {name: use_allowed(steps, column) for name, column in SNAPSHOT_USES.items()}
     source = package.ItemSource(
         item_id=str(submission.id),
@@ -186,6 +204,8 @@ def _gather(db: Session, submission: Submission) -> Gathered:
         quality_flags=tuple(recording.quality_flags if recording else ()),
         consent=consent,
         collection_context=submission.collection_context,
+        speaker_details=details,
+        area=area,
     )
     return Gathered(
         submission=submission,
@@ -230,7 +250,8 @@ def _file_ok(store: ObjectStore, rendition: Rendition) -> bool:
 def run_checks(
     db: Session, store: ObjectStore, settings: Settings, release: DatasetRelease
 ) -> CheckRun:
-    items = [_gather(db, s) for s in db.scalars(service.selection(release))]
+    full = release.purpose in FULL_DEMOGRAPHICS_PURPOSES
+    items = [_gather(db, s, full_demographics=full) for s in db.scalars(service.selection(release))]
     records = [item.record for item in items]
     stats = package.statistics(records, settings.release_speaker_share_warning)
     use = PURPOSE_PERMISSIONS[release.purpose]

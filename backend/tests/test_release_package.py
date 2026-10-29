@@ -215,3 +215,29 @@ def test_prompted_items_say_what_the_prompt_was() -> None:
     }
     record = package.item_record(_item("b2", recording_mode="prompted", prompt=prompt))
     assert record["prompt"] == prompt
+
+
+def test_speaker_details_hold_only_what_was_shared() -> None:
+    details = {
+        "gender": "woman",
+        "first_language": "unr",
+        "other_languages": ["hi"],
+        "region": "Khunti",
+        "full_name": "Somra Munda",
+    }
+    record = package.item_record(
+        _item("b2", age_band="30-44", speaker_details=details, area="Khunti")
+    )
+    assert record["speaker"] == {
+        "age_band": "30-44",
+        "gender": "woman",
+        "first_language": "unr",
+        "other_languages": ["hi"],
+        "region": "Khunti",
+    }
+    assert record["area"] == "Khunti"
+    assert "Somra" not in json.dumps(record)
+    empty = package.item_record(
+        _item("b3", speaker_details={"gender": None, "other_languages": []})
+    )
+    assert (empty["speaker"], empty["area"]) == ({}, None)

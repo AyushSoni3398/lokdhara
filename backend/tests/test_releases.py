@@ -318,3 +318,56 @@ def test_retracting_a_release_closes_its_export_requests(
     act_as(client, researcher)
     response = client.post(f"{DATASETS}/{release['id']}/exports", json=PURPOSE)
     assert response.json()["code"] == "release_retracted"
+
+
+def test_speaker_details_follow_demographics_consent_and_the_release_purpose(
+    client: TestClient,
+    engine: Engine,
+    db: Session,
+    make_user: MakeUser,
+    settings: Settings,
+    object_store: ObjectStore,
+) -> None:
+    act_as(client, make_user("asha", "contributor"))
+    shared = own_speaker(client)
+    give_consent(client, db, shared, allow_research=True, demographics_consented=True)
+    details = {
+        "age_band": "30-44",
+        "gender_self_described": "woman",
+        "first_language": "unr",
+        "other_languages": ["hi"],
+        "region_coarse": "Khunti",
+    }
+    assert client.patch(f"/api/v1/speakers/{shared}", json=details).status_code == 200
+    with_details = accepted_text_item(client, engine, shared, "नदी", region_coarse="Khunti")
+    act_as(client, make_user("ravi", "contributor"))
+    private = own_speaker(client)
+    give_consent(client, db, private, allow_research=True)
+    without = accepted_text_item(client, engine, private, "गीत", region_coarse="Ranchi")
+
+    def records(purpose: str) -> dict[str, dict[str, Any]]:
+        release = DatasetRelease(
+            slug=f"test-{purpose.replace('_', '-')}",
+            purpose=purpose,
+            created_by=uuid.uuid4(),
+            selection_criteria={},
+            data_card_markdown="",
+        )
+        run = freeze_module.run_checks(db, object_store, settings, release)
+        return {str(i.submission.id): i.record for i in run.items}
+
+    internal = records("internal_research")
+    assert internal[with_details]["speaker"] == {
+        "age_band": "30-44",
+        "gender": "woman",
+        "first_language": "unr",
+        "other_languages": ["hi"],
+        "region": "Khunti",
+    }
+    assert internal[with_details]["area"] == "Khunti"
+    # No demographics consent: nothing about the speaker, not even the recording's area.
+    assert (internal[without]["speaker"], internal[without]["area"]) == ({}, None)
+    # Wider purposes keep only the age band until governance decides (ADR-029).
+    external = records("external_research")
+    assert external[with_details]["speaker"] == {"age_band": "30-44"}
+    assert external[with_details]["area"] is None
