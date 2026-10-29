@@ -5,6 +5,7 @@ from typing import Annotated, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.languages import LanguageTag, Script
+from app.modules.topics.schemas import MAX_TOPICS, TopicKey
 from app.text.safety import LONGEST
 from app.text_input import MultiLine, SingleLine
 
@@ -75,6 +76,8 @@ class SubmissionCreateRequest(BaseModel):
     recording_mode: RecordingMode | None = None
     prompt_id: uuid.UUID | None = None
     collection_context: CollectionContext = Field(default_factory=CollectionContext)
+    # What it is about, from GET /topics. Left out: a prompt's matching topic tags, or none.
+    topics: list[TopicKey] | None = Field(default=None, max_length=MAX_TOPICS)
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
@@ -95,6 +98,7 @@ class SubmissionUpdateRequest(BaseModel):
     region_coarse: SingleLine | None = Field(default=None, max_length=100)
     recorded_on: date | None = None
     collection_context: CollectionContext | None = None
+    topics: list[TopicKey] | None = Field(default=None, max_length=MAX_TOPICS)
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
@@ -233,6 +237,7 @@ class SubmissionOut(BaseModel):
     recording_mode: RecordingMode | None
     prompt_id: uuid.UUID | None
     collection_context: CollectionContext
+    topics: list[str]
     status: SubmissionStatus
     # Set by an admin to hide the item after a report; shown so the contributor knows.
     restriction_flags: list[Restriction]

@@ -1,5 +1,5 @@
 """docs/DATABASE_SCHEMA.md §3. Created by migrations 0005 and 0006; 0009 adds upload keys,
-0010 the `accepted` status, 0011 draft audio expiry.
+0010 the `accepted` status, 0011 draft audio expiry, 0018 topics.
 
 Prompts, also created by 0005, are in app.modules.prompts.
 """
@@ -70,6 +70,8 @@ class Submission(Base):
     prompt_id: Mapped[uuid.UUID | None] = optional_fk("prompts.id")
     collection_method: Mapped[str] = mapped_column(Text)
     collection_context: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default="{}")
+    # Keys from the topics table (app.modules.topics), sorted.
+    topics: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default="{}")
     status: Mapped[str] = mapped_column(Text, server_default="draft")
     restriction_flags: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default="{}")
     created_at: Mapped[datetime] = now_default()

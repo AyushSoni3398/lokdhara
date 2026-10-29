@@ -92,7 +92,7 @@ Error codes: `speaker_not_found` / `submission_not_found` (404, also when it is 
 
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| POST | `/submissions` | contributor | Create draft. Body: `client_submission_id, speaker_id, kind, content_type, language_tag, dialect_label?, region_coarse?, recorded_on?, collection_method, recording_mode?, prompt_id?, collection_context` |
+| POST | `/submissions` | contributor | Create draft. Body: `client_submission_id, speaker_id, kind, content_type, language_tag, dialect_label?, region_coarse?, recorded_on?, collection_method, recording_mode?, prompt_id?, collection_context, topics?` |
 | GET | `/submissions?mine=true&status=…` | contributor | My submissions |
 | GET | `/submissions/{id}` | per access rules | Detail incl. layers, current revisions, quality flags, status; each recording's `rejection_reason` (e.g. `decode_errors`, `too_long`) when the checks refused it |
 | PATCH | `/submissions/{id}` | owner, draft/changes_requested only | Edit metadata |
@@ -102,14 +102,24 @@ Error codes: `speaker_not_found` / `submission_not_found` (404, also when it is 
 
 Implemented in Milestone 3: create, list, read, edit, upload, text layers, and submit. A single submission is withdrawn with a withdrawal request (§3, scope `specific_items`).
 
-- **Create** takes the body above plus optional `title`; `collection_context` accepts only the keys in [DATA_DICTIONARY.md](DATA_DICTIONARY.md) §3. Sending the same `client_submission_id` again returns the same draft (`201`). `collection_method` must fit: `self_recorded` only for your own speaker profile, `facilitator_field` / `facilitator_remote` only for someone else's (facilitators and admins), `imported_archive` only for admins. A prompt must be approved and fit the mode (image or situation for `prompted`, read sentence for `read`).
+- **Create** takes the body above plus optional `title`; `collection_context` accepts only the keys in [DATA_DICTIONARY.md](DATA_DICTIONARY.md) §3. Sending the same `client_submission_id` again returns the same draft (`201`). `collection_method` must fit: `self_recorded` only for your own speaker profile, `facilitator_field` / `facilitator_remote` only for someone else's (facilitators and admins), `imported_archive` only for admins. A prompt must be approved and fit the mode (image or situation for `prompted`, read sentence for `read`). `topics` is up to 10 keys from `GET /topics` (`422 unknown_topic` otherwise); left out, a prompted or read item starts with its prompt's topic tags that are on the list (ADR-030).
 - **List** is newest first, `limit` 1–100 (default 50), with `next_cursor`. `mine=true` (default) lists what you created; `mine=false` adds what you may see under the access rule (facilitators: their speakers' submissions; admins: all).
-- **Edit** changes `content_type`, `title`, `dialect_label`, `region_coarse`, `recorded_on`, `collection_context`. What was recorded, of whom, and how is fixed at creation.
+- **Edit** changes `content_type`, `title`, `dialect_label`, `region_coarse`, `recorded_on`, `collection_context`, `topics` (a topic retired since it was chosen may stay). What was recorded, of whom, and how is fixed at creation.
 - **Upload** needs the speaker's active consent and an `Idempotency-Key` header; the same key returns the stored recording, or, when the draft's copy expired after 30 days (Q-T7), stores the same file again under the same recording (a different file gets `recording_changed`). Optional form field `source` (`browser_recorder` or `file_upload`). One recording per submission (assumption A11). The file goes to quarantine under a server-made key; ffprobe and the full decode run later in the worker (M4).
 - **Submit** attaches the active consent record, moves the draft to `processing`, and queues `audio.validate` for the recording and `text.derive` when there is text. For read speech the sentence that was read becomes an unverified transcription with origin `prompt_text`. The server keeps a submission in `draft` while its file uploads; `uploading` in the state machine is the device's state.
 - Error codes: `submission_not_found` (404), `forbidden` (403), `client_submission_id_taken` (409), `collection_method_not_allowed` / `prompt_mismatch` (422), `prompt_not_found` (404), `prompt_retired` (409), `submission_not_editable` / `submission_not_draft` (409), `consent_required` (422), `recording_not_expected` (422), `recording_exists` (409), `bad_signature` (415), `too_large` (413), `upload_rate_limited` (429 with `Retry-After`, `LKD_UPLOADS_PER_USER_PER_HOUR`), `recording_required` / `text_required` (422), `recording_missing` / `recording_expired` / `recording_changed` (409), `speaker_withdrawn` (409).
 
-## 4a. Prompts
+## 4a. Topics and prompts
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | `/topics` | signed in | `{items: [{key, label_en, label_hi}]}`: the topics offered for an item, in display order |
+| GET | `/admin/topics` | admin | Every topic, with `sort_order`, `retired_at`, `created_at` |
+| POST | `/admin/topics` | admin 🔒 | Add a topic: `key` (`^[a-z][a-z0-9_]{1,39}$`, never changes), `label_en`, `label_hi`, `sort_order?` |
+| PATCH | `/admin/topics/{key}` | admin 🔒 | Change labels or order; `retired: true/false` hides or offers it again |
+
+Topics (ADR-030) start with 23 provisional ones from migration `0018` (Q-X5). Every change is audited (`topic.create`, `topic.update`). Error codes: `topic_not_found` (404), `topic_exists` (409), `unknown_topic`, `too_many_topics` (422).
+
 
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|

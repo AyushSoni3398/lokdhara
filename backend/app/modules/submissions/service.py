@@ -31,6 +31,7 @@ from app.modules.submissions.models import (
     TextRevision,
 )
 from app.modules.submissions.schemas import SubmissionCreateRequest, SubmissionUpdateRequest
+from app.modules.topics import service as topics
 from app.object_store import Bucket, ObjectStore
 from app.text import scripts
 from app.text.normalize import to_nfc
@@ -126,12 +127,18 @@ def create_draft(
         return _replay(existing, user)
     speaker = speakers.get_for_action(db, user, body.speaker_id)
     _check_collection_method(user, speaker, body.collection_method)
+    prompt = None
     if body.prompt_id is not None and body.recording_mode is not None:
-        prompts.get_for_recording(db, body.prompt_id, body.recording_mode)
+        prompt = prompts.get_for_recording(db, body.prompt_id, body.recording_mode)
+    if body.topics is not None:
+        chosen = topics.checked(db, body.topics)
+    else:
+        chosen = topics.from_prompt(db, prompt.topic_tags) if prompt else []
 
     submission = Submission(
-        **body.model_dump(exclude={"collection_context"}),
+        **body.model_dump(exclude={"collection_context", "topics"}),
         collection_context=body.collection_context.model_dump(exclude_none=True),
+        topics=chosen,
         submitted_by=user.id,
     )
     db.add(submission)
@@ -190,9 +197,12 @@ def update_draft(
     submission = get_owned(db, user, submission_id, for_update=True)
     if submission.status not in EDITABLE_STATUSES:
         raise ApiError(409, "submission_not_editable", "This submission can no longer be edited.")
-    changes = body.model_dump(exclude_unset=True, exclude={"collection_context"})
+    changes = body.model_dump(exclude_unset=True, exclude={"collection_context", "topics"})
     for field, value in changes.items():
         setattr(submission, field, value)
+    if body.topics is not None:
+        # A topic retired since it was chosen may stay; new ones must be offered.
+        submission.topics = topics.checked(db, body.topics, kept=submission.topics)
     if body.collection_context is not None:
         submission.collection_context = body.collection_context.model_dump(exclude_none=True)
     submission.updated_at = utcnow()
