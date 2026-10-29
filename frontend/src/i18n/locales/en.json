@@ -48,7 +48,6 @@
   "consent": {
     "title": "Consent for {{code}}",
     "testForm": "Test form: do not use it to record anyone for real.",
-    "defaultNo": "Each question is answered separately. Every answer starts as No.",
     "yes": "Yes",
     "no": "No",
     "listIntro": "Please read this. By ticking \"I accept\" you agree to all of the following:",
@@ -63,21 +62,6 @@
     },
     "withdraw": "Consent can be withdrawn later. Copies already shared with researchers cannot always be fully recalled.",
     "accept": "I have read the above and I accept",
-    "storeRequired": "Without permission to keep and review the recording, nothing can be recorded.",
-    "questions": {
-      "allow_store_and_review": "May we keep the recording safely and let trained reviewers listen to it and check the writing?",
-      "allow_research": "May approved researchers study it for language research?",
-      "allow_public_access": "May anyone on the internet listen to or read it in future?",
-      "allow_ai_training": "May it be used to build computer tools, such as speech recognition for Mundari?",
-      "allow_commercial_use": "May companies use it in products they sell?",
-      "demographics_consented": "May we record age group, home area, and languages spoken?",
-      "attribution": "How should the speaker be credited?"
-    },
-    "attribution": {
-      "pseudonymous": "A code instead of the name",
-      "name": "By name",
-      "none": "No credit"
-    },
     "method": {
       "legend": "How was consent given?",
       "in_app": "The speaker confirmed on this screen",

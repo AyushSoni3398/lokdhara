@@ -4,14 +4,15 @@ import { useNavigate, useParams, useSearchParams } from 'react-router'
 
 import { ApiError } from '../api/client'
 import * as api from '../api/endpoints'
-import type { Attribution, ConsentAnswers, ConsentForm, ConsentMethod, Speaker } from '../api/types'
+import type { ConsentAnswers, ConsentForm, ConsentMethod, Speaker } from '../api/types'
 import { Choice } from '../components/Choice'
 import { ErrorMessage } from '../components/ErrorMessage'
 import { FormText } from '../components/FormText'
 import type { DraftAudio } from '../drafts/types'
 import { AudioCapture } from '../recording/AudioCapture'
 
-// docs/CONSENT_AND_DATA_GOVERNANCE.md §3.1: asked one by one, every answer starts as No.
+// docs/CONSENT_AND_DATA_GOVERNANCE.md §3.1: everything is listed, and one "I accept" tick
+// agrees to all of it (ADR-031). The tick starts empty.
 const PERMISSIONS = [
   'allow_store_and_review',
   'allow_research',
@@ -34,10 +35,7 @@ export function ConsentPage() {
   const navigate = useNavigate()
   const [speaker, setSpeaker] = useState<Speaker | null>(null)
   const [form, setForm] = useState<ConsentForm | null>(null)
-  const [answers, setAnswers] = useState<Record<Permission, boolean>>(
-    () => Object.fromEntries(PERMISSIONS.map((p) => [p, false])) as Record<Permission, boolean>,
-  )
-  const [attribution, setAttribution] = useState<Attribution>('pseudonymous')
+  const [accepted, setAccepted] = useState(false)
   const [method, setMethod] = useState<ConsentMethod>('in_app')
   const [paperReference, setPaperReference] = useState('')
   const [evidence, setEvidence] = useState<DraftAudio | undefined>()
@@ -67,29 +65,10 @@ export function ConsentPage() {
 
   if (!form || !speaker) return <ErrorMessage error={error} />
 
-  const yesNo = (permission: Permission) => (
-    <Choice
-      key={permission}
-      name={permission}
-      legend={t(`consent.questions.${permission}`)}
-      options={[
-        { value: 'yes', label: t('consent.yes') },
-        { value: 'no', label: t('consent.no') },
-      ]}
-      value={answers[permission] ? 'yes' : 'no'}
-      onChange={(value) => setAnswers({ ...answers, [permission]: value === 'yes' })}
-    />
-  )
-
   const missingEvidence = method === 'oral_recorded' && !evidence
   const missingReference = method === 'paper_reference' && !paperReference.trim()
   const missingGuardian = minor && !guardian.trim()
-  const canSave =
-    answers.allow_store_and_review &&
-    !missingEvidence &&
-    !missingReference &&
-    !missingGuardian &&
-    !busy
+  const canSave = accepted && !missingEvidence && !missingReference && !missingGuardian && !busy
 
   const save = async (event: FormEvent) => {
     event.preventDefault()
@@ -98,8 +77,9 @@ export function ConsentPage() {
     const body: ConsentAnswers = {
       consent_form_id: form.id,
       method,
-      ...answers,
-      attribution_preference: attribution,
+      ...(Object.fromEntries(PERMISSIONS.map((p) => [p, accepted])) as Record<Permission, boolean>),
+      // A code instead of the name, the safest credit (CONSENT_AND_DATA_GOVERNANCE.md §3.1).
+      attribution_preference: 'pseudonymous',
       ...(method === 'paper_reference' ? { paper_reference: paperReference.trim() } : {}),
       ...(minor ? { guardian_involved: true, guardian_relationship: guardian.trim() } : {}),
     }
@@ -122,19 +102,14 @@ export function ConsentPage() {
       {form.is_test_form && <p className="warning">{t('consent.testForm')}</p>}
       <FormText markdown={form.body_markdown} />
       <form className="form" onSubmit={(event) => void save(event)}>
-        <p className="note">{t('consent.defaultNo')}</p>
-        {PERMISSIONS.map(yesNo)}
-        {!answers.allow_store_and_review && <p className="note">{t('consent.storeRequired')}</p>}
-        <Choice
-          name="attribution"
-          legend={t('consent.questions.attribution')}
-          options={(['pseudonymous', 'name', 'none'] as const).map((value) => ({
-            value,
-            label: t(`consent.attribution.${value}`),
-          }))}
-          value={attribution}
-          onChange={setAttribution}
-        />
+        <p>{t('consent.listIntro')}</p>
+        <ul>
+          {PERMISSIONS.map((permission) => (
+            <li key={permission}>{t(`consent.uses.${permission}`)}</li>
+          ))}
+          <li>{t('consent.uses.credit')}</li>
+        </ul>
+        <p className="note">{t('consent.withdraw')}</p>
         <Choice
           name="minor"
           legend={t('consent.minor.legend')}
@@ -183,6 +158,14 @@ export function ConsentPage() {
             <input value={paperReference} onChange={(e) => setPaperReference(e.target.value)} />
           </label>
         )}
+        <label className="inline">
+          <input
+            type="checkbox"
+            checked={accepted}
+            onChange={(e) => setAccepted(e.target.checked)}
+          />
+          {t('consent.accept')}
+        </label>
         <ErrorMessage error={error} />
         <button type="submit" className="action primary" disabled={!canSave}>
           {t('consent.save')}
