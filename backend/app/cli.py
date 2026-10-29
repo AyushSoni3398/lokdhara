@@ -99,7 +99,7 @@ def seed_dev() -> int:
         forms = consents.ensure_dev_forms(db)
         admin_id = db.scalar(select(User.id).where(User.username == "dev-admin"))
         assert admin_id is not None  # noqa: S101 - created above or by an earlier run
-        added_prompts = prompts.ensure_dev_prompts(db, admin_id)
+        added_prompts = prompts.ensure_dev_prompts(db, get_object_store(), settings, admin_id)
         db.commit()
     if not created:
         print("Development users already exist.")

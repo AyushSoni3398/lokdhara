@@ -1,6 +1,7 @@
 """The prompt library (ADR-018, docs/RECORDING_MODES.md, docs/API_SPECIFICATION.md §4a)."""
 
 import json
+import struct
 import uuid
 from collections import Counter
 from pathlib import Path
@@ -11,9 +12,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import Settings
+from app.image_formats import sniff_image
 from app.modules.audit.models import AuditEvent
 from app.modules.prompts import service
+from app.modules.prompts.dev_images import SCENES, draw_png
 from app.modules.prompts.models import Prompt
+from app.object_store import Bucket, ObjectStore
 from tests.conftest import MakeUser, TestUser, act_as, requires_postgres
 
 pytestmark = requires_postgres
@@ -257,10 +262,28 @@ def _row(key: str, topics: list[str], author: uuid.UUID) -> Prompt:
     )
 
 
-def test_dev_prompts_are_seeded_once(db: Session, make_user: MakeUser) -> None:
+def test_dev_prompts_are_seeded_once(
+    db: Session, make_user: MakeUser, object_store: ObjectStore, settings: Settings
+) -> None:
     author = make_user("dev-admin", "admin")
-    assert service.ensure_dev_prompts(db, author.id) == 4
+    assert service.ensure_dev_prompts(db, object_store, settings, author.id) == 12
     db.commit()
-    assert service.ensure_dev_prompts(db, author.id) == 0
-    keys = list(db.scalars(select(Prompt.prompt_key)))
-    assert all(key.startswith("test-") for key in keys)
+    assert service.ensure_dev_prompts(db, object_store, settings, author.id) == 0
+    prompts = list(db.scalars(select(Prompt)))
+    assert all(prompt.prompt_key.startswith("test-") for prompt in prompts)
+    # Every reading script has a sentence, and every picture prompt a stored PNG.
+    scripts = {p.script_code for p in prompts if p.prompt_type == "read_sentence"}
+    assert scripts == {"Deva", "Latn", "Nagm"}
+    images = [p.image_object_key for p in prompts if p.prompt_type == "image"]
+    assert len(images) == 3
+    for key in images:
+        assert key is not None
+        assert b"".join(object_store.open(Bucket.DERIVED, key)).startswith(b"\x89PNG")
+
+
+def test_dev_pictures_are_valid_pngs() -> None:
+    for name in SCENES:
+        png = draw_png(name)
+        assert sniff_image(png[:16]) == "png"
+        width, height = struct.unpack(">II", png[16:24])
+        assert (width, height) == (480, 320)

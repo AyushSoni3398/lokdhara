@@ -5,6 +5,7 @@ exact version they used. Only approved prompts are shown to contributors. Images
 prompts are team-made media in the derived bucket, served through short-lived signed URLs.
 """
 
+import io
 import secrets
 import uuid
 from collections.abc import Callable
@@ -22,6 +23,7 @@ from app.image_formats import sniff_image
 from app.modules.audit import service as audit
 from app.modules.audit.service import RequestContext
 from app.modules.identity.service import AuthenticatedUser
+from app.modules.prompts.dev_images import draw_png
 from app.modules.prompts.dev_prompts import DEV_PROMPTS, SOURCE
 from app.modules.prompts.models import Prompt
 from app.modules.prompts.schemas import PromptCreateRequest, PromptVersionRequest
@@ -270,12 +272,17 @@ def _audit(
     )
 
 
-def ensure_dev_prompts(db: Session, admin_id: uuid.UUID) -> int:
+def ensure_dev_prompts(
+    db: Session, store: ObjectStore, settings: Settings, admin_id: uuid.UUID
+) -> int:
     """Adds missing approved test prompts; returns how many. Caller commits."""
     added = 0
     for dev in DEV_PROMPTS:
         if db.scalar(select(Prompt.id).where(Prompt.prompt_key == dev.prompt_key).limit(1)):
             continue
+        image_key = (
+            _Media(store, settings).image(io.BytesIO(draw_png(dev.image))) if dev.image else None
+        )
         db.add(
             Prompt(
                 prompt_key=dev.prompt_key,
@@ -286,6 +293,7 @@ def ensure_dev_prompts(db: Session, admin_id: uuid.UUID) -> int:
                 script_code=dev.script_code,
                 source_and_licence=SOURCE,
                 topic_tags=list(dev.topic_tags),
+                image_object_key=image_key,
                 status="approved",
                 approved_by=admin_id,
                 created_by=admin_id,
