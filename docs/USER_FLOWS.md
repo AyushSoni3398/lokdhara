@@ -25,11 +25,8 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[Open Lokdhara, signed in] --> B{Whose voice or text?}
-    B -->|Mine| C[Use my speaker profile]
-    B -->|Someone else's<br/>facilitator only| D[Pick or create speaker profile<br/>pseudonymous code]
+    A[Open Lokdhara, signed in] --> C[Use my own speaker profile<br/>made the first time]
     C --> E{Active consent<br/>on file?}
-    D --> E
     E -->|No| F[Consent flow F2]
     F --> G
     E -->|Yes| G{Submit what?}
@@ -55,6 +52,7 @@ Notes:
 1. Steps 1–8 of the brief map to: open (A), choose type (G), content + metadata (H–L), consent (E/F), validation and storage (O–Q), reports and hiding (F4), authorised access (F5), export (F6).
 2. Consent is checked *before* content entry so that a speaker who declines is not recorded first and asked later. A facilitator may still capture consent at the end of a session if that matches field practice; in that case the draft cannot be uploaded until consent is attached. Which order is used in the field is open question Q-G4.
 3. The draft is saved on the device before any upload starts (FR-S6).
+4. The app does not ask "whose voice or text is this?": every new recording or text is the signed-in user's own (owner's decision, 2026-10-29). Recording other people through the app, for example by a facilitator, is open question Q-G12.
 
 ## F2 — Consent capture
 

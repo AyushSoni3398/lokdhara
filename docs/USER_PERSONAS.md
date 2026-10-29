@@ -23,7 +23,7 @@ Lokdhara's hardest design constraint is that the people with the most valuable k
 
 - **Goals:** Contribute words, sentences, and translations; record family members (which makes her a facilitator for those recordings).
 - **Needs:** Fast text entry, ability to add Hindi/English translations, clear status of her submissions.
-- **Design implication:** Text-entry and translation flows should be efficient; the app must ask *whose voice* is in a recording and capture that person's consent, not assume it is the account holder.
+- **Design implication:** Text-entry and translation flows should be efficient; each speaker gives their own consent. Since 2026-10-29 the app records only the account holder's own voice; recording others for them is open question Q-G12.
 
 ## P2 — Facilitator / field collector
 

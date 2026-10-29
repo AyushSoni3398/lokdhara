@@ -45,14 +45,6 @@
     "done": "I have written them down",
     "alreadyOn": "Two-step sign-in is on for your account. If you lose your phone and your recovery codes, ask the server maintainer to reset it."
   },
-  "speaker": {
-    "title": "Whose voice or text is this?",
-    "myself": "Mine",
-    "newPerson": "Someone else (new person)",
-    "registered": "People you registered",
-    "hasConsent": "Consent recorded",
-    "needsConsent": "Consent needed first"
-  },
   "consent": {
     "title": "Consent for {{code}}",
     "testForm": "Test form: do not use it to record anyone for real.",
