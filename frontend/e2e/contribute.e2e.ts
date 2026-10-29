@@ -18,7 +18,6 @@ async function startAsNewContributor(page: Page) {
   await expect(page.getByText('Welcome, Test Contributor')).toBeVisible()
 
   await page.getByRole('link', { name: /New recording/ }).click()
-  await page.getByRole('button', { name: /Mine/ }).click()
 
   // Consent before anything is recorded; every answer starts as No.
   await expect(page.getByText(/Test form/)).toBeVisible()
