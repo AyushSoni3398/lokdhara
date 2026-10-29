@@ -292,3 +292,16 @@ def test_flac_tags_describe_the_item_but_not_the_speaker() -> None:
     assert tags["LICENSE"] == package.DEFAULT_LICENCE
     assert "PROMPT_KEY" not in tags  # empty values are left out
     assert not {"30-44", "woman", "Khunti"} & set(tags.values())
+
+
+def test_topics_go_into_the_record_the_spreadsheet_the_tags_and_the_data_card() -> None:
+    items = [_item("b2", topics=("health_and_medicine", "agriculture")), _item("c3")]
+    records = [package.item_record(item) for item in items]
+    assert records[0]["topics"] == ["agriculture", "health_and_medicine"]
+    rows = list(csv.DictReader(io.StringIO(package.metadata_csv(records).decode("utf-8-sig"))))
+    assert rows[0]["topics"] == "agriculture;health_and_medicine"
+    tags = dict(package.flac_comments(records[0], release_name="pilot 0.1.0", licence=None))
+    assert tags["TOPICS"] == "agriculture,health_and_medicine"
+    stats = package.statistics(records, speaker_share_warning=0.9)
+    assert stats["by_topic"] == {"(none)": 1, "agriculture": 1, "health_and_medicine": 1}
+    assert "| health_and_medicine | 1 |" in package.data_card_markdown(INFO, stats)

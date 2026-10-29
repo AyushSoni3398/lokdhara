@@ -210,6 +210,7 @@ def _gather(db: Session, submission: Submission, *, full_demographics: bool = Fa
         collection_context=submission.collection_context,
         speaker_details=details,
         area=area,
+        topics=tuple(submission.topics),
     )
     return Gathered(
         submission=submission,

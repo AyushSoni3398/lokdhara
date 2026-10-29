@@ -371,3 +371,29 @@ def test_speaker_details_follow_demographics_consent_and_the_release_purpose(
     external = records("external_research")
     assert external[with_details]["speaker"] == {"age_band": "30-44"}
     assert external[with_details]["area"] is None
+
+
+def test_releases_can_take_only_items_on_some_topics(
+    client: TestClient,
+    engine: Engine,
+    db: Session,
+    make_user: MakeUser,
+    settings: Settings,
+    object_store: ObjectStore,
+) -> None:
+    act_as(client, make_user("asha", "contributor"))
+    speaker = own_speaker(client)
+    give_consent(client, db, speaker, allow_research=True)
+    farming = accepted_text_item(client, engine, speaker, "खेत", topics=["agriculture"])
+    accepted_text_item(client, engine, speaker, "दवा", topics=["health_and_medicine"])
+    accepted_text_item(client, engine, speaker, "कुछ")
+    release = DatasetRelease(
+        slug="farming",
+        purpose="internal_research",
+        created_by=uuid.uuid4(),
+        selection_criteria={"topics": ["agriculture", "governance"]},
+        data_card_markdown="",
+    )
+    run = freeze_module.run_checks(db, object_store, settings, release)
+    assert [str(i.submission.id) for i in run.items] == [farming]
+    assert run.items[0].record["topics"] == ["agriculture"]

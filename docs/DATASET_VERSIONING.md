@@ -35,7 +35,7 @@ Items with restriction flags are excluded according to [DATA_DICTIONARY.md §2](
 
 Releases other than `internal_research` also need `LKD_EXTERNAL_RELEASES_ENABLED=true`, which is set only once those governance answers are recorded; until then check D7 fails for them.
 
-**How a release is made.** A researcher or admin starts a draft (`slug`, `purpose`, selection criteria: kinds, content types, recording modes, dialect labels, only items with audio, only items with text) and previews it. `POST /datasets/{id}/checks` runs D1–D9 ([DATA_QUALITY_AND_VALIDATION.md §4](DATA_QUALITY_AND_VALIDATION.md)). An admin freezes it with a version: the checks run again, consent is re-computed, one `dataset_release_items` row records each item's revisions, audio copy and consent, and the package's text files (items.jsonl, metadata.csv, README.md, datacard.json, LICENSE.txt, manifest.json) are stored. Exports are asked for with a purpose statement, approved by one admin (who may be the requester, ADR-027), and built by the `dataset.export` job from those stored files plus the audio copies, each checked against the manifest. Packages expire after `LKD_EXPORT_RETENTION_DAYS` (`cleanup.expire_exports`, hourly).
+**How a release is made.** A researcher or admin starts a draft (`slug`, `purpose`, selection criteria: kinds, content types, recording modes, dialect labels, topics (any of them), only items with audio, only items with text) and previews it. `POST /datasets/{id}/checks` runs D1–D9 ([DATA_QUALITY_AND_VALIDATION.md §4](DATA_QUALITY_AND_VALIDATION.md)). An admin freezes it with a version: the checks run again, consent is re-computed, one `dataset_release_items` row records each item's revisions, audio copy and consent, and the package's text files (items.jsonl, metadata.csv, README.md, datacard.json, LICENSE.txt, manifest.json) are stored. Exports are asked for with a purpose statement, approved by one admin (who may be the requester, ADR-027), and built by the `dataset.export` job from those stored files plus the audio copies, each checked against the manifest. Packages expire after `LKD_EXPORT_RETENTION_DAYS` (`cleanup.expire_exports`, hourly).
 
 ## 4. Export package layout (format 1.1)
 
@@ -70,6 +70,7 @@ Originals are **not** included by default (privacy, size); a release may include
   "prompt": {"id": "…", "key": "img-farming-012", "version": 2, "type": "image", "text": "…", "language": "hi", "script": "Deva", "topic_tags": ["farming"]},
   "recorded_on": "2027-01-15",
   "area": "Khunti (1.1; with demographics consent, internal research only)",
+  "topics": ["agriculture", "water_and_weather"],
   "collection_context": {"setting": "outdoor", "speaker_count": 1, "equipment": "phone_builtin_mic"},
   "audio": {"path": "audio/0192f1c4-….flac", "duration_ms": 61234, "sample_rate_hz": 16000, "is_lossy_source": true, "sha256": "…", "bytes": 1960000,
             "original": {"container": "mov,mp4,m4a,3gp,3g2,mj2", "codec": "aac", "sample_rate_hz": 48000, "channels": 1, "bit_depth": null, "bytes": 512000, "source": "file_upload"},
@@ -87,7 +88,7 @@ Originals are **not** included by default (privacy, size); a release may include
 
 `metadata.csv` has one row per item, sorted by `item_id`, with a `translation_<language>` column for each translation language in the release. It is UTF-8 with a byte order mark; lists are joined with `;`, and text that starts with `=`, `+`, `-` or `@` gets a leading `'` so spreadsheets do not run it as a formula. Use `items.jsonl` when the exact text matters.
 
-Each FLAC file carries Vorbis comments: `TITLE`, `ALBUM` (release and version), `ARTIST` and `SPEAKER_CODE`, `DATE`, `GENRE` (content type), `LANGUAGE`, `ORGANIZATION`, `LICENSE`, `LOKDHARA_ITEM_ID`, `DIALECT`, `RECORDING_MODE`, `COLLECTION_METHOD`, `PROMPT_KEY`, `PROMPT_TEXT`, `TRANSCRIPTION` with `_SCRIPT` and `_STATUS`, `TRANSLATION_<LANGUAGE>`, and `CONSENT` (the permitted uses). Never demographics or the area. The stored copy's other metadata is dropped and its audio frames are unchanged.
+Each FLAC file carries Vorbis comments: `TITLE`, `ALBUM` (release and version), `ARTIST` and `SPEAKER_CODE`, `DATE`, `GENRE` (content type), `TOPICS`, `LANGUAGE`, `ORGANIZATION`, `LICENSE`, `LOKDHARA_ITEM_ID`, `DIALECT`, `RECORDING_MODE`, `COLLECTION_METHOD`, `PROMPT_KEY`, `PROMPT_TEXT`, `TRANSCRIPTION` with `_SCRIPT` and `_STATUS`, `TRANSLATION_<LANGUAGE>`, and `CONSENT` (the permitted uses). Never demographics or the area. The stored copy's other metadata is dropped and its audio frames are unchanged.
 
 Fields are produced from an **explicit allow-list** in code (`app.modules.releases.package`); anything not in the allow-list is never exported (contacts, names, review notes, `collection_context.notes`, object keys, user IDs).
 

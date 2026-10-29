@@ -209,6 +209,7 @@ def test_download_all_zips_every_ready_recording(
     details = list(csv.DictReader(io.StringIO(archive.read("details.csv").decode("utf-8-sig"))))
     assert [row["file"] for row in details] == names
     assert {row["recording_mode"] for row in details} == {"free"}
+    assert {row["topics"] for row in details} == {""}
     assert float(details[0]["duration_seconds"]) == 2.0
     assert str(not_ready)[-8:] not in "".join(names)
     for name, recording_id in zip(names, [first, second], strict=True):

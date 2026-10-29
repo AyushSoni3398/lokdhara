@@ -41,6 +41,7 @@ ITEM_FIELDS = frozenset(
         "consent_permissions",
         "collection_context",
         "area",
+        "topics",
     }
 )
 AUDIO_FIELDS = frozenset(
@@ -147,6 +148,8 @@ class ItemSource:
     # None unless the speaker agreed to share demographics and the purpose allows it.
     speaker_details: Mapping[str, Any] = field(default_factory=dict)
     area: str | None = None
+    # Keys from the topic list (ADR-030).
+    topics: tuple[str, ...] = ()
 
 
 def audio_path(item_id: str) -> str:
@@ -215,6 +218,7 @@ def item_record(item: ItemSource) -> dict[str, Any]:
         "quality_flags": sorted(item.quality_flags),
         "consent_permissions": {key: bool(item.consent.get(key)) for key in CONSENT_FIELDS},
         "area": item.area,
+        "topics": sorted(item.topics),
         "collection_context": {
             key: item.collection_context[key]
             for key in COLLECTION_CONTEXT_FIELDS
@@ -255,6 +259,7 @@ def flac_comments(
         ("ARTIST", record["speaker_code"]),
         ("DATE", record["recorded_on"]),
         ("GENRE", record["content_type"]),
+        ("TOPICS", ",".join(record["topics"])),
         ("LANGUAGE", record["language"]),
         ("ORGANIZATION", "Lokdhara"),
         ("LICENSE", licence or DEFAULT_LICENCE),
@@ -297,6 +302,7 @@ CSV_COLUMNS = (
     "content_type",
     "collection_method",
     "recording_mode",
+    "topics",
     "recorded_on",
     "prompt_key",
     "prompt_version",
@@ -363,6 +369,7 @@ def _csv_row(record: Mapping[str, Any], languages: list[str]) -> list[Any]:
         "content_type": record["content_type"],
         "collection_method": record["collection_method"],
         "recording_mode": record["recording_mode"],
+        "topics": record["topics"],
         "recorded_on": record["recorded_on"],
         "prompt_key": prompt.get("key"),
         "prompt_version": prompt.get("version"),
@@ -451,6 +458,9 @@ def statistics(records: list[dict[str, Any]], speaker_share_warning: float) -> d
             sorted(Counter(r["recording_mode"] or "(text only)" for r in records).items())
         ),
         "by_script": dict(sorted(main_scripts.items())),
+        "by_topic": dict(
+            sorted(Counter(t for r in records for t in r["topics"] or ["(none)"]).items())
+        ),
         "with_audio": sum(1 for r in records if r["audio"]),
         "lossy_sources": sum(1 for r in records if (r["audio"] or {}).get("is_lossy_source")),
         "texts": len(texts),
@@ -490,6 +500,7 @@ def data_card_markdown(info: ReleaseInfo, stats: Mapping[str, Any]) -> str:
         _table("Dialect label (as reported)", stats["by_dialect_label"]),
         _table("Recording mode", stats["by_recording_mode"]),
         _table("Script of the main text", stats["by_script"]),
+        _table("Topic (an item may have several)", stats["by_topic"]),
         "## Consent and permitted uses\n",
         f"Purpose: `{info.purpose}`. Every item's speaker agreed to this use, checked when the "
         "release was frozen. See LICENSE.txt for the terms.\n",

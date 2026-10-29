@@ -9,7 +9,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import ColumnElement, Select, and_, exists, func, select, true
+from sqlalchemy import ARRAY, ColumnElement, Select, Text, and_, cast, exists, func, select, true
 from sqlalchemy.orm import Session
 
 from app.audio import renditions
@@ -254,6 +254,8 @@ def matches_criteria(criteria: SelectionCriteria) -> ColumnElement[bool]:
     ):
         if values:
             conditions.append(column.in_(values))
+    if criteria.topics:
+        conditions.append(Submission.topics.op("&&")(cast(criteria.topics, ARRAY(Text))))
     if criteria.needs_audio:
         conditions.append(_has_analysis_copy())
     if criteria.needs_transcription:

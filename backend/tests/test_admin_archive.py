@@ -137,6 +137,7 @@ def test_the_overview_has_one_row_per_recording_with_its_details(
         assert row["codec"] == "aac" and row["source"] == "browser_recorder"
         assert float(row["duration_seconds"]) > 1
         assert row["consent_status"] == "active" and row["consent_research"] == "no"
+        assert row["topics"] == ""
     assert sorted(r["restriction_flags"] for r in rows) == ["", "culturally_restricted"]
 
 

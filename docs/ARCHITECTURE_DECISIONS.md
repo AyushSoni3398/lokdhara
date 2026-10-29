@@ -31,6 +31,7 @@ ADRs 001–019 were **Accepted** by the project owner on 2026-10-11 (ADR-019 aft
 | 026 | Contributors download listening copies of their own recordings, one at a time or all as a zip | Proposed |
 | 028 | Public sign-up for contributors; profile and consent asked once; minors with a guardian | Proposed |
 | 029 | Every download says what each recording is: full item details, spreadsheets, tags in the audio | Proposed |
+| 030 | Topics: a list admins extend, chosen per item and carried into every download | Proposed |
 
 ---
 
@@ -292,4 +293,17 @@ ADRs 001–019 were **Accepted** by the project owner on 2026-10-11 (ADR-019 aft
 - **Alternatives:** Tag the FLAC copies when they are made (but titles and texts change after upload, and a release must describe the item as frozen); tag with FFmpeg at export (an extra tool run per file, and its output depends on the FFmpeg version); put demographics in the audio tags (a copied file would carry them without the licence and the release's terms); keep demographics at age band only (simplest, but researchers lose gender and dialect-area balance).
 - **Consequences:** Freezing now reads every audio file twice (check D4, then tagging), so a large release takes longer to freeze. Internal research packages hold more about each speaker; combined with a small community, gender plus area plus age band can point to a person, which the professor should weigh (Q-G11). Older packages keep format 1.
 - **Revisit when:** the professor answers Q-G11, Q-G1 or Q-G5, a release is published outside the project, or freezing becomes too slow.
+
+## ADR-030 — Topics: a list admins extend, chosen per item and carried into every download
+
+- **Status:** Proposed (asked for by the project owner on 2026-10-29: "what domain he is speaking, like agriculture, health, governance … we can give the dropdown and add more topics too"). Gives a working answer to Q-X5 for recordings; the list itself is provisional until a linguist and the community check it.
+- **Context:** A recording kept its type (story, song, …) but not its subject. Only prompts had free-form topic tags, so free recordings had no subject at all, and nothing about subjects reached the downloads.
+- **Decision:**
+  - A `topics` table (migration `0018`) holds the offered topics: a fixed `key`, English and Hindi labels, an order, and `retired_at`. It starts with 23 topics: agriculture, forest and nature, animals and livestock, water and weather, health and medicine, food and cooking, family and relations, daily life, education, governance and village council, law, land and rights, market and money, work and crafts, festivals and rituals, beliefs, history and ancestors, folk tales, music and dance, games, places and travel, numbers and time, phones and technology, something else.
+  - `GET /topics` gives the dropdown; admins add, rename, reorder and retire topics (`/admin/topics`), audited. Keys never change and topics are never deleted, so exported keys keep their meaning; a retired topic is not offered but stays on items that have it.
+  - Each submission has `topics` (up to 10 keys, checked against the list). A prompted or read item starts with its prompt's tags that are on the list.
+  - Topics go into `items.jsonl`, `metadata.csv`, the data card counts, the `TOPICS` tag of each FLAC file, the admin `recordings_overview.csv` and contributors' `details.csv`. A release can take only items with any of chosen topics.
+- **Alternatives:** Free-text topics typed by contributors (spellings drift and cannot be counted); a list fixed in code (every new topic needs a release of the app); one topic per item (stories often touch several).
+- **Consequences:** The contributor screens still need the dropdown (frontend work, later). Items recorded before this have no topics. Topic counts in a data card count an item once per topic.
+- **Revisit when:** a linguist and the community review the list (Q-X5), or topics need sub-topics.
 

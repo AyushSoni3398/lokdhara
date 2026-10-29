@@ -5,6 +5,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.modules.submissions.schemas import ContentType, Kind, RecordingMode
+from app.modules.topics.schemas import TopicKey
 from app.text_input import MultiLine, SingleLine
 
 Purpose = Literal["internal_research", "external_research", "public", "ai_training"]
@@ -21,6 +22,8 @@ class SelectionCriteria(BaseModel):
     content_types: list[ContentType] = Field(default_factory=list, max_length=6)
     recording_modes: list[RecordingMode] = Field(default_factory=list, max_length=3)
     dialect_labels: list[DialectLabel] = Field(default_factory=list, max_length=50)
+    # Items with any of these topics (ADR-030).
+    topics: list[TopicKey] = Field(default_factory=list, max_length=50)
     needs_audio: bool = False
     needs_transcription: bool = False
 
