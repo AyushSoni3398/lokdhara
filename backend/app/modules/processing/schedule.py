@@ -19,6 +19,7 @@ PERIODIC: dict[str, timedelta] = {
     "cleanup.expire_drafts": timedelta(hours=1),
     "cleanup.expire_exports": timedelta(hours=1),
     "ops.digest": timedelta(days=1),
+    "withdrawal.expire_consent_evidence": timedelta(days=1),
 }
 
 
