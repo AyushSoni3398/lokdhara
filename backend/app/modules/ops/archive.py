@@ -268,7 +268,7 @@ def overview_csv(db: Session, identities: list[dict[str, Any]]) -> bytes:
     """recordings_overview.csv: the tables joined, so the archive is usable without code."""
     speakers = {s.id: s for s in db.scalars(select(Speaker))}
     names = {uuid.UUID(row["speaker_id"]): row for row in identities}
-    users = dict(db.execute(select(User.id, User.username)).tuples().all())
+    users = {user_id: name for user_id, name in db.execute(select(User.id, User.username))}
     prompts = {p.id: p for p in db.scalars(select(Prompt))}
     consents = {c.id: c for c in db.scalars(select(ConsentRecord))}
     recordings: dict[uuid.UUID, list[Recording]] = defaultdict(list)
