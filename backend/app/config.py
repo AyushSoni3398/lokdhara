@@ -75,8 +75,8 @@ class Settings(BaseSettings):
 
     # Consent capture (docs/CONSENT_AND_DATA_GOVERNANCE.md §3)
     consent_evidence_max_bytes: int = Field(default=25 * 1024 * 1024, gt=0)
-    # People under 18 may take part, with a parent or guardian agreeing alongside them
-    # (owner's decision 2026-10-23, Q-L4). Set false to stop collecting from minors.
+    # Anyone may take part, people under 18 included, and no parent or guardian is asked for
+    # (owner's decision 2026-10-29, Q-L4). Set false to stop collecting from minors.
     allow_minors: bool = True
 
     # Dataset releases (docs/DATASET_VERSIONING.md). Releases other than internal research
