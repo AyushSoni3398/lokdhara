@@ -21,16 +21,18 @@ from sqlalchemy.orm import Session
 from app.config import Settings
 from app.modules.audit.models import AuditEvent
 from app.modules.consents.models import ConsentForm, ConsentRecord
+from app.modules.identity.models import User
 from app.modules.processing import queue
 from app.modules.speakers.models import Speaker
 from app.modules.submissions import processing
 from app.modules.submissions.models import Recording, Submission
 from app.object_store import Bucket, ObjectStore
 from tests.audio_fixtures import make_audio, requires_ffmpeg
-from tests.conftest import MakeUser, act_as, requires_postgres
+from tests.conftest import MakeUser, TestUser, act_as, requires_postgres
 from tests.submission_helpers import SUBMISSIONS, create_draft, give_consent, own_speaker, upload
 
 ARCHIVE = "/api/v1/admin/archive.zip"
+PASSWORD = "correct horse battery"  # make_user's default
 REASON = {"reason": "Copy for the professor's offline analysis"}
 
 pytestmark = [requires_postgres, requires_ffmpeg]
@@ -211,6 +213,25 @@ def test_consents_lists_every_consent_given(
     # The exact text the speaker agreed to travels with it.
     form = db.get_one(ConsentForm, record.consent_form_id)
     assert archive.read(consent["form_file"]).decode() == form.body_markdown
+
+
+def test_a_changed_consent_shows_the_new_one_and_keeps_the_old(
+    client: TestClient, recordings: dict[uuid.UUID, bytes], db: Session
+) -> None:
+    speaker = db.scalars(select(Speaker)).one()
+    first = db.scalars(select(ConsentRecord)).one()
+    assert speaker.linked_user_id is not None
+    act_as(client, TestUser(speaker.linked_user_id, "asha", PASSWORD))
+    give_consent(client, db, str(speaker.id), allow_research=True)
+    root = db.scalars(select(User).where(User.username == "root")).one()
+    act_as(client, TestUser(root.id, "root", PASSWORD))
+
+    archive = zipfile.ZipFile(io.BytesIO(client.get(ARCHIVE, params=REASON).content))
+    [person] = csv_rows(archive, "people.csv")
+    assert (person["consent_research"], person["consent_records"]) == ("yes", "2")
+    old, new = csv_rows(archive, "consents.csv")
+    assert (old["consent_record_id"], old["status"]) == (str(first.id), "superseded")
+    assert (new["status"], new["replaces"]) == ("active", str(first.id))
 
 
 def test_a_missing_file_is_listed_not_fatal(
