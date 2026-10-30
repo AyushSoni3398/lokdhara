@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { deleteBack, insertAt, keyLabel } from './layout'
+import { DEVANAGARI, deleteBack, insertAt, keyLabel, keyName, NAG_MUNDARI } from './layout'
 
 describe('Devanagari keyboard', () => {
   it('builds syllables from letters and signs', () => {
@@ -23,5 +23,38 @@ describe('Devanagari keyboard', () => {
   it('shows signs on a dotted circle', () => {
     expect(keyLabel('ि')).toBe('◌ि')
     expect(keyLabel('क')).toBe('क')
+  })
+})
+
+describe('Mundari Bani keyboard', () => {
+  it('has all 42 letters, signs and digits of the script', () => {
+    const keys = NAG_MUNDARI.rows.flat().filter((key) => /\p{Script=Nag_Mundari}/u.test(key))
+    expect(keys).toHaveLength(42)
+  })
+
+  it('shows signs alone and names every key', () => {
+    expect(keyLabel('\u{1E4EC}')).toBe('\u{1E4EC}')
+    expect(keyName('\u{1E4D0}')).toBe('o')
+    expect(keyName('\u{1E4EC}')).toBe('muhor sign')
+    expect(keyName('\u{1E4F9}')).toBe('9')
+    expect(keyName('क')).toBeUndefined()
+  })
+
+  it('deletes one letter, not half of one', () => {
+    expect(deleteBack('\u{1E4D5}\u{1E4D6}', 4, 4)).toEqual({ text: '\u{1E4D5}', cursor: 2 })
+  })
+})
+
+describe.each([
+  ['Devanagari', DEVANAGARI],
+  ['Mundari Bani', NAG_MUNDARI],
+])('%s layout', (_, keyboard) => {
+  it('fills every column of every row, so the keys line up', () => {
+    for (const row of keyboard.rows) expect(row).toHaveLength(keyboard.columns)
+  })
+
+  it('has each key once', () => {
+    const keys = keyboard.rows.flat()
+    expect(new Set(keys).size).toBe(keys.length)
   })
 })

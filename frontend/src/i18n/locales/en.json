@@ -655,14 +655,12 @@
     "complete": "Close request"
   },
   "keyboard": {
-    "open": "Hindi keyboard",
+    "open": { "Deva": "Hindi keyboard", "Nagm": "Mundari Bani keyboard" },
     "close": "Close keyboard",
-    "label": "Devanagari keyboard",
-    "letters": "Letters",
-    "signs": "Signs",
-    "numbers": "Numbers",
+    "label": { "Deva": "Devanagari keyboard", "Nagm": "Mundari Bani keyboard" },
     "space": "Space",
     "delete": "Delete",
+    "newLine": "New line",
     "roman": "ABC → हिंदी",
     "romanLabel": "Type in Roman letters",
     "romanAdd": "Add to text",

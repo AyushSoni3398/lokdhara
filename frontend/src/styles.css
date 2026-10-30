@@ -152,14 +152,22 @@ code { overflow-wrap: anywhere; }
   grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); font-size: 1.1rem;
 }
 
-/* On-screen Devanagari keyboard: big keys for thumbs, wraps on narrow phones. */
-.keyboard { display: grid; gap: 6px; padding: 8px; border-radius: var(--radius); background: #f1e6da; }
-.keyboard-row { display: flex; flex-wrap: wrap; gap: 4px; }
-.key {
-  min-width: 40px; min-height: 44px; flex: 1 0 40px; font-size: 1.25rem; font-family: inherit;
-  border: 1px solid #c9b6a4; border-radius: 8px; background: #fff; color: var(--fg); cursor: pointer;
+/* On-screen keyboards: every key on one screen. The keys share the width evenly (no wrapping,
+   no sideways scrolling) and the keyboard reaches almost to the screen edges to give them room. */
+.keyboard {
+  display: grid; gap: 6px; padding: 6px 4px; margin-inline: -12px;
+  border-radius: var(--radius); background: #f1e6da;
 }
-.key.wide { flex: 4 0 160px; font-size: 1rem; }
-.key:active { background: #f6ebe1; }
+.keyboard-keys { display: grid; gap: 3px; }
+.keyboard-bottom { display: flex; }
+.key {
+  min-width: 0; min-height: 42px; padding: 0; font-size: 1.15rem; font-family: inherit;
+  border: 1px solid #c9b6a4; border-radius: 7px; background: #fff; color: var(--fg); cursor: pointer;
+}
+.key.action { flex: 0 0 22%; font-size: 0.85rem; background: #e9d9c8; }
+.key.space { flex: 1; font-size: 1rem; }
+.key.newline { flex-basis: 12%; font-size: 1.15rem; }
+.key.delete { font-size: 1.15rem; }
+.key:active, .key[aria-pressed='true'] { background: #f6ebe1; }
 .field { display: grid; gap: 6px; }
 .field > label { font-weight: 600; }

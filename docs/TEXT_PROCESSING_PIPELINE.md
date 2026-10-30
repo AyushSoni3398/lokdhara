@@ -66,6 +66,13 @@ As built (M4, `app/text/scripts.py`):
 - `detected_scripts` lists the most used script first. Letters in any script other than `Deva`, `Latn`, `Nagm`, `Beng`, or `Orya` are counted as `Zyyy`.
 - A layer shows `script_mismatch` when its declared script does not appear in its current text at all. A declared `Zyyy`, or text with no letters, never counts as a mismatch. The contributor app applies the same rule while the text is typed (`frontend/src/text/scripts.ts`), so the warning appears before sending; it never blocks or changes the text.
 
+On-screen keyboards (`frontend/src/keyboard/`): most phones have no Devanagari or Nag Mundari keyboard installed, so a text box offers one for its declared script. Each keyboard shows every key on one screen, with no pages to switch, and closes the phone's own keyboard while it is open.
+
+- **Devanagari** (`Deva`, labelled "Hindi keyboard"): 11 keys per row in varnamala order. Vowels on the first row with their matras right under them (halant under अ), consonants with ं ँ ः, then ष स ह ड़ ढ़ क्ष त्र ज्ञ ऑ ॉ ़, the digits ०–९ with ।, and punctuation with ॥. Only ॅ is left out. A button opens typing in Roman letters (`naam` → नाम) above the keys.
+- **Mundari Bani** (`Nagm`): 10 keys per row, all 42 characters of the Unicode block in the script's vowel groups (O, A, I, U, E), its 5 signs and 10 digits, and punctuation (। . , ? ! - ( )). Nag Mundari has no matras. Its signs are drawn without the dotted circle, which the font lacks, and each key has a Roman name for screen readers. There is no Roman-letter typing for it until a Mundari Bani writer agrees spelling rules.
+- **Latin** and other scripts use the phone's own keyboard.
+- Both keyboards have space, new line and delete. Delete removes one code point (one matra, or one Nag Mundari letter, which takes two UTF-16 units).
+
 ## 6. Policy normalisation (`content_normalized`) — deferred
 
 A normalisation policy (e.g., mapping common variant spellings, nukta usage, or Latin diacritic conventions) can only be written by linguists with community input (Q-X2). When one exists:

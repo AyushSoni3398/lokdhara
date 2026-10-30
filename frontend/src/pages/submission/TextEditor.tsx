@@ -67,7 +67,7 @@ export function EditText({
         spellCheck={false}
         value={content}
         onValue={setContent}
-        keyboard={layer.script_code === 'Deva'}
+        script={layer.script_code}
       />
       <ScriptWarning text={content} script={layer.script_code} canChoose={false} />
       <label>
@@ -145,7 +145,7 @@ export function AddText({
         spellCheck={false}
         value={content}
         onValue={setContent}
-        keyboard={script === 'Deva'}
+        script={script}
       />
       <ScriptWarning text={content} script={script} canChoose={chooseScript} />
       <ErrorMessage error={error} />

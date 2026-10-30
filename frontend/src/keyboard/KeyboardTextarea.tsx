@@ -8,35 +8,48 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { deleteBack, insertAt, KEY_ROWS, keyLabel } from './layout'
+import type { Script } from '../api/types'
+import {
+  DEVANAGARI,
+  deleteBack,
+  insertAt,
+  type Keyboard,
+  keyLabel,
+  keyName,
+  NAG_MUNDARI,
+} from './layout'
 import { RomanTyping } from './RomanTyping'
 
-type Page = keyof typeof KEY_ROWS | 'roman'
-const PAGES: Page[] = ['letters', 'signs', 'numbers', 'roman']
+/** The scripts with an on-screen keyboard, and the language tag their keys are drawn in. */
+const KEYBOARDS: Partial<Record<Script, { layout: Keyboard; lang: string }>> = {
+  Deva: { layout: DEVANAGARI, lang: 'hi' },
+  Nagm: { layout: NAG_MUNDARI, lang: 'unr-Nagm' },
+}
 
 /**
- * A text box with an optional on-screen Devanagari keyboard, for phones without a Hindi keyboard
- * installed. While it is open the phone's own keyboard stays closed (inputMode "none").
+ * A text box with an on-screen keyboard for its script (Devanagari or Mundari Bani), for phones
+ * without one installed. While it is open the phone's own keyboard stays closed (inputMode "none").
  */
 export function KeyboardTextarea({
   label,
   value,
   onValue,
-  keyboard = true,
+  script,
   ...props
 }: Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'value' | 'onChange'> & {
   label: ReactNode
   value: string
   onValue: (value: string) => void
-  /** Offer the keyboard (for Devanagari text); otherwise this is a plain text box. */
-  keyboard?: boolean
+  /** The script typed; without a keyboard for it this is a plain text box. */
+  script: Script
 }) {
   const { t } = useTranslation()
   const id = useId()
   const box = useRef<HTMLTextAreaElement>(null)
   const cursor = useRef<number | null>(null)
   const [open, setOpen] = useState(false)
-  const [page, setPage] = useState<Page>('letters')
+  const [roman, setRoman] = useState(false)
+  const keyboard = KEYBOARDS[script]
 
   useLayoutEffect(() => {
     if (cursor.current === null || !box.current) return
@@ -74,49 +87,49 @@ export function KeyboardTextarea({
           aria-expanded={open}
           onClick={() => setOpen(!open)}
         >
-          {t(open ? 'keyboard.close' : 'keyboard.open')}
+          {t(open ? 'keyboard.close' : `keyboard.open.${script}`)}
         </button>
       )}
       {keyboard && open && (
-        <div className="keyboard" role="group" aria-label={t('keyboard.label')}>
-          <div className="row">
-            {PAGES.map((name) => (
+        <div className="keyboard" role="group" aria-label={t(`keyboard.label.${script}`)}>
+          {roman && script === 'Deva' && (
+            <RomanTyping onAdd={(text) => edit((value, s, e) => insertAt(value, s, e, text))} />
+          )}
+          <div
+            className="keyboard-keys"
+            style={{
+              gridTemplateColumns: `repeat(${keyboard.layout.columns}, 1fr)`,
+            }}
+          >
+            {keyboard.layout.rows.flat().map((key) => (
               <button
-                key={name}
+                key={key}
                 type="button"
-                className="small-action"
-                aria-pressed={page === name}
-                onClick={() => setPage(name)}
+                className="key"
+                lang={keyboard.lang}
+                aria-label={keyName(key)}
+                // Keep the text box's cursor where it is.
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => edit((text, s, e) => insertAt(text, s, e, key))}
               >
-                {t(`keyboard.${name}`)}
+                {keyLabel(key)}
               </button>
             ))}
           </div>
-          {page === 'roman' && (
-            <RomanTyping onAdd={(text) => edit((value, s, e) => insertAt(value, s, e, text))} />
-          )}
-          {page !== 'roman' &&
-            KEY_ROWS[page].map((row, i) => (
-              <div className="keyboard-row" key={i}>
-                {row.map((key) => (
-                  <button
-                    key={key}
-                    type="button"
-                    className="key"
-                    lang="hi"
-                    // Keep the text box's cursor where it is.
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => edit((text, s, e) => insertAt(text, s, e, key))}
-                  >
-                    {keyLabel(key)}
-                  </button>
-                ))}
-              </div>
-            ))}
-          <div className="keyboard-row">
+          <div className="keyboard-keys keyboard-bottom">
+            {script === 'Deva' && (
+              <button
+                type="button"
+                className="key action"
+                aria-pressed={roman}
+                onClick={() => setRoman(!roman)}
+              >
+                {t('keyboard.roman')}
+              </button>
+            )}
             <button
               type="button"
-              className="key wide"
+              className="key space"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => edit((text, s, e) => insertAt(text, s, e, ' '))}
             >
@@ -124,7 +137,16 @@ export function KeyboardTextarea({
             </button>
             <button
               type="button"
-              className="key"
+              className="key action newline"
+              aria-label={t('keyboard.newLine')}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => edit((text, s, e) => insertAt(text, s, e, '\n'))}
+            >
+              ↵
+            </button>
+            <button
+              type="button"
+              className="key action delete"
               aria-label={t('keyboard.delete')}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => edit(deleteBack)}
