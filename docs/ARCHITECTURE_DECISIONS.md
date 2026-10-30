@@ -337,3 +337,18 @@ ADRs 001–019 were **Accepted** by the project owner on 2026-10-11 (ADR-019 aft
 - **Alternatives:** Wait for the professor and an ethics committee (slower, and the owner says none is needed); keep the guardian field as optional (less friction than before, but the owner wants no guardian step); keep proof of consent for years (stronger proof, but holds a withdrawn person's voice longer).
 - **Consequences:** India's DPDP Rules 2025 call for verifiable parental consent for children's data, and research use without ethics approval can limit where results are published; the owner carries both risks. After one month there is no recording left to show that an oral consent was given; the consent record (method, form version, date) remains.
 - **Revisit when:** the institution, a journal or a funder asks for ethics approval, a guardian complains, or the community names restricted content.
+
+## ADR-033 — The full archive carries each speaker's sign-up details and consent, names in their own file
+
+- **Status:** Proposed (built 2026-10-30 on the project owner's request; Q-G14 asks the professor). Extends ADR-027.
+- **Context:** The project owner asked for the admin download to include, next to the recordings, everything a person gave when signing up (name, gender, age, languages, area) and all their consents. The archive already held these, but only as raw tables (`data/*.jsonl`) and spread over recordings in `recordings_overview.csv`, which is hard to read without code.
+- **Decision:**
+  - `people.csv`: one row per speaker with their code, account name, sign-up date, age band, gender, first and other languages, dialect, area, whether they agreed to share demographics, their current consent (date, form, method, each use, how they are credited), how many consents they gave, any withdrawal, and how many items and recordings they have. No names or contacts.
+  - `people_names.csv`: what identifies each speaker (name, contact, village, notes, account display name, email and phone), joined to `people.csv` by `speaker_id` or `speaker_code`. Kept apart so `people.csv` and `consents.csv` can be used without anyone's name.
+  - `consents.csv`: every consent record, oldest first, including replaced and withdrawn ones, with who took it, the form, each use agreed to, and the name of the oral consent recording in `consent_evidence/` while it is kept (ADR-032).
+  - `consent_forms/<form>-<version>-<language>.md`: the exact text each speaker agreed to.
+  - The README in the zip lists the four files that hold names or contacts.
+  - Only admins can download the archive. Dataset releases for researchers are unchanged: no names, contacts or villages, ever.
+- **Alternatives:** Names in `people.csv` itself (simpler, but every use of the sign-up details would carry names); a switch to download the archive without names (safer to pass on, but one more choice on the page; can be added later).
+- **Consequences:** The archive is now the easiest way to see who every speaker is. India's DPDP Act 2023 expects personal data to be used only for the purpose it was given for, kept no longer than needed, and protected; a downloaded archive is outside the app's withdrawal and deletion routines. The age is an age band; the app never asks for a date of birth.
+- **Revisit when:** the professor answers Q-G14, or someone outside the admins needs the people data.

@@ -20,15 +20,19 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.modules.audit.models import AuditEvent
+from app.modules.consents.models import ConsentForm, ConsentRecord
+from app.modules.identity.models import User
 from app.modules.processing import queue
+from app.modules.speakers.models import Speaker
 from app.modules.submissions import processing
 from app.modules.submissions.models import Recording, Submission
 from app.object_store import Bucket, ObjectStore
 from tests.audio_fixtures import make_audio, requires_ffmpeg
-from tests.conftest import MakeUser, act_as, requires_postgres
+from tests.conftest import MakeUser, TestUser, act_as, requires_postgres
 from tests.submission_helpers import SUBMISSIONS, create_draft, give_consent, own_speaker, upload
 
 ARCHIVE = "/api/v1/admin/archive.zip"
+PASSWORD = "correct horse battery"  # make_user's default
 REASON = {"reason": "Copy for the professor's offline analysis"}
 
 pytestmark = [requires_postgres, requires_ffmpeg]
@@ -96,7 +100,10 @@ def test_the_archive_holds_everything(
     )
     archive = zipfile.ZipFile(io.BytesIO(response.content))
     assert archive.testzip() is None
-    assert REASON["reason"] in archive.read("README.txt").decode()
+    readme = archive.read("README.txt").decode()
+    assert REASON["reason"] in readme
+    for listed in ("people.csv", "people_names.csv", "consents.csv", "consent_forms/"):
+        assert listed in readme
 
     # Every original, byte for byte, restricted or not.
     for recording_id, content in recordings.items():
@@ -139,6 +146,95 @@ def test_the_overview_has_one_row_per_recording_with_its_details(
         assert row["consent_status"] == "active" and row["consent_research"] == "no"
         assert row["topics"] == ""
     assert sorted(r["restriction_flags"] for r in rows) == ["", "culturally_restricted"]
+
+
+def csv_rows(archive: zipfile.ZipFile, name: str) -> list[dict[str, str]]:
+    content = archive.read(name)
+    assert content.startswith("\ufeff".encode())
+    return list(csv.DictReader(io.StringIO(content.decode("utf-8-sig"))))
+
+
+def test_people_has_one_row_per_speaker_with_profile_and_consent(
+    client: TestClient, recordings: dict[uuid.UUID, bytes], db: Session
+) -> None:
+    speaker = db.scalars(select(Speaker)).one()
+    speaker.age_band, speaker.gender_self_described = "18-29", "woman"
+    speaker.first_language, speaker.region_coarse = "unr", "Khunti"
+    speaker.demographics_consented = True
+    db.commit()
+
+    archive = zipfile.ZipFile(io.BytesIO(client.get(ARCHIVE, params=REASON).content))
+    [person] = csv_rows(archive, "people.csv")
+    assert (person["speaker_code"], person["account"]) == (speaker.speaker_code, "asha")
+    assert person["signed_up_at"]
+    assert (person["age_band"], person["gender"]) == ("18-29", "woman")
+    assert (person["first_language"], person["region"]) == ("unr", "Khunti")
+    assert person["demographics_consented"] == "yes"
+    assert person["consent_status"] == "active" and person["consent_method"] == "in_app"
+    assert person["consent_form"].endswith("-hi")
+    assert person["consent_research"] == "no"
+    assert (person["consent_records"], person["submissions"], person["recordings"]) == (
+        "1",
+        "2",
+        "2",
+    )
+    assert person["withdrawal_status"] == ""
+    # Names stay out of people.csv.
+    assert "Synthetic Name" not in archive.read("people.csv").decode("utf-8-sig")
+
+
+def test_names_and_contacts_are_in_their_own_file(
+    client: TestClient, recordings: dict[uuid.UUID, bytes], db: Session
+) -> None:
+    speaker = db.scalars(select(Speaker)).one()
+    archive = zipfile.ZipFile(io.BytesIO(client.get(ARCHIVE, params=REASON).content))
+    [person] = csv_rows(archive, "people_names.csv")
+    assert (person["speaker_id"], person["speaker_code"]) == (str(speaker.id), speaker.speaker_code)
+    assert (person["full_name"], person["contact"], person["village"]) == (
+        "Synthetic Name",
+        "000-TEST",
+        "Test Village",
+    )
+    assert person["account"] == "asha" and person["account_display_name"]
+    assert "password" not in ",".join(person)
+
+
+def test_consents_lists_every_consent_given(
+    client: TestClient, recordings: dict[uuid.UUID, bytes], db: Session
+) -> None:
+    record = db.scalars(select(ConsentRecord)).one()
+    archive = zipfile.ZipFile(io.BytesIO(client.get(ARCHIVE, params=REASON).content))
+    [consent] = csv_rows(archive, "consents.csv")
+    assert consent["consent_record_id"] == str(record.id)
+    assert (consent["status"], consent["method"], consent["taken_by"]) == (
+        "active",
+        "in_app",
+        "asha",
+    )
+    assert (consent["store_and_review"], consent["research"]) == ("yes", "no")
+    assert consent["evidence_file"] == "" and consent["replaces"] == ""
+    # The exact text the speaker agreed to travels with it.
+    form = db.get_one(ConsentForm, record.consent_form_id)
+    assert archive.read(consent["form_file"]).decode() == form.body_markdown
+
+
+def test_a_changed_consent_shows_the_new_one_and_keeps_the_old(
+    client: TestClient, recordings: dict[uuid.UUID, bytes], db: Session
+) -> None:
+    speaker = db.scalars(select(Speaker)).one()
+    first = db.scalars(select(ConsentRecord)).one()
+    assert speaker.linked_user_id is not None
+    act_as(client, TestUser(speaker.linked_user_id, "asha", PASSWORD))
+    give_consent(client, db, str(speaker.id), allow_research=True)
+    root = db.scalars(select(User).where(User.username == "root")).one()
+    act_as(client, TestUser(root.id, "root", PASSWORD))
+
+    archive = zipfile.ZipFile(io.BytesIO(client.get(ARCHIVE, params=REASON).content))
+    [person] = csv_rows(archive, "people.csv")
+    assert (person["consent_research"], person["consent_records"]) == ("yes", "2")
+    old, new = csv_rows(archive, "consents.csv")
+    assert (old["consent_record_id"], old["status"]) == (str(first.id), "superseded")
+    assert (new["status"], new["replaces"]) == ("active", str(first.id))
 
 
 def test_a_missing_file_is_listed_not_fatal(
