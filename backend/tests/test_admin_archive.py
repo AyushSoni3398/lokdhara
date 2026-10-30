@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.modules.audit.models import AuditEvent
-from app.modules.consents.models import ConsentRecord
+from app.modules.consents.models import ConsentForm, ConsentRecord
 from app.modules.processing import queue
 from app.modules.speakers.models import Speaker
 from app.modules.submissions import processing
@@ -208,6 +208,9 @@ def test_consents_lists_every_consent_given(
     )
     assert (consent["store_and_review"], consent["research"]) == ("yes", "no")
     assert consent["evidence_file"] == "" and consent["replaces"] == ""
+    # The exact text the speaker agreed to travels with it.
+    form = db.get_one(ConsentForm, record.consent_form_id)
+    assert archive.read(consent["form_file"]).decode() == form.body_markdown
 
 
 def test_a_missing_file_is_listed_not_fatal(

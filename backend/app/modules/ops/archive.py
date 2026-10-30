@@ -610,6 +610,8 @@ def collect(
     entries["people.csv"] = people_csv(db)
     entries["people_names.csv"] = people_names_csv(db, identities)
     entries["consents.csv"] = consents_csv(db)
+    for form in db.scalars(select(ConsentForm).order_by(ConsentForm.effective_from)):
+        entries[form_file(form)] = form.body_markdown.encode("utf-8")
     files = _files(db)
     audit.record(
         db,
