@@ -96,6 +96,18 @@ filters of a dataset release:
 - recordings_overview.csv   one row per recording (and per text-only item) with its speaker,
                         name, consent, prompt, details, file name, quality and current texts,
                         for opening in a spreadsheet. data/*.jsonl stay the exact copy.
+- people.csv            one row per speaker: account, sign-up date, age band, gender,
+                        languages, dialect, area, their current consent and any withdrawal.
+                        No names or contacts.
+- people_names.csv      speakers' names, contacts, villages and account details IN PLAIN
+                        TEXT, kept apart so people.csv can be used without them. Join the two
+                        by speaker_id or speaker_code.
+- consents.csv          every consent ever given, oldest first; a changed consent is a new row
+                        whose "replaces" names the old one
+- consent_forms/        the exact text of each consent form, as consents.csv names it
+
+Files with names or contacts: people_names.csv, recordings_overview.csv,
+data/speaker_identities.jsonl and data/users.jsonl. Leave them out of anything you pass on.
 
 It includes recordings marked culturally restricted, hidden after a report, waiting for a
 withdrawal, and recordings whose speaker did not agree to research, public or AI use. Look at

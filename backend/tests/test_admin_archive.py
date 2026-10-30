@@ -100,7 +100,10 @@ def test_the_archive_holds_everything(
     )
     archive = zipfile.ZipFile(io.BytesIO(response.content))
     assert archive.testzip() is None
-    assert REASON["reason"] in archive.read("README.txt").decode()
+    readme = archive.read("README.txt").decode()
+    assert REASON["reason"] in readme
+    for listed in ("people.csv", "people_names.csv", "consents.csv", "consent_forms/"):
+        assert listed in readme
 
     # Every original, byte for byte, restricted or not.
     for recording_id, content in recordings.items():
