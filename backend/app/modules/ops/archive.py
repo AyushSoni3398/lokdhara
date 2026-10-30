@@ -360,6 +360,112 @@ def overview_csv(db: Session, identities: list[dict[str, Any]]) -> bytes:
     return ("\ufeff" + out.getvalue()).encode("utf-8")
 
 
+PEOPLE_COLUMNS = (
+    "speaker_id",
+    "speaker_code",
+    "account",
+    "signed_up_at",
+    "speaker_status",
+    "age_band",
+    "gender",
+    "first_language",
+    "other_languages",
+    "dialect_label",
+    "region",
+    "demographics_consented",
+    "consent_status",
+    "consent_given_at",
+    "consent_form",
+    "consent_method",
+    "consent_research",
+    "consent_public",
+    "consent_ai_training",
+    "consent_commercial",
+    "attribution",
+    "guardian_involved",
+    "consent_records",
+    "withdrawal_status",
+    "withdrawal_received_at",
+    "submissions",
+    "recordings",
+)
+
+
+def _form_name(form: ConsentForm) -> str:
+    return f"{form.form_code}-{form.version}-{form.language}"
+
+
+def _current_consent(records: list[ConsentRecord]) -> ConsentRecord | None:
+    """The latest active consent, or the latest of any status when none is active."""
+    active = [r for r in records if r.status == "active"]
+    return max(active or records, key=lambda r: r.obtained_at, default=None)
+
+
+def people_csv(db: Session) -> bytes:
+    """people.csv: one row per speaker with what they gave at sign-up and their consent.
+    No names or contacts: those are in people_names.csv."""
+    users = {u.id: u for u in db.scalars(select(User))}
+    forms = {f.id: f for f in db.scalars(select(ConsentForm))}
+    consents: dict[uuid.UUID, list[ConsentRecord]] = defaultdict(list)
+    for record in db.scalars(select(ConsentRecord)):
+        consents[record.speaker_id].append(record)
+    withdrawals: dict[uuid.UUID, WithdrawalRequest] = {}
+    order = (WithdrawalRequest.received_at, WithdrawalRequest.id)
+    for request in db.scalars(select(WithdrawalRequest).order_by(*order)):
+        if request.speaker_id is not None:
+            withdrawals[request.speaker_id] = request  # the latest wins
+    submissions: dict[uuid.UUID, int] = defaultdict(int)
+    for speaker_id in db.scalars(select(Submission.speaker_id)):
+        submissions[speaker_id] += 1
+    recordings: dict[uuid.UUID, int] = defaultdict(int)
+    for speaker_id in db.scalars(
+        select(Submission.speaker_id).join(Recording, Recording.submission_id == Submission.id)
+    ):
+        recordings[speaker_id] += 1
+
+    out = io.StringIO()
+    writer = csv.writer(out, lineterminator="\r\n")
+    writer.writerow(PEOPLE_COLUMNS)
+    for speaker in db.scalars(select(Speaker).order_by(Speaker.created_at, Speaker.id)):
+        account = users.get(speaker.linked_user_id) if speaker.linked_user_id else None
+        consent = _current_consent(consents[speaker.id])
+        withdrawal = withdrawals.get(speaker.id)
+        row: dict[str, Any] = {
+            "speaker_id": speaker.id,
+            "speaker_code": speaker.speaker_code,
+            "account": account.username if account else None,
+            "signed_up_at": account.created_at if account else None,
+            "speaker_status": speaker.status,
+            "age_band": speaker.age_band,
+            "gender": speaker.gender_self_described,
+            "first_language": speaker.first_language,
+            "other_languages": speaker.other_languages,
+            "dialect_label": speaker.dialect_label,
+            "region": speaker.region_coarse,
+            "demographics_consented": speaker.demographics_consented,
+            "consent_records": len(consents[speaker.id]),
+            "withdrawal_status": withdrawal.status if withdrawal else None,
+            "withdrawal_received_at": withdrawal.received_at if withdrawal else None,
+            "submissions": submissions[speaker.id],
+            "recordings": recordings[speaker.id],
+        }
+        if consent is not None:
+            row |= {
+                "consent_status": consent.status,
+                "consent_given_at": consent.obtained_at,
+                "consent_form": _form_name(forms[consent.consent_form_id]),
+                "consent_method": consent.method,
+                "consent_research": consent.allow_research,
+                "consent_public": consent.allow_public_access,
+                "consent_ai_training": consent.allow_ai_training,
+                "consent_commercial": consent.allow_commercial_use,
+                "attribution": consent.attribution_preference,
+                "guardian_involved": consent.guardian_involved,
+            }
+        writer.writerow([csv_cell(_json_value(row.get(c))) for c in PEOPLE_COLUMNS])
+    return ("\ufeff" + out.getvalue()).encode("utf-8")
+
+
 def collect(
     db: Session,
     cipher: IdentityCipher,
@@ -381,6 +487,7 @@ def collect(
     identities = _identities(db, cipher)
     entries["data/speaker_identities.jsonl"] = _jsonl(identities)
     entries["recordings_overview.csv"] = overview_csv(db, identities)
+    entries["people.csv"] = people_csv(db)
     files = _files(db)
     audit.record(
         db,

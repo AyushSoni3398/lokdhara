@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from app.config import Settings
 from app.modules.audit.models import AuditEvent
 from app.modules.processing import queue
+from app.modules.speakers.models import Speaker
 from app.modules.submissions import processing
 from app.modules.submissions.models import Recording, Submission
 from app.object_store import Bucket, ObjectStore
@@ -139,6 +140,41 @@ def test_the_overview_has_one_row_per_recording_with_its_details(
         assert row["consent_status"] == "active" and row["consent_research"] == "no"
         assert row["topics"] == ""
     assert sorted(r["restriction_flags"] for r in rows) == ["", "culturally_restricted"]
+
+
+def csv_rows(archive: zipfile.ZipFile, name: str) -> list[dict[str, str]]:
+    content = archive.read(name)
+    assert content.startswith("\ufeff".encode())
+    return list(csv.DictReader(io.StringIO(content.decode("utf-8-sig"))))
+
+
+def test_people_has_one_row_per_speaker_with_profile_and_consent(
+    client: TestClient, recordings: dict[uuid.UUID, bytes], db: Session
+) -> None:
+    speaker = db.scalars(select(Speaker)).one()
+    speaker.age_band, speaker.gender_self_described = "18-29", "woman"
+    speaker.first_language, speaker.region_coarse = "unr", "Khunti"
+    speaker.demographics_consented = True
+    db.commit()
+
+    archive = zipfile.ZipFile(io.BytesIO(client.get(ARCHIVE, params=REASON).content))
+    [person] = csv_rows(archive, "people.csv")
+    assert (person["speaker_code"], person["account"]) == (speaker.speaker_code, "asha")
+    assert person["signed_up_at"]
+    assert (person["age_band"], person["gender"]) == ("18-29", "woman")
+    assert (person["first_language"], person["region"]) == ("unr", "Khunti")
+    assert person["demographics_consented"] == "yes"
+    assert person["consent_status"] == "active" and person["consent_method"] == "in_app"
+    assert person["consent_form"].endswith("-hi")
+    assert person["consent_research"] == "no"
+    assert (person["consent_records"], person["submissions"], person["recordings"]) == (
+        "1",
+        "2",
+        "2",
+    )
+    assert person["withdrawal_status"] == ""
+    # Names stay out of people.csv.
+    assert "Synthetic Name" not in archive.read("people.csv").decode("utf-8-sig")
 
 
 def test_a_missing_file_is_listed_not_fatal(
