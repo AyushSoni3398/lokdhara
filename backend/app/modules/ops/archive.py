@@ -466,6 +466,50 @@ def people_csv(db: Session) -> bytes:
     return ("\ufeff" + out.getvalue()).encode("utf-8")
 
 
+NAMES_COLUMNS = (
+    "speaker_id",
+    "speaker_code",
+    "full_name",
+    "contact",
+    "village",
+    "notes",
+    "account",
+    "account_display_name",
+    "account_email",
+    "account_phone",
+    "details_updated_at",
+)
+
+
+def people_names_csv(db: Session, identities: list[dict[str, Any]]) -> bytes:
+    """people_names.csv: what identifies each speaker, kept apart from people.csv so that
+    file can be used without anyone's name. Joined to it by speaker_id or speaker_code."""
+    users = {u.id: u for u in db.scalars(select(User))}
+    names = {uuid.UUID(row["speaker_id"]): row for row in identities}
+
+    out = io.StringIO()
+    writer = csv.writer(out, lineterminator="\r\n")
+    writer.writerow(NAMES_COLUMNS)
+    for speaker in db.scalars(select(Speaker).order_by(Speaker.created_at, Speaker.id)):
+        account = users.get(speaker.linked_user_id) if speaker.linked_user_id else None
+        identity = names.get(speaker.id, {})
+        row: dict[str, Any] = {
+            "speaker_id": speaker.id,
+            "speaker_code": speaker.speaker_code,
+            **{field: identity.get(field) for field in IDENTITY_FIELDS},
+            "details_updated_at": identity.get("updated_at"),
+        }
+        if account is not None:
+            row |= {
+                "account": account.username,
+                "account_display_name": account.display_name,
+                "account_email": account.email,
+                "account_phone": account.phone,
+            }
+        writer.writerow([csv_cell(_json_value(row.get(c))) for c in NAMES_COLUMNS])
+    return ("\ufeff" + out.getvalue()).encode("utf-8")
+
+
 def collect(
     db: Session,
     cipher: IdentityCipher,
@@ -488,6 +532,7 @@ def collect(
     entries["data/speaker_identities.jsonl"] = _jsonl(identities)
     entries["recordings_overview.csv"] = overview_csv(db, identities)
     entries["people.csv"] = people_csv(db)
+    entries["people_names.csv"] = people_names_csv(db, identities)
     files = _files(db)
     audit.record(
         db,

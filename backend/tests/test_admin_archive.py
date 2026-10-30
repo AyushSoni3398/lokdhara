@@ -177,6 +177,22 @@ def test_people_has_one_row_per_speaker_with_profile_and_consent(
     assert "Synthetic Name" not in archive.read("people.csv").decode("utf-8-sig")
 
 
+def test_names_and_contacts_are_in_their_own_file(
+    client: TestClient, recordings: dict[uuid.UUID, bytes], db: Session
+) -> None:
+    speaker = db.scalars(select(Speaker)).one()
+    archive = zipfile.ZipFile(io.BytesIO(client.get(ARCHIVE, params=REASON).content))
+    [person] = csv_rows(archive, "people_names.csv")
+    assert (person["speaker_id"], person["speaker_code"]) == (str(speaker.id), speaker.speaker_code)
+    assert (person["full_name"], person["contact"], person["village"]) == (
+        "Synthetic Name",
+        "000-TEST",
+        "Test Village",
+    )
+    assert person["account"] == "asha" and person["account_display_name"]
+    assert "password" not in ",".join(person)
+
+
 def test_a_missing_file_is_listed_not_fatal(
     client: TestClient,
     recordings: dict[uuid.UUID, bytes],
