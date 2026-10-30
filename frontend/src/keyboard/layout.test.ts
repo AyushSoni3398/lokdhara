@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { deleteBack, insertAt, keyLabel } from './layout'
+import { DEVANAGARI, deleteBack, insertAt, keyLabel } from './layout'
 
 describe('Devanagari keyboard', () => {
   it('builds syllables from letters and signs', () => {
@@ -23,5 +23,16 @@ describe('Devanagari keyboard', () => {
   it('shows signs on a dotted circle', () => {
     expect(keyLabel('ि')).toBe('◌ि')
     expect(keyLabel('क')).toBe('क')
+  })
+})
+
+describe.each([['Devanagari', DEVANAGARI]])('%s layout', (_, keyboard) => {
+  it('fills every column of every row, so the keys line up', () => {
+    for (const row of keyboard.rows) expect(row).toHaveLength(keyboard.columns)
+  })
+
+  it('has each key once', () => {
+    const keys = keyboard.rows.flat()
+    expect(new Set(keys).size).toBe(keys.length)
   })
 })
