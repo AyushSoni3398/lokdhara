@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.modules.audit.models import AuditEvent
+from app.modules.consents.models import ConsentRecord
 from app.modules.processing import queue
 from app.modules.speakers.models import Speaker
 from app.modules.submissions import processing
@@ -191,6 +192,22 @@ def test_names_and_contacts_are_in_their_own_file(
     )
     assert person["account"] == "asha" and person["account_display_name"]
     assert "password" not in ",".join(person)
+
+
+def test_consents_lists_every_consent_given(
+    client: TestClient, recordings: dict[uuid.UUID, bytes], db: Session
+) -> None:
+    record = db.scalars(select(ConsentRecord)).one()
+    archive = zipfile.ZipFile(io.BytesIO(client.get(ARCHIVE, params=REASON).content))
+    [consent] = csv_rows(archive, "consents.csv")
+    assert consent["consent_record_id"] == str(record.id)
+    assert (consent["status"], consent["method"], consent["taken_by"]) == (
+        "active",
+        "in_app",
+        "asha",
+    )
+    assert (consent["store_and_review"], consent["research"]) == ("yes", "no")
+    assert consent["evidence_file"] == "" and consent["replaces"] == ""
 
 
 def test_a_missing_file_is_listed_not_fatal(

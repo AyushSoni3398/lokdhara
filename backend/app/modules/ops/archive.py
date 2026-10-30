@@ -510,6 +510,82 @@ def people_names_csv(db: Session, identities: list[dict[str, Any]]) -> bytes:
     return ("\ufeff" + out.getvalue()).encode("utf-8")
 
 
+CONSENT_COLUMNS = (
+    "consent_record_id",
+    "speaker_id",
+    "speaker_code",
+    "status",
+    "given_at",
+    "method",
+    "taken_by",
+    "consent_form",
+    "form_file",
+    "store_and_review",
+    "research",
+    "public",
+    "ai_training",
+    "commercial",
+    "attribution",
+    "demographics_consented",
+    "applies_to_past_contributions",
+    "guardian_involved",
+    "guardian_relationship",
+    "evidence_file",
+    "paper_reference",
+    "replaces",
+    "notes",
+)
+
+
+def form_file(form: ConsentForm) -> str:
+    return f"consent_forms/{_form_name(form)}.md"
+
+
+def consents_csv(db: Session) -> bytes:
+    """consents.csv: every consent ever given, newest last, with the form agreed to.
+    A changed consent is a new row that replaces an older one; nothing is overwritten."""
+    users = {user_id: name for user_id, name in db.execute(select(User.id, User.username))}
+    codes = {s.id: s.speaker_code for s in db.scalars(select(Speaker))}
+    forms = {f.id: f for f in db.scalars(select(ConsentForm))}
+
+    out = io.StringIO()
+    writer = csv.writer(out, lineterminator="\r\n")
+    writer.writerow(CONSENT_COLUMNS)
+    order = (ConsentRecord.obtained_at, ConsentRecord.id)
+    for record in db.scalars(select(ConsentRecord).order_by(*order)):
+        form = forms[record.consent_form_id]
+        evidence = record.evidence_object_key
+        row: dict[str, Any] = {
+            "consent_record_id": record.id,
+            "speaker_id": record.speaker_id,
+            "speaker_code": codes.get(record.speaker_id),
+            "status": record.status,
+            "given_at": record.obtained_at,
+            "method": record.method,
+            "taken_by": users.get(record.obtained_by),
+            "consent_form": _form_name(form),
+            "form_file": form_file(form),
+            "store_and_review": record.allow_store_and_review,
+            "research": record.allow_research,
+            "public": record.allow_public_access,
+            "ai_training": record.allow_ai_training,
+            "commercial": record.allow_commercial_use,
+            "attribution": record.attribution_preference,
+            "demographics_consented": record.demographics_consented,
+            "applies_to_past_contributions": record.applies_to_past_contributions,
+            "guardian_involved": record.guardian_involved,
+            "guardian_relationship": record.guardian_relationship,
+            "evidence_file": (
+                f"consent_evidence/{record.id}{_suffix(evidence)}" if evidence else None
+            ),
+            "paper_reference": record.paper_reference,
+            "replaces": record.supersedes_id,
+            "notes": record.notes,
+        }
+        writer.writerow([csv_cell(_json_value(row.get(c))) for c in CONSENT_COLUMNS])
+    return ("\ufeff" + out.getvalue()).encode("utf-8")
+
+
 def collect(
     db: Session,
     cipher: IdentityCipher,
@@ -533,6 +609,7 @@ def collect(
     entries["recordings_overview.csv"] = overview_csv(db, identities)
     entries["people.csv"] = people_csv(db)
     entries["people_names.csv"] = people_names_csv(db, identities)
+    entries["consents.csv"] = consents_csv(db)
     files = _files(db)
     audit.record(
         db,
