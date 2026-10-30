@@ -166,6 +166,7 @@ code { overflow-wrap: anywhere; }
 }
 .key.action { flex: 0 0 22%; font-size: 0.85rem; background: #e9d9c8; }
 .key.space { flex: 1; font-size: 1rem; }
+.key.newline { flex-basis: 12%; font-size: 1.15rem; }
 .key.delete { font-size: 1.15rem; }
 .key:active, .key[aria-pressed='true'] { background: #f6ebe1; }
 .field { display: grid; gap: 6px; }

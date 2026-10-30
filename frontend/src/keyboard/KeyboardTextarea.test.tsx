@@ -29,6 +29,16 @@ describe('KeyboardTextarea', () => {
     await user.click(screen.getByRole('button', { name: 'Delete' }))
     expect(screen.getByRole('textbox', { name: 'text' })).toHaveValue('ना')
   })
+
+  it('starts a new line', async () => {
+    const user = userEvent.setup()
+    render(<Box />)
+    await user.click(screen.getByRole('button', { name: 'Hindi keyboard' }))
+    await user.click(screen.getByRole('button', { name: 'न' }))
+    await user.click(screen.getByRole('button', { name: 'New line' }))
+    await user.click(screen.getByRole('button', { name: 'म' }))
+    expect(screen.getByRole('textbox', { name: 'text' })).toHaveValue('न\nम')
+  })
 })
 
 describe('KeyboardTextarea Roman typing', () => {

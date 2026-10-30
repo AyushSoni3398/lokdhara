@@ -660,6 +660,7 @@
     "label": "Devanagari keyboard",
     "space": "Space",
     "delete": "Delete",
+    "newLine": "New line",
     "roman": "ABC → हिंदी",
     "romanLabel": "Type in Roman letters",
     "romanAdd": "Add to text",

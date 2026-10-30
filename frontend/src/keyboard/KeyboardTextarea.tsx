@@ -116,6 +116,15 @@ export function KeyboardTextarea({
             </button>
             <button
               type="button"
+              className="key action newline"
+              aria-label={t('keyboard.newLine')}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => edit((text, s, e) => insertAt(text, s, e, '\n'))}
+            >
+              ↵
+            </button>
+            <button
+              type="button"
               className="key action delete"
               aria-label={t('keyboard.delete')}
               onMouseDown={(e) => e.preventDefault()}
