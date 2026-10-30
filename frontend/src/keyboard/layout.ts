@@ -1,23 +1,26 @@
 /**
- * Keys of the on-screen Devanagari keyboard, in the order of the varnamala, so people who learnt
- * Hindi at school find letters where they expect them. Vowel signs (matras) and the halant join
- * the letter before them, so "क" + "ि" gives "कि" and "क" + "्" + "ष" gives "क्ष".
+ * Every key of an on-screen keyboard, shown all at once (no pages to switch). Each row fills the
+ * same number of columns, so the keys share the phone's width evenly and nothing wraps.
  */
-export const KEY_ROWS: Record<'letters' | 'signs' | 'numbers', string[][]> = {
-  letters: [
+export type Keyboard = { columns: number; rows: string[][] }
+
+/**
+ * Devanagari in the order of the varnamala, so people who learnt Hindi at school find letters
+ * where they expect them. Each matra sits under its vowel (ा under आ) and the halant under अ.
+ * Vowel signs and the halant join the letter before them, so "क" + "ि" gives "कि" and
+ * "क" + "्" + "ष" gives "क्ष".
+ */
+export const DEVANAGARI: Keyboard = {
+  columns: 11,
+  rows: [
     ['अ', 'आ', 'इ', 'ई', 'उ', 'ऊ', 'ऋ', 'ए', 'ऐ', 'ओ', 'औ'],
-    ['क', 'ख', 'ग', 'घ', 'ङ', 'च', 'छ', 'ज', 'झ', 'ञ'],
-    ['ट', 'ठ', 'ड', 'ढ', 'ण', 'त', 'थ', 'द', 'ध', 'न'],
-    ['प', 'फ', 'ब', 'भ', 'म', 'य', 'र', 'ल', 'व'],
-    ['श', 'ष', 'स', 'ह', 'ड़', 'ढ़', 'क्ष', 'त्र', 'ज्ञ'],
-  ],
-  signs: [
-    ['ा', 'ि', 'ी', 'ु', 'ू', 'ृ', 'े', 'ै', 'ो', 'ौ'],
-    ['ं', 'ँ', 'ः', '्', '़', 'ॅ', 'ॉ', 'ऑ'],
-  ],
-  numbers: [
-    ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'],
-    ['।', '॥', ',', '?', '!', '-', '(', ')', '[', ']'],
+    ['्', 'ा', 'ि', 'ी', 'ु', 'ू', 'ृ', 'े', 'ै', 'ो', 'ौ'],
+    ['क', 'ख', 'ग', 'घ', 'ङ', 'च', 'छ', 'ज', 'झ', 'ञ', 'ं'],
+    ['ट', 'ठ', 'ड', 'ढ', 'ण', 'त', 'थ', 'द', 'ध', 'न', 'ँ'],
+    ['प', 'फ', 'ब', 'भ', 'म', 'य', 'र', 'ल', 'व', 'श', 'ः'],
+    ['ष', 'स', 'ह', 'ड़', 'ढ़', 'क्ष', 'त्र', 'ज्ञ', 'ऑ', 'ॉ', '़'],
+    ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९', '।'],
+    [',', '.', '?', '!', '-', "'", '"', '(', ')', ':', '॥'],
   ],
 }
 
