@@ -8,25 +8,40 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { DEVANAGARI, deleteBack, insertAt, keyLabel } from './layout'
+import type { Script } from '../api/types'
+import {
+  DEVANAGARI,
+  deleteBack,
+  insertAt,
+  type Keyboard,
+  keyLabel,
+  keyName,
+  NAG_MUNDARI,
+} from './layout'
 import { RomanTyping } from './RomanTyping'
 
+/** The scripts with an on-screen keyboard, and the language tag their keys are drawn in. */
+const KEYBOARDS: Partial<Record<Script, { layout: Keyboard; lang: string }>> = {
+  Deva: { layout: DEVANAGARI, lang: 'hi' },
+  Nagm: { layout: NAG_MUNDARI, lang: 'unr-Nagm' },
+}
+
 /**
- * A text box with an optional on-screen Devanagari keyboard, for phones without a Hindi keyboard
- * installed. While it is open the phone's own keyboard stays closed (inputMode "none").
+ * A text box with an on-screen keyboard for its script (Devanagari or Mundari Bani), for phones
+ * without one installed. While it is open the phone's own keyboard stays closed (inputMode "none").
  */
 export function KeyboardTextarea({
   label,
   value,
   onValue,
-  keyboard = true,
+  script,
   ...props
 }: Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'value' | 'onChange'> & {
   label: ReactNode
   value: string
   onValue: (value: string) => void
-  /** Offer the keyboard (for Devanagari text); otherwise this is a plain text box. */
-  keyboard?: boolean
+  /** The script typed; without a keyboard for it this is a plain text box. */
+  script: Script
 }) {
   const { t } = useTranslation()
   const id = useId()
@@ -34,6 +49,7 @@ export function KeyboardTextarea({
   const cursor = useRef<number | null>(null)
   const [open, setOpen] = useState(false)
   const [roman, setRoman] = useState(false)
+  const keyboard = KEYBOARDS[script]
 
   useLayoutEffect(() => {
     if (cursor.current === null || !box.current) return
@@ -71,24 +87,27 @@ export function KeyboardTextarea({
           aria-expanded={open}
           onClick={() => setOpen(!open)}
         >
-          {t(open ? 'keyboard.close' : 'keyboard.open')}
+          {t(open ? 'keyboard.close' : `keyboard.open.${script}`)}
         </button>
       )}
       {keyboard && open && (
-        <div className="keyboard" role="group" aria-label={t('keyboard.label')}>
-          {roman && (
+        <div className="keyboard" role="group" aria-label={t(`keyboard.label.${script}`)}>
+          {roman && script === 'Deva' && (
             <RomanTyping onAdd={(text) => edit((value, s, e) => insertAt(value, s, e, text))} />
           )}
           <div
             className="keyboard-keys"
-            style={{ gridTemplateColumns: `repeat(${DEVANAGARI.columns}, 1fr)` }}
+            style={{
+              gridTemplateColumns: `repeat(${keyboard.layout.columns}, 1fr)`,
+            }}
           >
-            {DEVANAGARI.rows.flat().map((key) => (
+            {keyboard.layout.rows.flat().map((key) => (
               <button
                 key={key}
                 type="button"
                 className="key"
-                lang="hi"
+                lang={keyboard.lang}
+                aria-label={keyName(key)}
                 // Keep the text box's cursor where it is.
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => edit((text, s, e) => insertAt(text, s, e, key))}
@@ -98,14 +117,16 @@ export function KeyboardTextarea({
             ))}
           </div>
           <div className="keyboard-keys keyboard-bottom">
-            <button
-              type="button"
-              className="key action"
-              aria-pressed={roman}
-              onClick={() => setRoman(!roman)}
-            >
-              {t('keyboard.roman')}
-            </button>
+            {script === 'Deva' && (
+              <button
+                type="button"
+                className="key action"
+                aria-pressed={roman}
+                onClick={() => setRoman(!roman)}
+              >
+                {t('keyboard.roman')}
+              </button>
+            )}
             <button
               type="button"
               className="key space"

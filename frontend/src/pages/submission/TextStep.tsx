@@ -96,7 +96,7 @@ export function TextStep({
         spellCheck={false}
         value={main?.content ?? ''}
         onValue={(content) => setMain({ content })}
-        keyboard={(main?.scriptCode ?? 'Deva') === 'Deva'}
+        script={main?.scriptCode ?? 'Deva'}
       />
       <ScriptWarning text={main?.content ?? ''} script={main?.scriptCode ?? 'Deva'} />
       {main?.content.trim() &&
@@ -108,7 +108,7 @@ export function TextStep({
             lang={languageTag}
             value={draft.texts.find((x) => x.key === `translation-${languageTag}`)?.content ?? ''}
             onValue={(content) => setTranslation(languageTag, scriptCode, content)}
-            keyboard={scriptCode === 'Deva'}
+            script={scriptCode}
           />
         ))}
     </div>

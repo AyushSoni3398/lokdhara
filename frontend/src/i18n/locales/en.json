@@ -655,9 +655,9 @@
     "complete": "Close request"
   },
   "keyboard": {
-    "open": "Hindi keyboard",
+    "open": { "Deva": "Hindi keyboard", "Nagm": "Mundari Bani keyboard" },
     "close": "Close keyboard",
-    "label": "Devanagari keyboard",
+    "label": { "Deva": "Devanagari keyboard", "Nagm": "Mundari Bani keyboard" },
     "space": "Space",
     "delete": "Delete",
     "newLine": "New line",
