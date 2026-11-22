@@ -89,7 +89,9 @@ filters of a dataset release:
 
 - data/*.jsonl          one row per line, one file per table
 - data/speaker_identities.jsonl   speakers' names, contacts and villages IN PLAIN TEXT
-- originals/            every original recording, named <recording id>.<format>
+- originals/            every original recording, named by its recording code
+                        (SPK_7Q3M9A_F_S012_read.<format>), or <recording id>.<format>
+                        when it has none yet (drafts)
 - consent_evidence/     recorded oral consents, named <consent record id>.<format>
 - prompts/              prompt images and audio, named <prompt id>-image|audio.<format>
 - files.jsonl           which stored file each entry came from, and any that were missing
@@ -177,11 +179,19 @@ def _suffix(key: str) -> str:
     return PurePosixPath(key).suffix
 
 
+def original_name(recording_id: object, code: str | None, key: str) -> str:
+    """originals/SPK_7Q3M9A_F_S012_read.webm, or originals/<recording id>.webm for a draft
+    that has no recording code yet (ADR-034)."""
+    return f"originals/{code or recording_id}{_suffix(key)}"
+
+
 def _files(db: Session) -> list[ArchiveFile]:
     files = [
-        ArchiveFile(Bucket.ORIGINALS, key, f"originals/{rid}{_suffix(key)}")
-        for rid, key in db.execute(
-            select(Recording.id, Recording.original_object_key).order_by(Recording.id)
+        ArchiveFile(Bucket.ORIGINALS, key, original_name(rid, code, key))
+        for rid, code, key in db.execute(
+            select(Recording.id, Recording.recording_code, Recording.original_object_key).order_by(
+                Recording.id
+            )
         )
     ]
     files += [
@@ -207,6 +217,7 @@ def _files(db: Session) -> list[ArchiveFile]:
 OVERVIEW_COLUMNS = (
     "submission_id",
     "recording_id",
+    "recording_code",
     "file",
     "submission_status",
     "restriction_flags",
@@ -233,6 +244,7 @@ OVERVIEW_COLUMNS = (
     "collection_method",
     "recorded_on",
     "submitted_at",
+    "prompt_number",
     "prompt_key",
     "prompt_version",
     "prompt_text",
@@ -314,7 +326,7 @@ def overview_csv(db: Session, identities: list[dict[str, Any]]) -> bytes:
             "speaker_contact": identity.get("contact"),
             "speaker_village": identity.get("village"),
             "age_band": speaker.age_band,
-            "gender": speaker.gender_self_described,
+            "gender": speaker.gender,
             "first_language": speaker.first_language,
             "other_languages": speaker.other_languages,
             "speaker_region": speaker.region_coarse,
@@ -330,6 +342,7 @@ def overview_csv(db: Session, identities: list[dict[str, Any]]) -> bytes:
             "collection_method": submission.collection_method,
             "recorded_on": submission.recorded_on,
             "submitted_at": submission.submitted_at,
+            "prompt_number": prompt.prompt_number if prompt else None,
             "prompt_key": prompt.prompt_key if prompt else None,
             "prompt_version": prompt.version if prompt else None,
             "prompt_text": prompt.text if prompt else None,
@@ -354,7 +367,10 @@ def overview_csv(db: Session, identities: list[dict[str, Any]]) -> bytes:
                 duration = recording.duration_ms
                 row |= {
                     "recording_id": recording.id,
-                    "file": f"originals/{recording.id}{_suffix(recording.original_object_key)}",
+                    "recording_code": recording.recording_code,
+                    "file": original_name(
+                        recording.id, recording.recording_code, recording.original_object_key
+                    ),
                     "upload_status": recording.upload_status,
                     "source": recording.recorded_device_hint,
                     "container": recording.detected_container,
@@ -449,7 +465,7 @@ def people_csv(db: Session) -> bytes:
             "signed_up_at": account.created_at if account else None,
             "speaker_status": speaker.status,
             "age_band": speaker.age_band,
-            "gender": speaker.gender_self_described,
+            "gender": speaker.gender,
             "first_language": speaker.first_language,
             "other_languages": speaker.other_languages,
             "dialect_label": speaker.dialect_label,

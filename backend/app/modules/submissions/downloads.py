@@ -75,9 +75,12 @@ def _downloadable(user: AuthenticatedUser) -> ColumnElement[bool]:
 
 
 def file_name(submission: Submission, recording: Recording, kind: renditions.Kind) -> str:
-    """No titles or names, which may hold personal details: the day it was recorded, how and
-    what (fixed words), and the random end of the recording's ID, e.g.
-    lokdhara-2026-10-12-read-story-3f9a0c21.m4a."""
+    """The recording code (ADR-034), e.g. SPK_7Q3M9A_F_S012_read.m4a. A recording without one
+    (sent before codes existed) keeps the older name: no titles or names, which may hold
+    personal details, only the day, how and what (fixed words), and the random end of its ID,
+    e.g. lokdhara-2026-10-12-read-story-3f9a0c21.m4a."""
+    if recording.recording_code:
+        return f"{recording.recording_code}.{kind.extension}"
     day = submission.recorded_on or (submission.submitted_at or submission.created_at).date()
     parts = [day.isoformat(), submission.recording_mode, submission.content_type]
     words = "-".join(part.replace("_", "-") for part in parts if part)
