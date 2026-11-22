@@ -110,6 +110,8 @@ class SubmissionUpdateRequest(BaseModel):
 
 class RecordingOut(BaseModel):
     id: uuid.UUID
+    # SPK_7Q3M9A_F_S012_read once the submission is sent; null while a draft (ADR-034).
+    recording_code: str | None = None
     upload_status: str
     size_bytes: int
     duration_ms: int | None
