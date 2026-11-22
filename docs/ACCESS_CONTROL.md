@@ -39,6 +39,8 @@ Roles are additive. Role grants/revocations are audit-logged.
 | Hide / show / dismiss reports | ❌ | ❌ | ❌ | ❌ | ✅ (excl. own) |
 | Add reviewer revision | ❌ | ❌ | ✅ | ❌ | ✅ |
 | Play playback rendition | 🟡 own | 🟡 own + created | ✅ in queue/restricted per scope | ✅ approved + consent allows research | ✅ |
+| Listen to someone else's recording to write it down (ADR-035): accepted free or prompted speech, not yet written in Devanagari, not their own, never restricted, speaker allowed public access | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Add the first Devanagari transcription (and Hindi / English translations) to such a recording | ✅ | ✅ | ✅ | ❌ | ✅ |
 | Download listening copy (one, or all as a zip; ADR-026) | 🟡 sent by them, not hidden | 🟡 sent by them, not hidden | 🟡 sent by them, not hidden | ❌ | 🟡 sent by them, not hidden |
 | Download original audio | ❌ | ❌ | ❌ | ❌ | ✅ (audited, reason required; in the full archive, ADR-027) |
 | Download the full archive (all data unfiltered, names included; ADR-027) | ❌ | ❌ | ❌ | ❌ | ✅ (audited, reason required) |
@@ -75,6 +77,8 @@ def in_catalogue(viewer, item) -> bool:
 `research_allowed` starts from the consent record the item was sent under and walks every later record of the speaker: a later record can only narrow research use, unless it says it applies to past contributions (CONSENT_AND_DATA_GOVERNANCE §3.3). Accepted is the only listed status: there is no reviewer, so nothing is ever "approved" (ADR-021).
 
 The same rule is the SQL condition `catalogue_filter`, used by every catalogue search, and both are tested against one shared table of cases (`backend/tests/test_effective_access.py`).
+
+**Listen and write** (ADR-035) uses `transcription_filter()`, which is `release_filter("public")`: accepted, speaker and consent not withdrawn, no restriction flag at all, and public access allowed under the same consent walk. A listener is handed only the listening copy and how it was recorded, never the speaker code, title, names or details, and never their own voice.
 
 Who may be given the `culturally_restricted` scope, and which content it covers, waits on Q-G3. Until then no one holds it, so culturally restricted items are listed for admins only.
 
