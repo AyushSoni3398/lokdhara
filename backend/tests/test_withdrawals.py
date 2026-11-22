@@ -57,7 +57,7 @@ def test_speakers_ask_for_everything_or_one_item_from_the_app(
         "in_app",
         "full",
     )
-    assert body["speaker_code"].startswith("SPK-")
+    assert body["speaker_code"].startswith("SPK_")
     assert body["actions_taken"] is None  # only admins see what was done and their notes
     again = ask(client, scope="full", speaker_id=items["speaker"])
     assert again.json()["code"] == "already_requested"

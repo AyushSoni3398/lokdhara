@@ -162,7 +162,7 @@ def _store(db: Session, owner: uuid.UUID, item: Item) -> uuid.UUID:
     consents.ensure_dev_forms(db)
     form_id = db.scalars(select(ConsentForm.id)).first()
     speaker = Speaker(
-        speaker_code=f"SPK-{uuid.uuid4().hex[:8].upper()}",
+        speaker_code=f"SPK_{uuid.uuid4().hex[:8].upper()}_X",
         created_by=owner,
         status="withdrawn" if item.speaker_withdrawn else "active",
     )

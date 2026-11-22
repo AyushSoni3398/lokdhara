@@ -18,11 +18,13 @@ class Speaker(Base):
     __tablename__ = "speakers"
 
     id: Mapped[uuid.UUID] = uuid_pk()
+    # SPK_<random>_<gender letter>, e.g. SPK_7Q3M9A_F. Only the letter ever changes (ADR-034).
     speaker_code: Mapped[str] = mapped_column(Text)
     linked_user_id: Mapped[uuid.UUID | None] = optional_fk("users.id")
     created_by: Mapped[uuid.UUID] = fk("users.id")
     age_band: Mapped[str | None] = mapped_column(Text)
-    gender_self_described: Mapped[str | None] = mapped_column(Text)
+    # female, male, other, or undisclosed; its letter ends the speaker code (ADR-034).
+    gender: Mapped[str | None] = mapped_column(Text)
     first_language: Mapped[str | None] = mapped_column(Text)
     other_languages: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
     dialect_label: Mapped[str | None] = mapped_column(Text)

@@ -59,11 +59,11 @@ Implemented by migration `0004`.
 | Column | Type | Notes |
 |--------|------|-------|
 | id | uuid PK | |
-| speaker_code 🔎 | text UNIQUE NOT NULL | Pseudonymous, random (e.g., `SPK-7Q3M9`). |
+| speaker_code 🔎 | text UNIQUE NOT NULL | Pseudonymous: `SPK_` + random part + `_` + gender letter, e.g. `SPK_7Q3M9A_F` (ADR-034). The letter is F, M or O from `gender`, or X when no gender is given or demographics are not shared. The random part is also UNIQUE on its own. |
 | linked_user_id | uuid FK users NULL | Set when the speaker is also an account holder. |
 | created_by | uuid FK users | Facilitator or self. |
 | age_band 🔎 | text NULL CHECK IN ('18-29','30-44','45-59','60+','under_18','undisclosed') | Only if consented. |
-| gender_self_described | text NULL | Free text, optional, only if consented. |
+| gender | text NULL CHECK IN ('female','male','other','undisclosed') | Optional, only if consented. Was free text `gender_self_described` until migration `0020`. |
 | first_language | text NULL | BCP 47 tag, e.g., `unr`. |
 | other_languages | text[] NULL | |
 | dialect_label 🔎 | text NULL | From controlled list or free text (Q-X1). |
@@ -72,7 +72,7 @@ Implemented by migration `0004`.
 | status | text CHECK IN ('active','withdrawn') | |
 | created_at | timestamptz | |
 
-Frozen: `id`, `speaker_code` (format `SPK-` + 5–12 of `0-9A-Z`), `created_by`.
+Frozen: `id`, `created_by`. `speaker_code` (format `SPK_` + 5–12 of `0-9A-Z` + `_` + one of `MFOX`) may change only in its last letter, when the gender or the demographics answer changes; a trigger rejects any change to the random part (migration `0020`, ADR-034).
 
 ### `speaker_identities` 🔒 (separate table; admin + creating facilitator only)
 `speaker_id PK/FK, full_name_enc, contact_enc, village_enc, notes_enc, key_version, created_at, updated_at` — application-level encrypted `bytea` columns (key from environment/secret store; `key_version` allows rotation). Deleted on withdrawal. The `app_readonly` role cannot read this table; the backup role `app_backup` can, so that backups are complete.
@@ -160,6 +160,7 @@ CHECKs: consent before leaving `draft`; `recording_mode` is NULL exactly for `te
 |--------|------|-------|
 | id | uuid PK | |
 | submission_id 🔎 | uuid FK submissions | |
+| recording_code 🔎 | text UNIQUE NULL | `SPK_7Q3M9A_F_S012_read`: speaker code, `S` + the prompt's `prompt_number` (S000 for free speech), and the recording mode; a further take of the same sentence by the same speaker ends `_2`, `_3`. Given when the submission is sent; NULL for drafts. Follows the speaker code's gender letter (ADR-034). |
 | original_object_key 🧊 | text NOT NULL | `{yyyy}/{mm}/{recording_id}/original.{ext}`; the same key in the quarantine bucket until promotion, then in originals. |
 | original_filename_ext | text | Extension only; full client filename not stored (may contain names). |
 | sha256_original 🧊🔎 | char(64) NOT NULL | |
@@ -231,6 +232,7 @@ Search indexes: GIN `to_tsvector('simple', content_nfc)`, GIN `content_nfc gin_t
 |--------|------|-------|
 | id | uuid PK | |
 | prompt_key 🔎 | text | Stable key across versions, e.g. `img-farming-012`. |
+| prompt_number | int NOT NULL DEFAULT nextval | The sentence number, shared by all versions of one `prompt_key`; written `S012` in recording codes (ADR-034). |
 | version | int | UNIQUE (prompt_key, version). |
 | prompt_type 🔎 | text CHECK IN ('image','situation','read_sentence') | |
 | text | text NULL | Instruction/situation text, or the sentence to read. |

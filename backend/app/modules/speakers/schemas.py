@@ -8,6 +8,8 @@ from app.languages import LanguageTag
 from app.text_input import MultiLine, SingleLine
 
 AgeBand = Literal["18-29", "30-44", "45-59", "60+", "under_18", "undisclosed"]
+# Shown as M, F, O, or X at the end of the speaker code (ADR-034).
+Gender = Literal["female", "male", "other", "undisclosed"]
 
 
 class SpeakerCreateRequest(BaseModel):
@@ -21,7 +23,7 @@ class SpeakerUpdateRequest(BaseModel):
 
     dialect_label: SingleLine | None = Field(default=None, max_length=100)
     age_band: AgeBand | None = None
-    gender_self_described: SingleLine | None = Field(default=None, max_length=60)
+    gender: Gender | None = None
     first_language: LanguageTag | None = None
     other_languages: list[LanguageTag] | None = Field(default=None, max_length=10)
     region_coarse: SingleLine | None = Field(default=None, max_length=100)
@@ -36,7 +38,7 @@ class SpeakerOut(BaseModel):
     demographics_consented: bool
     dialect_label: str | None
     age_band: str | None
-    gender_self_described: str | None
+    gender: str | None
     first_language: str | None
     other_languages: list[str] | None
     region_coarse: str | None
