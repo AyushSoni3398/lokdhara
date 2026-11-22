@@ -11,9 +11,12 @@ from app.errors import ApiError
 from app.modules.identity.deps import CurrentUser, SettingsDep, require_roles
 from app.modules.identity.service import AuthenticatedUser, utcnow
 from app.modules.speakers.service import SELF_SPEAKER_ROLES
-from app.modules.submissions import downloads, service, text_layers, uploads
+from app.modules.submissions import downloads, service, text_layers, transcribe, uploads
 from app.modules.submissions.models import Submission, TextRevision
 from app.modules.submissions.schemas import (
+    ClipOut,
+    ClipTextOut,
+    ClipTextRequest,
     CollectionContext,
     DeviceHint,
     DiffPart,
@@ -255,3 +258,60 @@ def add_revision(
 ) -> TextLayerOut:
     """Returns the layer with its new current revision."""
     return _layer_out(text_layers.add_revision(db, user=user, layer_id=layer_id, body=body))
+
+
+# ------------------------------------------------------------------ listen and write (ADR-035)
+
+
+def _sources(
+    store: ObjectStore, settings: SettingsDep, clip: transcribe.Clip
+) -> list[PlaybackSource]:
+    return [
+        PlaybackSource(
+            url=store.signed_url(
+                Bucket.DERIVED,
+                rendition.object_key,
+                ttl_seconds=settings.signed_url_ttl_seconds,
+                content_type=content_type,
+            ),
+            content_type=content_type,
+        )
+        for rendition, content_type in clip.files
+    ]
+
+
+@router.get("/clips/next")
+def next_clip(
+    user: Recorder,
+    db: DbSession,
+    settings: SettingsDep,
+    store: Store,
+    exclude: Annotated[list[uuid.UUID] | None, Query(max_length=200)] = None,
+) -> ClipOut:
+    """A recording of someone else that still needs writing down."""
+    clip = transcribe.next_clip(db, user, exclude or [])
+    return ClipOut(
+        recording_id=clip.recording.id,
+        duration_ms=clip.recording.duration_ms,
+        recording_mode=clip.submission.recording_mode,
+        sources=_sources(store, settings, clip),
+    )
+
+
+@router.post("/clips/{recording_id}/text", status_code=status.HTTP_201_CREATED)
+def write_clip(
+    recording_id: uuid.UUID, body: ClipTextRequest, user: Recorder, db: DbSession
+) -> ClipTextOut:
+    translations = {
+        language: text
+        for language, text in (("hi", body.translation_hi), ("en", body.translation_en))
+        if text and text.strip()
+    }
+    layer = transcribe.save(
+        db,
+        user=user,
+        recording_id=recording_id,
+        transcription=body.transcription,
+        translations=translations,
+    )
+    return ClipTextOut(transcription_layer_id=layer.id)
