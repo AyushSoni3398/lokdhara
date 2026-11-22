@@ -1,6 +1,8 @@
 /** One function per API call the app makes. */
 import { API_BASE, request } from "./client";
 import type {
+  Clip,
+  ClipText,
   AdminUser,
   CatalogueItem,
   CatalogueQuery,
@@ -159,6 +161,15 @@ export const getSubmission = (id: string) =>
   request<Submission>("GET", `/submissions/${id}`);
 export const getSubmissionDetail = (id: string) =>
   request<SubmissionDetail>("GET", `/submissions/${id}`);
+export function nextClip(exclude: string[]) {
+  const query = new URLSearchParams();
+  for (const id of exclude) query.append("exclude", id);
+  return request<Clip>("GET", `/clips/next?${query}`);
+}
+export const writeClip = (recordingId: string, body: ClipText) =>
+  request<{ transcription_layer_id: string }>("POST", `/clips/${recordingId}/text`, {
+    json: body,
+  });
 export const getPlayback = (recordingId: string) =>
   request<Playback>("GET", `/recordings/${recordingId}/playback`);
 // Plain links rather than fetch calls, so the browser saves the file itself (ADR-026).

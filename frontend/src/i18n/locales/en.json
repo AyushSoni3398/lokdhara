@@ -180,6 +180,7 @@
   "kinds": {
     "audio": "Audio",
     "text": "Text",
+    "listen": "Write what you hear",
     "audio_text": "Audio and text"
   },
   "modes": {
@@ -766,5 +767,17 @@
     "reviewer": "Reviewer",
     "researcher": "Researcher",
     "admin": "Admin"
+  },
+  "listen": {
+    "title": "Write what you hear",
+    "intro": "Listen to someone speaking Mundari and write what they say in Devanagari. Play it as many times as you like. The Hindi and English translations are optional.",
+    "player": "Recording to write down",
+    "transcription": "What you hear, in Devanagari",
+    "save": "Save and next",
+    "skip": "Skip this one",
+    "saved_one": "Saved {{count}} recording. Thank you!",
+    "saved_other": "Saved {{count}} recordings. Thank you!",
+    "none": "There is nothing to write down right now. Please come back later.",
+    "done": "Finish"
   }
 }

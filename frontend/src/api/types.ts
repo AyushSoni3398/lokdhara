@@ -200,6 +200,19 @@ export interface Playback {
   sources: { url: string; content_type: string }[]
 }
 
+/** Someone else's recording to write down (ADR-035); nothing about who is speaking. */
+export interface Clip extends Playback {
+  recording_id: string
+  duration_ms: number | null
+  recording_mode: RecordingMode
+}
+
+export interface ClipText {
+  transcription: string
+  translation_hi?: string
+  translation_en?: string
+}
+
 /** Set by an admin to hide an item after a report (docs/ROADMAP.md M6). */
 export type Restriction =
   | 'sensitive'
