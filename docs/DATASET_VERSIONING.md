@@ -37,9 +37,9 @@ Releases other than `internal_research` also need `LKD_EXTERNAL_RELEASES_ENABLED
 
 **How a release is made.** A researcher or admin starts a draft (`slug`, `purpose`, selection criteria: kinds, content types, recording modes, dialect labels, topics (any of them), only items with audio, only items with text) and previews it. `POST /datasets/{id}/checks` runs D1–D9 ([DATA_QUALITY_AND_VALIDATION.md §4](DATA_QUALITY_AND_VALIDATION.md)). An admin freezes it with a version: the checks run again, consent is re-computed, one `dataset_release_items` row records each item's revisions, audio copy and consent, and the package's text files (items.jsonl, metadata.csv, README.md, datacard.json, LICENSE.txt, manifest.json) are stored. Exports are asked for with a purpose statement, approved by one admin (who may be the requester, ADR-027), and built by the `dataset.export` job from those stored files plus the audio copies, each checked against the manifest. Packages expire after `LKD_EXPORT_RETENTION_DAYS` (`cleanup.expire_exports`, hourly).
 
-## 4. Export package layout (format 1.1)
+## 4. Export package layout (format 1.2)
 
-Format 1.1 (ADR-029) added `metadata.csv`, tags inside each FLAC file and the item fields marked *1.1* below. Releases frozen in format 1 are still rebuilt exactly as they were, without them.
+Format 1.1 (ADR-029) added `metadata.csv`, tags inside each FLAC file and the item fields marked *1.1* below. Releases frozen in format 1 are still rebuilt exactly as they were, without them. Format 1.2 (ADR-034) added `recording_code` and the prompt's `number`, and the new speaker code form; releases frozen earlier keep the codes they were frozen with.
 
 ```
 mundari-speech-pilot-0.1.0/
@@ -56,18 +56,19 @@ mundari-speech-pilot-0.1.0/
 
 Originals are **not** included by default (privacy, size); a release may include them only if its purpose and governance approval explicitly allow it.
 
-### `items.jsonl` record (format 1.1)
+### `items.jsonl` record (format 1.2)
 
 ```json
 {
   "item_id": "0192f1c4-…",
   "language": "unr",
-  "speaker_code": "SPK-7Q3M9",
+  "speaker_code": "SPK_7Q3M9A_F",
+  "recording_code": "SPK_7Q3M9A_F_S012_prompted (1.2)",
   "dialect_label": "reported label or null",
   "content_type": "story",
   "collection_method": "facilitator_field",
   "recording_mode": "prompted",
-  "prompt": {"id": "…", "key": "img-farming-012", "version": 2, "type": "image", "text": "…", "language": "hi", "script": "Deva", "topic_tags": ["farming"]},
+  "prompt": {"id": "…", "number": 12, "key": "img-farming-012", "version": 2, "type": "image", "text": "…", "language": "hi", "script": "Deva", "topic_tags": ["farming"]},
   "recorded_on": "2027-01-15",
   "area": "Khunti (1.1; with demographics consent, internal research only)",
   "topics": ["agriculture", "water_and_weather"],
@@ -80,21 +81,21 @@ Originals are **not** included by default (privacy, size); a release may include
   "translations": [{"language": "hi", "script": "Deva", "revision_id": "…", "source_revision_id": "…", "text": "…", "origin": "human_contributor", "verification_status": "unverified", "uncertainty_markup": false}],
   "quality_flags": [],
   "consent_permissions": {"research": true, "public": false, "ai_training": false, "commercial": false},
-  "speaker": {"age_band": "45-59", "gender": "woman", "first_language": "unr", "other_languages": ["hi"], "region": "Khunti"}
+  "speaker": {"age_band": "45-59", "gender": "female", "first_language": "unr", "other_languages": ["hi"], "region": "Khunti"}
 }
 ```
 
-`transcription` is what is said in a recording; `text` is a text-only item (a standalone text layer); either may be `null`. `speaker` is `{}` unless the speaker agreed to share demographics; then it holds the age band, and, for `internal_research` releases only, also gender, languages and region, with the recording's `area` (ADR-029, Q-G11). `audio.sha256` and `bytes` describe the tagged file in the package. Items are sorted by `item_id`.
+`transcription` is what is said in a recording; `text` is a text-only item (a standalone text layer); either may be `null`. `speaker` is `{}` unless the speaker agreed to share demographics; then it holds the age band, and, for `internal_research` releases only, also gender, languages and region, with the recording's `area` (ADR-029, Q-G11). `audio.sha256` and `bytes` describe the tagged file in the package. Items are sorted by `item_id`. The last letter of `speaker_code` and the third part of `recording_code` is the gender letter (F, M, O); wherever the gender itself may not be in the package (no demographics consent, or any purpose but `internal_research`) it is X (ADR-034). Audio paths stay `audio/{item_id}.flac`, so a frozen package never changes when a code does.
 
 `metadata.csv` has one row per item, sorted by `item_id`, with a `translation_<language>` column for each translation language in the release. It is UTF-8 with a byte order mark; lists are joined with `;`, and text that starts with `=`, `+`, `-` or `@` gets a leading `'` so spreadsheets do not run it as a formula. Use `items.jsonl` when the exact text matters.
 
-Each FLAC file carries Vorbis comments: `TITLE`, `ALBUM` (release and version), `ARTIST` and `SPEAKER_CODE`, `DATE`, `GENRE` (content type), `TOPICS`, `LANGUAGE`, `ORGANIZATION`, `LICENSE`, `LOKDHARA_ITEM_ID`, `DIALECT`, `RECORDING_MODE`, `COLLECTION_METHOD`, `PROMPT_KEY`, `PROMPT_TEXT`, `TRANSCRIPTION` with `_SCRIPT` and `_STATUS`, `TRANSLATION_<LANGUAGE>`, and `CONSENT` (the permitted uses). Never demographics or the area. The stored copy's other metadata is dropped and its audio frames are unchanged.
+Each FLAC file carries Vorbis comments: `TITLE`, `ALBUM` (release and version), `ARTIST` and `SPEAKER_CODE` and `RECORDING_CODE` (always with X as the gender letter), `DATE`, `GENRE` (content type), `TOPICS`, `LANGUAGE`, `ORGANIZATION`, `LICENSE`, `LOKDHARA_ITEM_ID`, `DIALECT`, `RECORDING_MODE`, `COLLECTION_METHOD`, `PROMPT_NUMBER`, `PROMPT_KEY`, `PROMPT_TEXT`, `TRANSCRIPTION` with `_SCRIPT` and `_STATUS`, `TRANSLATION_<LANGUAGE>`, and `CONSENT` (the permitted uses). Never demographics or the area. The stored copy's other metadata is dropped and its audio frames are unchanged.
 
 Fields are produced from an **explicit allow-list** in code (`app.modules.releases.package`); anything not in the allow-list is never exported (contacts, names, review notes, `collection_context.notes`, object keys, user IDs).
 
 ### `manifest.json`
 
-`release_slug, version, purpose, licence, frozen_at, frozen_by_role, item_count, total_duration_ms, export_format_version: "1.1", lokdhara_git_commit, files: [{path, sha256, bytes}]` (every file except `manifest.json` and `checksums.sha256`; `checksums.sha256` also lists the manifest). Without a licence, LICENSE.txt says the data is for internal research within the project only.
+`release_slug, version, purpose, licence, frozen_at, frozen_by_role, item_count, total_duration_ms, export_format_version: "1.2", lokdhara_git_commit, files: [{path, sha256, bytes}]` (every file except `manifest.json` and `checksums.sha256`; `checksums.sha256` also lists the manifest). Without a licence, LICENSE.txt says the data is for internal research within the project only.
 
 ### Data card contents
 

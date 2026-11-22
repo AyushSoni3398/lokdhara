@@ -352,3 +352,18 @@ ADRs 001–019 were **Accepted** by the project owner on 2026-10-11 (ADR-019 aft
 - **Alternatives:** Names in `people.csv` itself (simpler, but every use of the sign-up details would carry names); a switch to download the archive without names (safer to pass on, but one more choice on the page; can be added later).
 - **Consequences:** The archive is now the easiest way to see who every speaker is. India's DPDP Act 2023 expects personal data to be used only for the purpose it was given for, kept no longer than needed, and protected; a downloaded archive is outside the app's withdrawal and deletion routines. The age is an age band; the app never asks for a date of birth.
 - **Revisit when:** the professor answers Q-G14, or someone outside the admins needs the people data.
+
+## ADR-034 — Speaker and recording codes that say gender, sentence and recording type
+
+- **Status:** Proposed (built 2026-11-22 on the project owner's request; Q-G15 asks the professor).
+- **Context:** The project owner wants a recording's ID to say at a glance who spoke, their gender, which sentence and how it was recorded, in the form `SPK_<random>_<M/F>_<sentence no.>_<type>`. Speaker codes were random (`SPK-7Q3M9A`) with gender as free text beside them, and file names carried the day, mode and the end of the recording ID. The owner chose to change the speaker code itself rather than only the file names.
+- **Decision:**
+  - Gender becomes a choice: female, male, other, prefer not to say (`speakers.gender`, migration `0020`). Earlier free-text answers that clearly say female or male are mapped; anything else becomes "other".
+  - Speaker code: `SPK_<random>_<letter>`, e.g. `SPK_7Q3M9A_F`. The letter is F, M or O, and X when no gender is given, "prefer not to say" is chosen, or demographics are not shared. The random part never changes (a trigger enforces it); the letter follows the gender and the demographics answer. Existing codes keep their random part.
+  - Every prompt gets a `prompt_number`, shared by its versions, written `S012`. Free speech is `S000`.
+  - Recording code: `<speaker code>_S<number>_<free|prompted|read>`, e.g. `SPK_7Q3M9A_F_S012_read`, given when the submission is sent. A second take of the same sentence by the same speaker ends `_2`, a third `_3`. When the speaker's letter changes, their recording codes change with it.
+  - Where codes appear: the contributor's downloads and the admin archive name files by recording code; dataset releases carry `recording_code` in `items.jsonl` and `metadata.csv` (format 1.2) but keep `audio/<item_id>.flac` as the path, so a frozen package never changes. Storage keys stay `{yyyy}/{mm}/{recording_id}/original.{ext}` (ADR-009).
+  - The gender letter is shown as X wherever the gender itself may not be shared: releases for any purpose but internal research or without demographics consent (ADR-029), and the tags inside every packaged audio file.
+- **Alternatives:** Descriptive file names only, keeping the speaker code random (recommended to the owner: the ID never changes and gender stays out of a code that is used everywhere); keeping everything as it was.
+- **Consequences:** The gender of a speaker who shares it now travels with every code shown in the app, the admin archive and internal releases, including in places that list codes without the release terms. A code can change after the fact (letter only), so anyone keeping a code outside the app should match on the random part. Frozen releases keep the codes they were made with. Under India's DPDP Act 2023, gender is personal data and should be used only as agreed.
+- **Revisit when:** the professor answers Q-G15, or codes need to stay identical over time (for example citations of a released item).
