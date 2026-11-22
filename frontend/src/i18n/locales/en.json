@@ -384,6 +384,7 @@
     "back": "← My submissions",
     "sentOn": "Sent on {{date}}",
     "recording": "Recording",
+    "recordingCode": "Recording code:",
     "notReadyToPlay": "The recording is still being prepared for listening.",
     "notPlayable": "This recording cannot be played.",
     "download": "Download",
@@ -705,6 +706,7 @@
     "contactHint": "Only used to contact you about your recordings.",
     "village": "Village or town (optional)",
     "aboutVoice": "About your speech",
+    "speakerCode": "Your speaker code:",
     "reusedHint": "Filled in for each new recording; you can change it there.",
     "ageBand": "Age group",
     "ages": {
@@ -716,7 +718,13 @@
       "undisclosed": "Prefer not to say"
     },
     "gender": "Gender (optional)",
-    "genderHint": "In your own words.",
+    "genders": {
+      "female": "Female",
+      "male": "Male",
+      "other": "Other",
+      "undisclosed": "Prefer not to say"
+    },
+    "genderHint": "Its first letter (F, M or O) ends your speaker code. Leave it empty or choose \"Prefer not to say\" and the code ends in X.",
     "firstLanguage": "First language",
     "languages": {
       "unr": "Mundari",

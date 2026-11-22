@@ -18,6 +18,8 @@ export interface MfaSetup {
 }
 
 export type AgeBand = '18-29' | '30-44' | '45-59' | '60+' | 'under_18' | 'undisclosed'
+/** Shown as F, M, O or X at the end of the speaker code (ADR-034). */
+export type Gender = 'female' | 'male' | 'other' | 'undisclosed'
 
 export interface Speaker {
   id: string
@@ -28,7 +30,7 @@ export interface Speaker {
   dialect_label: string | null
   demographics_consented?: boolean
   age_band?: AgeBand | null
-  gender_self_described?: string | null
+  gender?: Gender | null
   first_language?: string | null
   region_coarse?: string | null
 }
@@ -37,7 +39,7 @@ export interface Speaker {
 export type SpeakerUpdate = Partial<
   Pick<
     Speaker,
-    'dialect_label' | 'age_band' | 'gender_self_described' | 'first_language' | 'region_coarse'
+    'dialect_label' | 'age_band' | 'gender' | 'first_language' | 'region_coarse'
   >
 >
 
@@ -183,6 +185,8 @@ export interface TextLayerDetail extends TextLayer {
 
 export interface Recording {
   id: string
+  /** SPK_7Q3M9A_F_S012_read once the submission is sent; null while a draft. */
+  recording_code?: string | null
   upload_status: string
   size_bytes: number
   duration_ms: number | null
