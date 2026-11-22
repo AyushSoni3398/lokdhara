@@ -10,7 +10,7 @@ function draft(overrides: Partial<Draft> = {}): Draft {
     clientSubmissionId: 'c1',
     ownerId: 'u1',
     speakerId: 's1',
-    speakerCode: 'SPK-7Q3M9A',
+    speakerCode: 'SPK_7Q3M9A_X',
     collectionMethod: 'self_recorded',
     kind: 'audio_text',
     recordingMode: 'free',

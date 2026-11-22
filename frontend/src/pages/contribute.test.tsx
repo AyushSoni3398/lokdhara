@@ -268,7 +268,7 @@ describe('contributing', () => {
       clientSubmissionId: 'c2',
       ownerId: 'someone-else',
       speakerId: 's9',
-      speakerCode: 'SPK-OTHER1',
+      speakerCode: 'SPK_OTHER1_X',
       collectionMethod: 'self_recorded',
       kind: 'text',
       texts: [

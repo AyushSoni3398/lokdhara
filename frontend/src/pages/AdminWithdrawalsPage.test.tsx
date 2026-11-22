@@ -11,7 +11,7 @@ const ADMIN = { ...SESSION, roles: [{ role: 'admin', scope: null }] }
 const REQUEST: Withdrawal = {
   id: 'w1',
   speaker_id: 's1',
-  speaker_code: 'SPK-7Q3M9A',
+  speaker_code: 'SPK_7Q3M9A_X',
   submission_id: null,
   requested_scope: 'full',
   received_via: 'phone',
@@ -105,7 +105,7 @@ describe('withdrawal requests for admins', () => {
       'GET /admin/withdrawal-requests\\?open=true': () => ({ body: { items: [] } }),
       'GET /speakers\\?mine=false': () => ({
         body: {
-          items: [SPEAKER, { ...SPEAKER, id: 's2', speaker_code: 'SPK-GONE', status: 'withdrawn' }],
+          items: [SPEAKER, { ...SPEAKER, id: 's2', speaker_code: 'SPK_GONE_X', status: 'withdrawn' }],
         },
       }),
       'POST /withdrawal-requests': () => ({ status: 201, body: logged }),
@@ -114,9 +114,9 @@ describe('withdrawal requests for admins', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Log a request' }))
     const speaker = screen.getByLabelText('Speaker')
-    await screen.findByRole('option', { name: 'SPK-7Q3M9A' })
+    await screen.findByRole('option', { name: 'SPK_7Q3M9A_X' })
     // Someone who already withdrew is not offered again.
-    expect(screen.queryByRole('option', { name: 'SPK-GONE' })).toBeNull()
+    expect(screen.queryByRole('option', { name: 'SPK_GONE_X' })).toBeNull()
     await userEvent.selectOptions(speaker, 's1')
     await userEvent.click(screen.getByRole('button', { name: 'Log request' }))
 
