@@ -50,6 +50,8 @@ class PromptOut(BaseModel):
 
     id: uuid.UUID
     prompt_key: str
+    # The sentence number in recording codes: 12 → S012 (ADR-034).
+    prompt_number: int
     version: int
     prompt_type: PromptType
     text: str | None

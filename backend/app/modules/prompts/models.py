@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ARRAY, Integer, Text
+from sqlalchemy import ARRAY, Integer, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -17,6 +17,10 @@ class Prompt(Base):
 
     id: Mapped[uuid.UUID] = uuid_pk()
     prompt_key: Mapped[str] = mapped_column(Text)
+    # One number per prompt key, shared by its versions: the S012 in a recording code (ADR-034).
+    prompt_number: Mapped[int] = mapped_column(
+        Integer, server_default=text("nextval('prompts_prompt_number_seq')")
+    )
     version: Mapped[int] = mapped_column(Integer)
     prompt_type: Mapped[str] = mapped_column(Text)
     text: Mapped[str | None] = mapped_column(Text)

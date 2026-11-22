@@ -190,6 +190,7 @@ def new_version(
         prompt = Prompt(
             **checked.model_dump(),
             version=(latest or 0) + 1,
+            prompt_number=base.prompt_number,
             image_object_key=media.image(image) if image else base.image_object_key,
             prompt_audio_object_key=(media.audio(audio) if audio else base.prompt_audio_object_key),
             created_by=actor.id,
