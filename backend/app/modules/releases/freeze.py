@@ -29,6 +29,7 @@ from app.modules.identity.service import AuthenticatedUser, utcnow
 from app.modules.prompts.models import Prompt
 from app.modules.releases import package, service
 from app.modules.releases.models import DatasetRelease, DatasetReleaseItem
+from app.modules.speakers.codes import hide_gender
 from app.modules.speakers.models import Speaker
 from app.modules.submissions.models import (
     Recording,
@@ -111,12 +112,16 @@ FULL_DEMOGRAPHICS_PURPOSES = frozenset({"internal_research"})
 
 def _speaker_details(speaker: Speaker, submission: Submission) -> dict[str, Any]:
     return {
-        "gender": speaker.gender_self_described,
+        "gender": speaker.gender,
         "first_language": speaker.first_language,
         "other_languages": sorted(speaker.other_languages or []),
         "region": speaker.region_coarse,
         "area": submission.region_coarse,
     }
+
+
+def _code(code: str, shared: bool) -> str:
+    return code if shared else hide_gender(code)
 
 
 def _gather(db: Session, submission: Submission, *, full_demographics: bool = False) -> Gathered:
@@ -155,7 +160,8 @@ def _gather(db: Session, submission: Submission, *, full_demographics: bool = Fa
     source = package.ItemSource(
         item_id=str(submission.id),
         language=submission.language_tag,
-        speaker_code=speaker.speaker_code,
+        # The gender letter shows only where the gender itself may be shared (ADR-029, 034).
+        speaker_code=_code(speaker.speaker_code, shared),
         age_band=speaker.age_band if speaker.demographics_consented else None,
         dialect_label=submission.dialect_label,
         content_type=submission.content_type,
@@ -164,6 +170,7 @@ def _gather(db: Session, submission: Submission, *, full_demographics: bool = Fa
         prompt=(
             {
                 "id": str(prompt.id),
+                "number": prompt.prompt_number,
                 "key": prompt.prompt_key,
                 "version": prompt.version,
                 "type": prompt.prompt_type,
@@ -210,6 +217,11 @@ def _gather(db: Session, submission: Submission, *, full_demographics: bool = Fa
         collection_context=submission.collection_context,
         speaker_details=details,
         area=area,
+        recording_code=(
+            _code(recording.recording_code, shared)
+            if recording is not None and recording.recording_code
+            else None
+        ),
         topics=tuple(submission.topics),
     )
     return Gathered(
