@@ -140,8 +140,37 @@ def create_layer(
 ) -> service.LayerView:
     # The lock serialises layer creation for one submission, so duplicate checks hold.
     submission = service.get_owned(db, user, submission_id, for_update=True)
+    layer = add_layer(db, submission, user=user, **body.model_dump())
+    db.commit()
+    return service.layer_view(db, layer)
+
+
+def add_layer(
+    db: Session,
+    submission: Submission,
+    *,
+    user: AuthenticatedUser,
+    layer_type: str,
+    language_tag: str,
+    script_code: str,
+    content: str,
+    recording_id: uuid.UUID | None = None,
+    source_layer_id: uuid.UUID | None = None,
+    entry_type: str | None = None,
+) -> TextLayer:
+    """A new layer and its first revision by `user`, without committing. The caller has
+    checked that the user may write on this submission and holds its lock."""
+    body = TextLayerCreateRequest(
+        layer_type=layer_type,
+        recording_id=recording_id,
+        source_layer_id=source_layer_id,
+        entry_type=entry_type,
+        language_tag=language_tag,
+        script_code=script_code,
+        content=content,
+    )
     _check_editable(submission)
-    content = _checked(body.content, body.entry_type)
+    checked = _checked(body.content, body.entry_type)
     _check_links(db, submission, body)
     layer = TextLayer(
         submission_id=submission.id,
@@ -154,10 +183,9 @@ def create_layer(
     )
     db.add(layer)
     db.flush()
-    _new_revision(db, layer, number=1, content=content, author=user.id)
+    _new_revision(db, layer, number=1, content=checked, author=user.id)
     _text_changed(db, submission)
-    db.commit()
-    return service.layer_view(db, layer)
+    return layer
 
 
 def _visible_layer(

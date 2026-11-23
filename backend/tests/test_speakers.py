@@ -45,7 +45,7 @@ def test_contributor_creates_one_pseudonymous_self_profile(
 ) -> None:
     act_as(client, make_user("asha", "contributor"))
     speaker = _create(client, for_self=True, dialect_label="Hasada")
-    assert re.fullmatch(r"SPK-[2-9A-HJKMNP-TV-Z]{6}", str(speaker["speaker_code"]))
+    assert re.fullmatch(r"SPK_[2-9A-HJKMNP-TV-Z]{6}_X", str(speaker["speaker_code"]))
     assert speaker["is_self"] is True
     assert speaker["has_active_consent"] is False
     assert speaker["dialect_label"] == "Hasada"
@@ -122,6 +122,24 @@ def test_demographics_need_the_speakers_consent(
     changed = client.patch(path, json={"age_band": "30-44", "first_language": "unr"})
     assert changed.status_code == 200, changed.text
     assert (changed.json()["age_band"], changed.json()["first_language"]) == ("30-44", "unr")
+
+
+def test_the_speaker_code_ends_with_the_gender_letter(
+    client: TestClient, make_user: MakeUser, db: Session
+) -> None:
+    act_as(client, make_user("asha", "contributor"))
+    speaker = _create(client, for_self=True)
+    code = str(speaker["speaker_code"])
+    assert code.endswith("_X")
+    path = f"{SPEAKERS}/{speaker['id']}"
+    _allow_demographics(db, speaker["id"])
+    for gender, letter in (("female", "F"), ("male", "M"), ("other", "O"), ("undisclosed", "X")):
+        changed = client.patch(path, json={"gender": gender})
+        assert changed.status_code == 200, changed.text
+        assert changed.json()["gender"] == gender
+        # Only the last letter changes; the random part is the speaker's for good.
+        assert changed.json()["speaker_code"] == f"{code[:-1]}{letter}"
+    assert client.patch(path, json={"gender": "woman"}).status_code == 422
 
 
 def test_minors_can_be_turned_off(

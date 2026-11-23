@@ -13,7 +13,7 @@ from tests.audio_fixtures import FFMPEG, make_audio, requires_ffmpeg
 
 COMMENTS = [
     ("TITLE", "item-1"),
-    ("ARTIST", "SPK-AAAAA"),
+    ("ARTIST", "SPK_AAAAA_X"),
     ("TRANSCRIPTION", "नदी के किनारे"),
     ("translation_en", "By the river"),
 ]
@@ -56,7 +56,7 @@ def test_tags_replace_the_old_ones_and_leave_the_audio_unchanged(tmp_path: Path)
 
     tags = _probe_tags(out)
     assert tags["TITLE"] == "item-1"
-    assert tags["ARTIST"] == "SPK-AAAAA"
+    assert tags["ARTIST"] == "SPK_AAAAA_X"
     assert tags["TRANSCRIPTION"] == "नदी के किनारे"
     assert tags["TRANSLATION_EN"] == "By the river"
     assert "Synthetic Speaker Name" not in json.dumps(tags, ensure_ascii=False)

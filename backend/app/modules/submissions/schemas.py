@@ -110,6 +110,8 @@ class SubmissionUpdateRequest(BaseModel):
 
 class RecordingOut(BaseModel):
     id: uuid.UUID
+    # SPK_7Q3M9A_F_S012_read once the submission is sent; null while a draft (ADR-034).
+    recording_code: str | None = None
     upload_status: str
     size_bytes: int
     duration_ms: int | None
@@ -262,3 +264,24 @@ class SubmissionListOut(BaseModel):
 class UploadOut(BaseModel):
     recording_id: uuid.UUID
     upload_status: str
+
+
+class ClipOut(BaseModel):
+    """A recording to write down (ADR-035). Nothing about who is speaking."""
+
+    recording_id: uuid.UUID
+    duration_ms: int | None
+    recording_mode: RecordingMode
+    sources: list[PlaybackSource]
+
+
+class ClipTextRequest(BaseModel):
+    """What the listener heard, in Devanagari, and optional translations."""
+
+    transcription: TextContent
+    translation_hi: TextContent | None = None
+    translation_en: TextContent | None = None
+
+
+class ClipTextOut(BaseModel):
+    transcription_layer_id: uuid.UUID

@@ -197,7 +197,7 @@ def record_consent(
             **{permission: getattr(body, permission) for permission in PERMISSIONS},
         )
         db.add(record)
-        speakers.set_demographics_consent(speaker, body.demographics_consented)
+        speakers.set_demographics_consent(db, speaker, body.demographics_consented)
         if previous is not None:
             db.flush()
             # A narrower answer reaches releases that were already frozen (§3 of

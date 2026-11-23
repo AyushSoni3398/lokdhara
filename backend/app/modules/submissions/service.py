@@ -23,6 +23,7 @@ from app.modules.processing.models import Job
 from app.modules.prompts import service as prompts
 from app.modules.speakers import service as speakers
 from app.modules.speakers.models import Speaker
+from app.modules.submissions import codes
 from app.modules.submissions.models import (
     Recording,
     Rendition,
@@ -332,6 +333,7 @@ def submit(
     if submission.recording_mode == "read" and submission.prompt_id is not None:
         has_text = _add_prompt_text(db, submission, recordings[0]) or has_text
 
+    codes.assign(db, speaker, submission, recordings)
     submission.consent_record_id = consent.id
     submission.status = "processing"
     submission.submitted_at = submission.updated_at = utcnow()

@@ -58,7 +58,7 @@ describe('a draft the server refused', () => {
     clientSubmissionId: 'c9',
     ownerId: SESSION.user.id,
     speakerId: 's1',
-    speakerCode: 'SPK-SELF01',
+    speakerCode: 'SPK_SELF01_X',
     collectionMethod: 'self_recorded',
     kind: 'audio',
     recordingMode: 'free',

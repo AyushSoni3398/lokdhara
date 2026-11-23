@@ -333,7 +333,7 @@ def test_speaker_details_follow_demographics_consent_and_the_release_purpose(
     give_consent(client, db, shared, allow_research=True, demographics_consented=True)
     details = {
         "age_band": "30-44",
-        "gender_self_described": "woman",
+        "gender": "female",
         "first_language": "unr",
         "other_languages": ["hi"],
         "region_coarse": "Khunti",
@@ -359,18 +359,21 @@ def test_speaker_details_follow_demographics_consent_and_the_release_purpose(
     internal = records("internal_research")
     assert internal[with_details]["speaker"] == {
         "age_band": "30-44",
-        "gender": "woman",
+        "gender": "female",
         "first_language": "unr",
         "other_languages": ["hi"],
         "region": "Khunti",
     }
     assert internal[with_details]["area"] == "Khunti"
+    assert internal[with_details]["speaker_code"].endswith("_F")
     # No demographics consent: nothing about the speaker, not even the recording's area.
     assert (internal[without]["speaker"], internal[without]["area"]) == ({}, None)
     # Wider purposes keep only the age band until governance decides (ADR-029).
     external = records("external_research")
     assert external[with_details]["speaker"] == {"age_band": "30-44"}
     assert external[with_details]["area"] is None
+    # ... and the gender letter in the speaker code becomes X (ADR-034).
+    assert external[with_details]["speaker_code"].endswith("_X")
 
 
 def test_releases_can_take_only_items_on_some_topics(

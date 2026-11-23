@@ -189,6 +189,13 @@ def release_filter(purpose: str) -> ColumnElement[bool]:
     )
 
 
+def transcription_filter() -> ColumnElement[bool]:
+    """Items whose audio may be played to other contributors to write down (ADR-035): what a
+    public release could hold, so accepted, not withdrawn, never restricted, and the speaker
+    allowed public access."""
+    return release_filter("public")
+
+
 def consent_allows(purpose: str) -> ColumnElement[bool]:
     """Only the consent part of release_filter(): does the speaker still allow this use? Used
     to find frozen release items whose consent was narrowed after freezing."""

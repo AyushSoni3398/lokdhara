@@ -29,6 +29,10 @@ from tests.submission_helpers import SUBMISSIONS, create_draft, give_consent, ow
 ZIP = "/api/v1/me/recordings.zip"
 
 
+def code_of(db: Session, recording_id: uuid.UUID) -> str | None:
+    return db.scalar(select(Recording.recording_code).where(Recording.id == recording_id))
+
+
 def download_url(recording_id: uuid.UUID) -> str:
     return f"/api/v1/recordings/{recording_id}/download"
 
@@ -51,6 +55,13 @@ def test_file_names_hold_the_day_how_and_what_but_no_title() -> None:
     submission.content_type = "story"
     name = downloads.file_name(submission, recording, aac)
     assert name == "lokdhara-2026-09-01-free-story-3f9a0c21.m4a"
+
+
+def test_file_names_are_the_recording_code_once_it_has_one() -> None:
+    recording = Recording(recording_code="SPK_7Q3M9A_F_S012_read_2")
+    submission = Submission(title="Asha's story", recording_mode="read")
+    aac = downloads.DOWNLOAD_KINDS[0]
+    assert downloads.file_name(submission, recording, aac) == "SPK_7Q3M9A_F_S012_read_2.m4a"
 
 
 pytestmark = [requires_postgres, requires_ffmpeg]
@@ -123,7 +134,7 @@ def test_the_owner_saves_the_listening_copy(
     assert saved.status_code == 200
     assert saved.headers["content-type"] == "audio/mp4"
     assert re.fullmatch(
-        r'attachment; filename="lokdhara-\d{4}-\d{2}-\d{2}-free-story-[0-9a-f]{8}\.m4a"',
+        r'attachment; filename="SPK_[0-9A-Z]{6}_X_S000_free\.m4a"',
         saved.headers["content-disposition"],
     )
     assert saved.content == aac_copy(db, object_store, recording_id)
@@ -205,13 +216,14 @@ def test_download_all_zips_every_ready_recording(
     archive = zipfile.ZipFile(io.BytesIO(response.content))
     names = archive.namelist()
     assert names.pop() == "details.csv"
-    assert [name[-12:-4] for name in names] == [str(first)[-8:], str(second)[-8:]]
+    assert names == [f"{code_of(db, first)}.m4a", f"{code_of(db, second)}.m4a"]
+    assert names[1] == names[0].replace(".m4a", "_2.m4a")  # the second take of free speech
     details = list(csv.DictReader(io.StringIO(archive.read("details.csv").decode("utf-8-sig"))))
     assert [row["file"] for row in details] == names
     assert {row["recording_mode"] for row in details} == {"free"}
     assert {row["topics"] for row in details} == {""}
     assert float(details[0]["duration_seconds"]) == 2.0
-    assert str(not_ready)[-8:] not in "".join(names)
+    assert f"{code_of(db, not_ready)}.m4a" not in names
     for name, recording_id in zip(names, [first, second], strict=True):
         assert archive.read(name) == aac_copy(db, object_store, recording_id)
 
@@ -240,4 +252,4 @@ def test_a_copy_deleted_meanwhile_is_left_out(
 
     names = zipfile.ZipFile(io.BytesIO(client.get(ZIP).content)).namelist()
     assert names[-1] == "details.csv"
-    assert [name[-12:-4] for name in names[:-1]] == [str(kept)[-8:]]
+    assert names[:-1] == [f"{code_of(db, kept)}.m4a"]

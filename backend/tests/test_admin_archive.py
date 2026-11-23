@@ -107,7 +107,9 @@ def test_the_archive_holds_everything(
 
     # Every original, byte for byte, restricted or not.
     for recording_id, content in recordings.items():
-        assert archive.read(f"originals/{recording_id}.m4a") == content
+        code = db.get_one(Recording, recording_id).recording_code
+        assert code is not None and code.startswith("SPK_")
+        assert archive.read(f"originals/{code}.m4a") == content
     files = jsonl(archive, "files.jsonl")
     assert [f["stored"] for f in files if f["bucket"] == "originals"] == [True, True]
 
@@ -158,7 +160,7 @@ def test_people_has_one_row_per_speaker_with_profile_and_consent(
     client: TestClient, recordings: dict[uuid.UUID, bytes], db: Session
 ) -> None:
     speaker = db.scalars(select(Speaker)).one()
-    speaker.age_band, speaker.gender_self_described = "18-29", "woman"
+    speaker.age_band, speaker.gender = "18-29", "female"
     speaker.first_language, speaker.region_coarse = "unr", "Khunti"
     speaker.demographics_consented = True
     db.commit()
@@ -167,7 +169,7 @@ def test_people_has_one_row_per_speaker_with_profile_and_consent(
     [person] = csv_rows(archive, "people.csv")
     assert (person["speaker_code"], person["account"]) == (speaker.speaker_code, "asha")
     assert person["signed_up_at"]
-    assert (person["age_band"], person["gender"]) == ("18-29", "woman")
+    assert (person["age_band"], person["gender"]) == ("18-29", "female")
     assert (person["first_language"], person["region"]) == ("unr", "Khunti")
     assert person["demographics_consented"] == "yes"
     assert person["consent_status"] == "active" and person["consent_method"] == "in_app"
@@ -247,9 +249,9 @@ def test_a_missing_file_is_listed_not_fatal(
     object_store.erase(Bucket.ORIGINALS, gone.original_object_key)
 
     archive = zipfile.ZipFile(io.BytesIO(client.get(ARCHIVE, params=REASON).content))
-    assert f"originals/{gone.id}.m4a" not in archive.namelist()
+    assert f"originals/{gone.recording_code}.m4a" not in archive.namelist()
     stored = {f["name"]: f["stored"] for f in jsonl(archive, "files.jsonl")}
-    assert stored[f"originals/{gone.id}.m4a"] is False
+    assert stored[f"originals/{gone.recording_code}.m4a"] is False
 
 
 def test_a_reason_is_required(client: TestClient, make_user: MakeUser, db: Session) -> None:

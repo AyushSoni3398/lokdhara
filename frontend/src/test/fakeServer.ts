@@ -53,7 +53,7 @@ export const SESSION = {
 
 export const SPEAKER = {
   id: 's1',
-  speaker_code: 'SPK-7Q3M9A',
+  speaker_code: 'SPK_7Q3M9A_X',
   is_self: true,
   status: 'active',
   has_active_consent: true,

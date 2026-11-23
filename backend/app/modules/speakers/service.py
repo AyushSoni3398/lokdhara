@@ -4,10 +4,9 @@ Profiles are pseudonymous: the code is random and the name, contact, and village
 in speaker_identities, readable only by the creating facilitator and admins (audited).
 """
 
-import secrets
 import uuid
 
-from sqlalchemy import Select, or_, select
+from sqlalchemy import Select, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -16,6 +15,7 @@ from app.errors import ApiError
 from app.modules.audit import service as audit
 from app.modules.audit.service import RequestContext
 from app.modules.identity.service import AuthenticatedUser, utcnow
+from app.modules.speakers.codes import GENDER_LETTERS, code_with_letter, new_speaker_code
 from app.modules.speakers.crypto import IdentityCipher
 from app.modules.speakers.models import Speaker, SpeakerIdentity
 
@@ -23,19 +23,36 @@ from app.modules.speakers.models import Speaker, SpeakerIdentity
 SELF_SPEAKER_ROLES = ("contributor", "facilitator", "reviewer", "admin")
 DEMOGRAPHIC_FIELDS = (
     "age_band",
-    "gender_self_described",
+    "gender",
     "first_language",
     "other_languages",
     "region_coarse",
 )
 IDENTITY_FIELDS = ("full_name", "contact", "village", "notes")
-# No 0/O, 1/I/L, or U, so codes survive being read aloud or written by hand.
-_CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTVWXYZ"
-_CODE_LENGTH = 6
 
 
-def new_speaker_code() -> str:
-    return "SPK-" + "".join(secrets.choice(_CODE_ALPHABET) for _ in range(_CODE_LENGTH))
+def gender_letter(speaker: Speaker) -> str:
+    if not speaker.demographics_consented or speaker.gender is None:
+        return "X"
+    return GENDER_LETTERS.get(speaker.gender, "X")
+
+
+def refresh_code(db: Session, speaker: Speaker) -> None:
+    """Brings the speaker code's last letter in line with the gender now stored, and renames
+    the speaker's recordings with it. Earlier frozen releases keep the code they were made with."""
+    new = code_with_letter(speaker.speaker_code, gender_letter(speaker))
+    old = speaker.speaker_code
+    if new == old:
+        return
+    speaker.speaker_code = new
+    db.flush()
+    db.execute(
+        text(
+            "UPDATE recordings SET recording_code = :new || substr(recording_code, :cut) "
+            "WHERE starts_with(recording_code, :prefix)"
+        ),
+        {"new": new, "cut": len(old) + 1, "prefix": f"{old}_"},
+    )
 
 
 # ------------------------------------------------------------------ access rules
@@ -136,7 +153,9 @@ def create_speaker(
                 raise ApiError(
                     409, "self_speaker_exists", "You already have a speaker profile."
                 ) from exc
-            if "uq_speakers_speaker_code" not in str(exc.orig):
+            if not any(
+                n in str(exc.orig) for n in ("uq_speakers_speaker_code", "uq_speakers_code_random")
+            ):
                 raise
             continue  # code collision: draw another
         break
@@ -186,6 +205,7 @@ def update_speaker(
         raise ApiError(422, "minors_not_enabled", "Recordings from minors are not collected yet.")
     for field, value in changes.items():
         setattr(speaker, field, value)
+    refresh_code(db, speaker)
     audit.record(
         db,
         action="speaker.update",
@@ -199,12 +219,14 @@ def update_speaker(
     return speaker
 
 
-def set_demographics_consent(speaker: Speaker, consented: bool) -> None:
-    """Mirrors the active consent record. Withdrawing the answer erases the stored values."""
+def set_demographics_consent(db: Session, speaker: Speaker, consented: bool) -> None:
+    """Mirrors the active consent record. Withdrawing the answer erases the stored values,
+    and the gender letter in the speaker's codes becomes X."""
     speaker.demographics_consented = consented
     if not consented:
         for field in DEMOGRAPHIC_FIELDS:
             setattr(speaker, field, None)
+    refresh_code(db, speaker)
 
 
 # ------------------------------------------------------------------ restricted identity

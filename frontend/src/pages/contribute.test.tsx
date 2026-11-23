@@ -169,9 +169,13 @@ describe('profile details', () => {
       'GET /submissions\\?.*': () => ({ body: { items: [] } }),
     })
     renderApp('/contribute/s1/new')
-    await userEvent.click(await screen.findByRole('radio', { name: 'Text' }))
+    await userEvent.click(await screen.findByRole('radio', { name: 'Audio' }))
     await userEvent.click(next())
-    await userEvent.type(screen.getByLabelText('Mundari text'), 'यह परीक्षण है')
+    await userEvent.click(screen.getByRole('radio', { name: /Speak freely/ }))
+    await userEvent.click(next())
+    const file = new File(['synthetic'], 'test.webm', { type: 'audio/webm' })
+    await userEvent.upload(screen.getByLabelText(/Choose an audio file/), file)
+    await userEvent.click(next())
     await userEvent.click(next())
     expect(screen.getByLabelText(/Dialect/)).toHaveValue('Hasada')
     expect(screen.getByLabelText(/^Area/)).toHaveValue('Khunti')
@@ -197,28 +201,13 @@ describe('contributing', () => {
     })
   }
 
-  it('keeps an unfinished text on the phone without uploading it', async () => {
-    const { requests } = server()
-    const { store } = renderApp('/contribute/s1/new')
-
-    await userEvent.click(await screen.findByRole('radio', { name: 'Text' }))
-    await userEvent.click(next())
-    expect(next()).toBeDisabled() // the text itself is required
-    await userEvent.type(screen.getByLabelText('Mundari text'), 'यह परीक्षण है')
-    await userEvent.type(screen.getByLabelText('English translation (optional)'), 'A test')
-    await userEvent.click(next())
-    await userEvent.type(screen.getByLabelText('Title (optional)'), 'Practice')
-    await userEvent.click(next())
-    expect(screen.getByText('A test')).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Save for later' }))
-
-    expect(await screen.findByRole('heading', { name: 'My submissions' })).toBeInTheDocument()
-    expect(screen.getByText('Practice')).toBeInTheDocument()
-    expect(screen.getByText('Not finished')).toBeInTheDocument()
-    const [saved] = await store.list()
-    expect(saved).toMatchObject({ kind: 'text', ready: false, ownerId: 'u1' })
-    expect(saved?.texts.map((text) => text.key)).toEqual(['main', 'translation-en'])
-    expect(requests.some((r) => r.method === 'POST')).toBe(false)
+  it('offers writing down what you hear instead of typed-only text', async () => {
+    server()
+    const { router } = renderApp('/contribute/s1/new')
+    expect(await screen.findByRole('radio', { name: 'Audio' })).toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: 'Text' })).toBeNull()
+    await userEvent.click(screen.getByRole('radio', { name: 'Write what you hear' }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/listen'))
   })
 
   it('uploads a recording from a file and lists it as sent', async () => {
@@ -268,7 +257,7 @@ describe('contributing', () => {
       clientSubmissionId: 'c2',
       ownerId: 'someone-else',
       speakerId: 's9',
-      speakerCode: 'SPK-OTHER1',
+      speakerCode: 'SPK_OTHER1_X',
       collectionMethod: 'self_recorded',
       kind: 'text',
       texts: [

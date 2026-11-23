@@ -204,7 +204,7 @@ def test_audio_files_carry_their_items_tags(
     assert "Somra" not in json.dumps(tags) + files["items.jsonl"].decode()
 
     sheet = files["metadata.csv"].decode("utf-8-sig").splitlines()
-    assert len(sheet) == 3 and sheet[0].startswith("item_id,audio_path,")
+    assert len(sheet) == 3 and sheet[0].startswith("item_id,recording_code,audio_path,")
 
 
 def test_releases_frozen_before_tags_are_rebuilt_without_them(

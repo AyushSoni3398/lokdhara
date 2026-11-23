@@ -17,15 +17,20 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import IO, Any
 
+from app.modules.speakers.codes import hide_gender
+
 # 1.1 added fields to items.jsonl, metadata.csv and tags inside the FLAC files (ADR-029).
+# 1.2 added recording_code and the prompt's number (ADR-034); older records simply lack them,
+# so their tags come out unchanged.
 # Packages of releases frozen earlier are still rebuilt in the format they were frozen with.
-EXPORT_FORMAT_VERSION = "1.1"
+EXPORT_FORMAT_VERSION = "1.2"
 UNTAGGED_FORMATS = frozenset({"1"})
 ITEM_FIELDS = frozenset(
     {
         "item_id",
         "language",
         "speaker_code",
+        "recording_code",
         "speaker",
         "dialect_label",
         "content_type",
@@ -88,7 +93,7 @@ TEXT_FIELDS = frozenset(
 )
 TRANSLATION_FIELDS = TEXT_FIELDS | {"source_revision_id"}
 PROMPT_FIELDS = frozenset(
-    {"id", "key", "version", "type", "text", "language", "script", "topic_tags"}
+    {"id", "number", "key", "version", "type", "text", "language", "script", "topic_tags"}
 )
 # docs/DATA_DICTIONARY.md §3. `notes` is never exported: it may contain personal details.
 COLLECTION_CONTEXT_FIELDS = ("setting", "speaker_count", "equipment")
@@ -150,6 +155,8 @@ class ItemSource:
     area: str | None = None
     # Keys from the topic list (ADR-030).
     topics: tuple[str, ...] = ()
+    # SPK_7Q3M9A_F_S012_read (ADR-034); the gender letter is X unless gender may be shared.
+    recording_code: str | None = None
 
 
 def audio_path(item_id: str) -> str:
@@ -199,6 +206,7 @@ def item_record(item: ItemSource) -> dict[str, Any]:
         "item_id": item.item_id,
         "language": item.language,
         "speaker_code": item.speaker_code,
+        "recording_code": item.recording_code,
         # Only with the speaker's consent to share demographics (ADR-029).
         "speaker": _speaker(item),
         "dialect_label": item.dialect_label,
@@ -206,7 +214,7 @@ def item_record(item: ItemSource) -> dict[str, Any]:
         "collection_method": item.collection_method,
         "recording_mode": item.recording_mode,
         "prompt": (
-            {key: item.prompt[key] for key in sorted(PROMPT_FIELDS)} if item.prompt else None
+            {key: item.prompt.get(key) for key in sorted(PROMPT_FIELDS)} if item.prompt else None
         ),
         "recorded_on": item.recorded_on.isoformat() if item.recorded_on else None,
         "audio": audio,
@@ -256,7 +264,8 @@ def flac_comments(
     comments = [
         ("TITLE", f"{record['content_type']} {record['item_id']}"),
         ("ALBUM", release_name),
-        ("ARTIST", record["speaker_code"]),
+        # Never the gender, even as the code's letter: tags travel without the release terms.
+        ("ARTIST", hide_gender(record["speaker_code"])),
         ("DATE", record["recorded_on"]),
         ("GENRE", record["content_type"]),
         ("TOPICS", ",".join(record["topics"])),
@@ -264,10 +273,12 @@ def flac_comments(
         ("ORGANIZATION", "Lokdhara"),
         ("LICENSE", licence or DEFAULT_LICENCE),
         ("LOKDHARA_ITEM_ID", record["item_id"]),
-        ("SPEAKER_CODE", record["speaker_code"]),
+        ("SPEAKER_CODE", hide_gender(record["speaker_code"])),
+        ("RECORDING_CODE", hide_gender(record.get("recording_code") or "") or None),
         ("DIALECT", record["dialect_label"]),
         ("RECORDING_MODE", record["recording_mode"]),
         ("COLLECTION_METHOD", record["collection_method"]),
+        ("PROMPT_NUMBER", prompt.get("number")),
         ("PROMPT_KEY", prompt.get("key")),
         ("PROMPT_TEXT", prompt.get("text")),
         ("TRANSCRIPTION", transcription.get("text")),
@@ -288,6 +299,7 @@ def flac_comments(
 # spreadsheet. Translations get one column per language found in the release.
 CSV_COLUMNS = (
     "item_id",
+    "recording_code",
     "audio_path",
     "duration_seconds",
     "speaker_code",
@@ -304,6 +316,7 @@ CSV_COLUMNS = (
     "recording_mode",
     "topics",
     "recorded_on",
+    "prompt_number",
     "prompt_key",
     "prompt_version",
     "prompt_type",
@@ -355,6 +368,7 @@ def _csv_row(record: Mapping[str, Any], languages: list[str]) -> list[Any]:
     duration = audio.get("duration_ms")
     values: dict[str, Any] = {
         "item_id": record["item_id"],
+        "recording_code": record.get("recording_code"),
         "audio_path": audio.get("path"),
         "duration_seconds": round(duration / 1000, 3) if duration is not None else None,
         "speaker_code": record["speaker_code"],
@@ -371,6 +385,7 @@ def _csv_row(record: Mapping[str, Any], languages: list[str]) -> list[Any]:
         "recording_mode": record["recording_mode"],
         "topics": record["topics"],
         "recorded_on": record["recorded_on"],
+        "prompt_number": prompt.get("number"),
         "prompt_key": prompt.get("key"),
         "prompt_version": prompt.get("version"),
         "prompt_type": prompt.get("type"),

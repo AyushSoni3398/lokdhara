@@ -204,6 +204,11 @@ function RecordingPlayer({
   return (
     <>
       <h2>{t('submission.recording')}</h2>
+      {recording.recording_code && (
+        <p className="note">
+          {t('submission.recordingCode')} <code>{recording.recording_code}</code>
+        </p>
+      )}
       {playback && playback.sources.length > 0 ? (
         <>
           <audio controls preload="none" aria-label={t('submission.recording')}>

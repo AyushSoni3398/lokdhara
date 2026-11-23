@@ -98,6 +98,9 @@ class Recording(Base):
     id: Mapped[uuid.UUID] = uuid_pk()
     submission_id: Mapped[uuid.UUID] = fk("submissions.id")
     original_object_key: Mapped[str] = mapped_column(Text)
+    # SPK_7Q3M9A_F_S012_read: speaker, sentence, and how it was recorded, given when the
+    # submission is sent (app.modules.submissions.codes, ADR-034). NULL while a draft.
+    recording_code: Mapped[str | None] = mapped_column(Text)
     original_filename_ext: Mapped[str | None] = mapped_column(Text)
     sha256_original: Mapped[str] = mapped_column(Text)
     sha256_pcm: Mapped[str | None] = mapped_column(Text)

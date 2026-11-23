@@ -26,7 +26,7 @@ const DETAIL = {
 const REQUEST: Withdrawal = {
   id: 'w1',
   speaker_id: 's1',
-  speaker_code: 'SPK-7Q3M9A',
+  speaker_code: 'SPK_7Q3M9A_X',
   submission_id: 'sub1',
   requested_scope: 'specific_items',
   received_via: 'in_app',

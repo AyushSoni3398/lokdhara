@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router'
 
 import * as api from '../api/endpoints'
 import { useSession } from '../auth/session'
-import type { Kind, Prompt, RecordingMode, Speaker } from '../api/types'
+import type { Prompt, RecordingMode, Speaker } from '../api/types'
 import { Choice } from '../components/Choice'
 import { ErrorMessage } from '../components/ErrorMessage'
 import { useDrafts } from '../drafts/DraftsProvider'
@@ -144,23 +144,17 @@ export function NewSubmissionPage() {
         <Choice
           name="kind"
           legend={t('wizard.kindLegend')}
-          options={(['audio', 'text', 'audio_text'] as Kind[]).map((value) => ({
+          // "Text" is now listening to someone else's recording and writing it down, on its
+          // own page (ADR-035); typed-only text is no longer offered here.
+          options={(['audio', 'listen', 'audio_text'] as const).map((value) => ({
             value,
             label: t(`kinds.${value}`),
           }))}
-          value={draft.kind}
+          value={draft.kind === 'text' ? undefined : draft.kind}
           onChange={(kind) =>
-            update(
-              kind === 'text'
-                ? {
-                    kind,
-                    recordingMode: undefined,
-                    promptId: undefined,
-                    audio: undefined,
-                    texts: [],
-                  }
-                : { kind, texts: [] },
-            )
+            kind === 'listen'
+              ? void navigate('/listen')
+              : update({ kind, texts: [] })
           }
         />
       )}

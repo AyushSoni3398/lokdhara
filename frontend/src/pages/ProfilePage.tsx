@@ -4,10 +4,11 @@ import { Link, useNavigate, useSearchParams } from 'react-router'
 
 import { ApiError } from '../api/client'
 import * as api from '../api/endpoints'
-import type { AgeBand, Speaker } from '../api/types'
+import type { AgeBand, Gender, Speaker } from '../api/types'
 import { ErrorMessage } from '../components/ErrorMessage'
 
 const AGE_BANDS: AgeBand[] = ['under_18', '18-29', '30-44', '45-59', '60+', 'undisclosed']
+const GENDERS: Gender[] = ['female', 'male', 'other', 'undisclosed']
 // BCP 47 tags; the server keeps whatever is chosen (docs/DATA_DICTIONARY.md).
 const LANGUAGES = ['unr', 'hi', 'sck', 'sat', 'kru', 'en'] as const
 
@@ -19,7 +20,7 @@ interface Fields {
   dialect: string
   region: string
   ageBand: AgeBand | ''
-  gender: string
+  gender: Gender | ''
   firstLanguage: string
 }
 
@@ -80,7 +81,7 @@ export function ProfilePage() {
           dialect: own.dialect_label ?? '',
           region: own.region_coarse ?? '',
           ageBand: own.age_band ?? '',
-          gender: own.gender_self_described ?? '',
+          gender: own.gender ?? '',
           firstLanguage: own.first_language ?? '',
         })
       } catch (failure) {
@@ -117,7 +118,7 @@ export function ProfilePage() {
         ...(demographics
           ? {
               age_band: fields.ageBand || null,
-              gender_self_described: orNull(fields.gender),
+              gender: fields.gender || null,
               first_language: fields.firstLanguage || null,
               region_coarse: orNull(fields.region),
             }
@@ -171,6 +172,9 @@ export function ProfilePage() {
         </label>
 
         <h2>{t('profile.aboutVoice')}</h2>
+        <p className="note">
+          {t('profile.speakerCode')} <code>{speaker.speaker_code}</code>
+        </p>
         <label>
           {t('details.dialect')}
           <input
@@ -207,11 +211,17 @@ export function ProfilePage() {
             </label>
             <label>
               {t('profile.gender')}
-              <input
+              <select
                 value={fields.gender}
-                onChange={(e) => set({ gender: e.target.value })}
-                maxLength={60}
-              />
+                onChange={(e) => set({ gender: e.target.value as Gender | '' })}
+              >
+                <option value="">{t('profile.notSaid')}</option>
+                {GENDERS.map((gender) => (
+                  <option key={gender} value={gender}>
+                    {t(`profile.genders.${gender}`)}
+                  </option>
+                ))}
+              </select>
               <small>{t('profile.genderHint')}</small>
             </label>
             <label>

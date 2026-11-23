@@ -41,7 +41,7 @@ def _out(speaker: Speaker, user: AuthenticatedUser, with_consent: set[uuid.UUID]
         demographics_consented=speaker.demographics_consented,
         dialect_label=speaker.dialect_label,
         age_band=speaker.age_band,
-        gender_self_described=speaker.gender_self_described,
+        gender=speaker.gender,
         first_language=speaker.first_language,
         other_languages=speaker.other_languages,
         region_coarse=speaker.region_coarse,

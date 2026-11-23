@@ -45,7 +45,7 @@ class World:
 
 
 def _speaker(
-    db: Session, created_by: uuid.UUID, code: str = "SPK-7Q3M9", **extra: object
+    db: Session, created_by: uuid.UUID, code: str = "SPK_7Q3M9_X", **extra: object
 ) -> Speaker:
     speaker = Speaker(speaker_code=code, created_by=created_by, **extra)
     db.add(speaker)
@@ -178,18 +178,18 @@ def test_a_full_contribution_fits_the_schema(db: Session, world: World) -> None:
 def test_demographics_need_consent(db: Session, world: World) -> None:
     _fails_add(
         db,
-        Speaker(speaker_code="SPK-AAAAA", created_by=world.contributor, age_band="30-44"),
+        Speaker(speaker_code="SPK_AAAAA_X", created_by=world.contributor, age_band="30-44"),
         "demographics_need_consent",
     )
-    _speaker(db, world.contributor, "SPK-BBBBB", age_band="30-44", demographics_consented=True)
+    _speaker(db, world.contributor, "SPK_BBBBB_X", age_band="30-44", demographics_consented=True)
 
 
 def test_speaker_codes_are_pseudonymous_and_fixed(db: Session, world: World) -> None:
     _fails_add(db, Speaker(speaker_code="Asha Munda", created_by=world.contributor), "speaker_code")
     _fails(
         db,
-        update(Speaker).where(Speaker.id == world.speaker.id).values(speaker_code="SPK-ZZZZZ"),
-        "speaker_code on speakers cannot change",
+        update(Speaker).where(Speaker.id == world.speaker.id).values(speaker_code="SPK_ZZZZZ_X"),
+        "the random part of speaker_code cannot change",
     )
 
 
@@ -202,7 +202,7 @@ def test_reporting_role_cannot_read_identities(db: Session) -> None:
 
 
 def test_consent_requires_permission_to_store(db: Session, world: World) -> None:
-    second = _speaker(db, world.contributor, "SPK-CCCCC")
+    second = _speaker(db, world.contributor, "SPK_CCCCC_X")
     with pytest.raises(IntegrityError, match="store_required"):
         _consent(db, second, world.form, world.contributor, allow_store_and_review=False)
     db.rollback()
@@ -215,7 +215,7 @@ def test_one_active_consent_per_speaker(db: Session, world: World) -> None:
 
 
 def test_oral_consent_needs_evidence(db: Session, world: World) -> None:
-    second = _speaker(db, world.contributor, "SPK-DDDDD")
+    second = _speaker(db, world.contributor, "SPK_DDDDD_X")
     with pytest.raises(IntegrityError, match="oral_evidence"):
         _consent(db, second, world.form, world.contributor, method="oral_recorded")
     db.rollback()

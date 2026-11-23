@@ -34,7 +34,7 @@ TEXT = TextVersion(
 )
 
 
-def _item(item_id: str, speaker: str = "SPK-AAAAA", **fields: Any) -> ItemSource:
+def _item(item_id: str, speaker: str = "SPK_AAAAA_X", **fields: Any) -> ItemSource:
     values: dict[str, Any] = {
         "item_id": item_id,
         "language": "unr",
@@ -152,7 +152,7 @@ def _build(items: list[ItemSource]) -> bytes:
 
 
 def test_the_same_release_always_gives_the_same_bytes() -> None:
-    items = [_item("b2"), _item("a1", speaker="SPK-BBBBB", audio=None)]
+    items = [_item("b2"), _item("a1", speaker="SPK_BBBBB_X", audio=None)]
     first = _build(items)
     assert first == _build(list(reversed(items)))
 
@@ -181,7 +181,7 @@ def test_the_same_release_always_gives_the_same_bytes() -> None:
 
     manifest = json.loads(archive.read(root + "manifest.json"))
     assert manifest["item_count"] == 2
-    assert manifest["export_format_version"] == "1.1"
+    assert manifest["export_format_version"] == "1.2"
     assert "manifest.json" not in [f["path"] for f in manifest["files"]]
     items_lines = archive.read(root + "items.jsonl").decode().splitlines()
     assert [json.loads(line)["item_id"] for line in items_lines] == ["a1", "b2"]
@@ -189,17 +189,17 @@ def test_the_same_release_always_gives_the_same_bytes() -> None:
 
 
 def test_the_data_card_counts_items_and_states_its_limitations() -> None:
-    items = [_item("a1"), _item("b2"), _item("c3", speaker="SPK-BBBBB", content_type="song")]
+    items = [_item("a1"), _item("b2"), _item("c3", speaker="SPK_BBBBB_X", content_type="song")]
     records = [package.item_record(item) for item in items]
     stats = package.statistics(records, speaker_share_warning=0.6)
     assert stats["by_content_type"] == {"song": 1, "story": 2}
     assert stats["unverified_texts"] == 6
-    assert stats["speakers_above_share"] == ["SPK-AAAAA"]  # two thirds of the audio
+    assert stats["speakers_above_share"] == ["SPK_AAAAA_X"]  # two thirds of the audio
 
     card = package.data_card_markdown(INFO, stats)
     assert "A test release made of synthetic data." in card
     assert "6 of 6 texts were written by contributors and **not checked by anyone**" in card
-    assert "SPK-AAAAA" in card
+    assert "SPK_AAAAA_X" in card
     assert "| song | 1 |" in card
     assert json.loads(package.data_card_json(INFO, stats))["texts_verified_by_reviewer"] is False
 
@@ -207,6 +207,7 @@ def test_the_data_card_counts_items_and_states_its_limitations() -> None:
 def test_prompted_items_say_what_the_prompt_was() -> None:
     prompt = {
         "id": "p1",
+        "number": 12,
         "key": "img-farming-012",
         "version": 2,
         "type": "image",
@@ -257,7 +258,7 @@ def test_metadata_csv_has_one_row_per_item_for_spreadsheets() -> None:
         uncertainty_markup=False,
         source_revision_id="r1",
     )
-    items = [_item("b2", texts=(TEXT, hindi)), _item("a1", speaker="SPK-BBBBB", audio=None)]
+    items = [_item("b2", texts=(TEXT, hindi)), _item("a1", speaker="SPK_BBBBB_X", audio=None)]
     content = package.metadata_csv([package.item_record(i) for i in items])
     assert content.startswith("﻿".encode())
     rows = list(csv.DictReader(io.StringIO(content.decode("utf-8-sig"))))
@@ -278,20 +279,26 @@ def test_flac_tags_describe_the_item_but_not_the_speaker() -> None:
     record = package.item_record(
         _item(
             "b2",
+            speaker="SPK_AAAAA_F",
             age_band="30-44",
-            speaker_details={"gender": "woman", "region": "Khunti"},
+            speaker_details={"gender": "female", "region": "Khunti"},
             area="Khunti",
+            recording_code="SPK_AAAAA_F_S012_read_2",
         )
     )
+    # items.jsonl may carry the gender letter (internal research, with consent) ...
+    assert record["recording_code"] == "SPK_AAAAA_F_S012_read_2"
     tags = dict(package.flac_comments(record, release_name="pilot 0.1.0", licence=None))
     assert tags["LOKDHARA_ITEM_ID"] == "b2"
-    assert tags["ARTIST"] == tags["SPEAKER_CODE"] == "SPK-AAAAA"
+    # ... the tags inside the audio never do (ADR-034).
+    assert tags["ARTIST"] == tags["SPEAKER_CODE"] == "SPK_AAAAA_X"
+    assert tags["RECORDING_CODE"] == "SPK_AAAAA_X_S012_read_2"
     assert tags["TRANSCRIPTION"] == TEXT.text
     assert tags["TRANSLATION_EN"] == "This is a test sentence."
     assert tags["CONSENT"] == "research"
     assert tags["LICENSE"] == package.DEFAULT_LICENCE
     assert "PROMPT_KEY" not in tags  # empty values are left out
-    assert not {"30-44", "woman", "Khunti"} & set(tags.values())
+    assert not {"30-44", "female", "Khunti"} & set(tags.values())
 
 
 def test_topics_go_into_the_record_the_spreadsheet_the_tags_and_the_data_card() -> None:

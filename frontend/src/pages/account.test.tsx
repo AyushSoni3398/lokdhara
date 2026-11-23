@@ -76,6 +76,7 @@ describe('profile', () => {
     await userEvent.type(await screen.findByLabelText(/^Phone number/), '9000000000')
     await userEvent.type(screen.getByLabelText(/Dialect/), 'Hasada')
     await userEvent.selectOptions(screen.getByLabelText('Age group'), '18-29')
+    await userEvent.selectOptions(screen.getByLabelText(/^Gender/), 'female')
     await userEvent.selectOptions(screen.getByLabelText('First language'), 'unr')
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
 
@@ -89,7 +90,7 @@ describe('profile', () => {
     expect(requests.find((r) => r.method === 'PATCH')?.body).toEqual({
       dialect_label: 'Hasada',
       age_band: '18-29',
-      gender_self_described: null,
+      gender: 'female',
       first_language: 'unr',
       region_coarse: null,
     })

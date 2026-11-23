@@ -152,6 +152,10 @@ def test_editing_creates_a_new_draft_version(
     second = edited.json()
     assert (second["version"], second["status"]) == (2, "draft")
     assert second["topic_tags"] == ["farming"]  # copied from version 1
+    # A new version keeps the sentence number; a new prompt gets the next one (ADR-034).
+    assert second["prompt_number"] == first["prompt_number"]
+    other = _approved(client, _situation("farm-evening"))
+    assert other["prompt_number"] == first["prompt_number"] + 1
     original = db.get(Prompt, uuid.UUID(first["id"]))
     assert original is not None and original.text == "Describe a morning in the fields."
 

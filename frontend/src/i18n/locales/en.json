@@ -180,6 +180,7 @@
   "kinds": {
     "audio": "Audio",
     "text": "Text",
+    "listen": "Write what you hear",
     "audio_text": "Audio and text"
   },
   "modes": {
@@ -384,6 +385,7 @@
     "back": "← My submissions",
     "sentOn": "Sent on {{date}}",
     "recording": "Recording",
+    "recordingCode": "Recording code:",
     "notReadyToPlay": "The recording is still being prepared for listening.",
     "notPlayable": "This recording cannot be played.",
     "download": "Download",
@@ -705,6 +707,7 @@
     "contactHint": "Only used to contact you about your recordings.",
     "village": "Village or town (optional)",
     "aboutVoice": "About your speech",
+    "speakerCode": "Your speaker code:",
     "reusedHint": "Filled in for each new recording; you can change it there.",
     "ageBand": "Age group",
     "ages": {
@@ -716,7 +719,13 @@
       "undisclosed": "Prefer not to say"
     },
     "gender": "Gender (optional)",
-    "genderHint": "In your own words.",
+    "genders": {
+      "female": "Female",
+      "male": "Male",
+      "other": "Other",
+      "undisclosed": "Prefer not to say"
+    },
+    "genderHint": "Its first letter (F, M or O) ends your speaker code. Leave it empty or choose \"Prefer not to say\" and the code ends in X.",
     "firstLanguage": "First language",
     "languages": {
       "unr": "Mundari",
@@ -758,5 +767,17 @@
     "reviewer": "Reviewer",
     "researcher": "Researcher",
     "admin": "Admin"
+  },
+  "listen": {
+    "title": "Write what you hear",
+    "intro": "Listen to someone speaking Mundari and write what they say in Devanagari. Play it as many times as you like. The Hindi and English translations are optional.",
+    "player": "Recording to write down",
+    "transcription": "What you hear, in Devanagari",
+    "save": "Save and next",
+    "skip": "Skip this one",
+    "saved_one": "Saved {{count}} recording. Thank you!",
+    "saved_other": "Saved {{count}} recordings. Thank you!",
+    "none": "There is nothing to write down right now. Please come back later.",
+    "done": "Finish"
   }
 }

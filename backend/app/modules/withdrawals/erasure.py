@@ -104,7 +104,7 @@ def _evidence_keys(db: Session, speaker_id: uuid.UUID) -> list[str]:
 
 def _erase_speaker(db: Session, speaker: Speaker) -> None:
     db.execute(delete(SpeakerIdentity).where(SpeakerIdentity.speaker_id == speaker.id))
-    speakers.set_demographics_consent(speaker, False)
+    speakers.set_demographics_consent(db, speaker, False)
     db.execute(
         update(ConsentRecord).where(ConsentRecord.speaker_id == speaker.id).values(notes=None)
     )
