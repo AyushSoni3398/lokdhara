@@ -39,8 +39,8 @@ Roles are additive. Role grants/revocations are audit-logged.
 | Hide / show / dismiss reports | ❌ | ❌ | ❌ | ❌ | ✅ (excl. own) |
 | Add reviewer revision | ❌ | ❌ | ✅ | ❌ | ✅ |
 | Play playback rendition | 🟡 own | 🟡 own + created | ✅ in queue/restricted per scope | ✅ approved + consent allows research | ✅ |
-| Listen to someone else's recording to write it down (ADR-035): accepted free or prompted speech, not yet written in Devanagari, not their own, never restricted, speaker allowed public access | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Add the first Devanagari transcription (and Hindi / English translations) to such a recording | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Listen to someone else's recording to write it down (ADR-035): accepted free or prompted speech, not yet written down (Devanagari or Mundari Bani), not their own, never restricted, speaker allowed public access | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Add the first transcription (Mundari Bani or Devanagari) (and Hindi / English translations) to such a recording | ✅ | ✅ | ✅ | ❌ | ✅ |
 | Download listening copy (one, or all as a zip; ADR-026) | 🟡 sent by them, not hidden | 🟡 sent by them, not hidden | 🟡 sent by them, not hidden | ❌ | 🟡 sent by them, not hidden |
 | Download original audio | ❌ | ❌ | ❌ | ❌ | ✅ (audited, reason required; in the full archive, ADR-027) |
 | Download the full archive (all data unfiltered, names included; ADR-027) | ❌ | ❌ | ❌ | ❌ | ✅ (audited, reason required) |
