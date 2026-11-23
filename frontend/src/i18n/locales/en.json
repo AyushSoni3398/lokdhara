@@ -770,9 +770,10 @@
   },
   "listen": {
     "title": "Write what you hear",
-    "intro": "Listen to someone speaking Mundari and write what they say in Devanagari. Play it as many times as you like. The Hindi and English translations are optional.",
+    "intro": "Listen to someone speaking Mundari and write what they say in Mundari Bani or Devanagari. Play it as many times as you like. The Hindi and English translations are optional.",
     "player": "Recording to write down",
-    "transcription": "What you hear, in Devanagari",
+    "transcription": "What you hear",
+    "script": "Write in",
     "save": "Save and next",
     "skip": "Skip this one",
     "saved_one": "Saved {{count}} recording. Thank you!",

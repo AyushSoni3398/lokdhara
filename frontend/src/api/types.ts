@@ -209,6 +209,7 @@ export interface Clip extends Playback {
 
 export interface ClipText {
   transcription: string
+  script?: 'Deva' | 'Nagm'
   translation_hi?: string
   translation_en?: string
 }
