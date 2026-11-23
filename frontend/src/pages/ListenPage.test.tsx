@@ -38,8 +38,11 @@ describe("listen and write", () => {
     ).toBeInTheDocument();
     const save = screen.getByRole("button", { name: "Save and next" });
     expect(save).toBeDisabled(); // what you hear is required
+    // Mundari Bani is offered first; this listener writes in Devanagari.
+    expect(screen.getByRole("radio", { name: /Mundari Bani/ })).toBeChecked();
+    await userEvent.click(screen.getByRole("radio", { name: "Devanagari" }));
     await userEvent.type(
-      screen.getByLabelText("What you hear, in Devanagari"),
+      screen.getByLabelText("What you hear"),
       "एनेम",
     );
     await userEvent.type(
@@ -52,6 +55,7 @@ describe("listen and write", () => {
     expect(screen.getByText(/nothing to write down/)).toBeInTheDocument();
     expect(requests.find((r) => r.method === "POST")?.body).toEqual({
       transcription: "एनेम",
+      script: "Deva",
       translation_en: "Name",
     });
   });

@@ -276,9 +276,10 @@ class ClipOut(BaseModel):
 
 
 class ClipTextRequest(BaseModel):
-    """What the listener heard, in Devanagari, and optional translations."""
+    """What the listener heard, in Devanagari or Mundari Bani, and optional translations."""
 
     transcription: TextContent
+    script: Literal["Deva", "Nagm"] = "Deva"
     translation_hi: TextContent | None = None
     translation_en: TextContent | None = None
 

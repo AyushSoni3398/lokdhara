@@ -4,16 +4,20 @@ import { Link } from "react-router";
 
 import { ApiError } from "../api/client";
 import * as api from "../api/endpoints";
-import type { Clip } from "../api/types";
+import type { Clip, Script } from "../api/types";
+import { Choice } from "../components/Choice";
 import { ErrorMessage } from "../components/ErrorMessage";
 import { KeyboardTextarea } from "../keyboard/KeyboardTextarea";
 import { ScriptWarning } from "../text/ScriptWarning";
 
 const EMPTY = { transcription: "", hi: "", en: "" };
+// Mundari Bani first: most listeners write in it. Devanagari stays available.
+const SCRIPTS = ["Nagm", "Deva"] as const satisfies Script[];
+type WriteScript = (typeof SCRIPTS)[number];
 
 /**
  * Listen and write (ADR-035): play someone else's recording and write what is said in
- * Devanagari, with optional Hindi and English translations. Saving or skipping brings the next.
+ * Mundari Bani or Devanagari, with optional Hindi and English translations. Saving or skipping brings the next.
  */
 export function ListenPage() {
   const { t } = useTranslation();
@@ -21,6 +25,7 @@ export function ListenPage() {
   const [none, setNone] = useState(false);
   const [skipped, setSkipped] = useState<string[]>([]);
   const [text, setText] = useState(EMPTY);
+  const [script, setScript] = useState<WriteScript>("Nagm");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(0);
   const [error, setError] = useState<unknown>(null);
@@ -70,6 +75,7 @@ export function ListenPage() {
     try {
       await api.writeClip(clip.recording_id, {
         transcription: text.transcription,
+        script,
         ...(text.hi.trim() ? { translation_hi: text.hi } : {}),
         ...(text.en.trim() ? { translation_en: text.en } : {}),
       });
@@ -112,17 +118,27 @@ export function ListenPage() {
               />
             ))}
           </audio>
+          <Choice
+            name="script"
+            legend={t("listen.script")}
+            options={SCRIPTS.map((value) => ({
+              value,
+              label: t(`scripts.${value}`),
+            }))}
+            value={script}
+            onChange={setScript}
+          />
           <KeyboardTextarea
             label={t("listen.transcription")}
             rows={4}
-            lang="unr"
+            lang={script === "Nagm" ? "unr-Nagm" : "unr"}
             spellCheck={false}
             required
             value={text.transcription}
             onValue={(transcription) => setText({ ...text, transcription })}
-            script="Deva"
+            script={script}
           />
-          <ScriptWarning text={text.transcription} script="Deva" />
+          <ScriptWarning text={text.transcription} script={script} />
           <KeyboardTextarea
             label={t("text.translation.hi")}
             rows={2}
