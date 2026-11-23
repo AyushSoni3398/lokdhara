@@ -22,6 +22,8 @@ from tests.submission_helpers import SUBMISSIONS, create_draft, give_consent, ow
 pytestmark = [requires_postgres, requires_ffmpeg]
 NEXT = "/api/v1/clips/next"
 HEARD = "एनेम सेनोः तना"
+# "Nag Mundari" letters (U+1E4D0 block), as the Mundari Bani keyboard types them.
+NAG_MUNDARI = "\U0001e4d0\U0001e4d1\U0001e4d2 \U0001e4d3\U0001e4d4"
 
 
 @pytest.fixture(autouse=True)
@@ -124,7 +126,7 @@ def test_a_listener_gets_someone_elses_clip_and_writes_it_down(
     ] == [HEARD]
 
 
-def test_only_devanagari_is_taken_and_translations_need_their_script(
+def test_transcription_is_devanagari_or_mundari_bani_and_translations_need_their_script(
     client: TestClient, db: Session, engine: Engine, tmp_path: Path, asha: TestUser, ravi: TestUser
 ) -> None:
     act_as(client, asha)
@@ -132,13 +134,25 @@ def test_only_devanagari_is_taken_and_translations_need_their_script(
     act_as(client, ravi)
     url = f"/api/v1/clips/{clip_id}/text"
     latin = client.post(url, json={"transcription": "enem seno tana"})
-    assert (latin.status_code, latin.json()["code"]) == (422, "not_devanagari")
+    assert (latin.status_code, latin.json()["code"]) == (422, "wrong_script")
+    # Devanagari text sent as Mundari Bani is refused too.
+    mixed_up = client.post(url, json={"transcription": HEARD, "script": "Nagm"})
+    assert (mixed_up.status_code, mixed_up.json()["code"]) == (422, "wrong_script")
+    roman = client.post(url, json={"transcription": "enem", "script": "Latn"})
+    assert roman.status_code == 422
     english = client.post(url, json={"transcription": HEARD, "translation_en": "मेरा नाम"})
     assert english.json()["code"] == "translation_en_script"
-    assert (
-        client.post(url, json={"transcription": HEARD, "translation_en": "My name"}).status_code
-        == 201
+
+    saved = client.post(
+        url,
+        json={"transcription": NAG_MUNDARI, "script": "Nagm", "translation_en": "My name"},
     )
+    assert saved.status_code == 201
+    layer = db.get_one(TextLayer, uuid.UUID(saved.json()["transcription_layer_id"]))
+    assert (layer.script_code, layer.language_tag) == ("Nagm", "unr")
+    # One transcription in either script is enough: the clip is no longer handed out.
+    again = client.post(url, json={"transcription": HEARD})
+    assert (again.status_code, again.json()["code"]) == (409, "already_transcribed")
 
 
 def test_clips_follow_consent_restrictions_mode_and_skips(

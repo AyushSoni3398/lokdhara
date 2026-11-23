@@ -312,6 +312,7 @@ def write_clip(
         user=user,
         recording_id=recording_id,
         transcription=body.transcription,
+        script=body.script,
         translations=translations,
     )
     return ClipTextOut(transcription_layer_id=layer.id)

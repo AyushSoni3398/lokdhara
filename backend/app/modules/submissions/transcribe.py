@@ -1,9 +1,10 @@
 """Listen and write (ADR-035): contributors hear someone else's recording and write what is
-said in Devanagari, with optional Hindi and English translations.
+said in Devanagari or Mundari Bani (Nag Mundari), with optional Hindi and English translations.
 
-A clip is handed out while it has no Devanagari transcription. It is accepted free or prompted
-speech (read speech already has the sentence that was read), never the listener's own voice,
-and only what the speaker allowed to be public (consents.access.transcription_filter).
+A clip is handed out while it has no transcription in either of those scripts. It is accepted
+free or prompted speech (read speech already has the sentence that was read), never the
+listener's own voice, and only what the speaker allowed to be public
+(consents.access.transcription_filter).
 The text is saved as a transcription layer of that recording, origin `human_contributor`,
 author the listener, unverified, like any other contributed text.
 """
@@ -23,7 +24,8 @@ from app.modules.submissions import service, text_layers
 from app.modules.submissions.models import Recording, Rendition, Submission, TextLayer
 from app.text import scripts
 
-SCRIPT = "Deva"
+# Scripts the listener may write in; one transcription in either is enough.
+SCRIPTS = ("Deva", "Nagm")
 LANGUAGE = "unr"
 MODES = ("free", "prompted")
 # Translations people may add, with the script each is written in.
@@ -48,7 +50,7 @@ def _open(user: AuthenticatedUser) -> Select[Recording, Submission]:
     transcribed = exists().where(
         TextLayer.recording_id == Recording.id,
         TextLayer.layer_type == "transcription",
-        TextLayer.script_code == SCRIPT,
+        TextLayer.script_code.in_(SCRIPTS),
     )
     playable = exists().where(
         Rendition.recording_id == Recording.id,
@@ -107,6 +109,7 @@ def save(
     user: AuthenticatedUser,
     recording_id: uuid.UUID,
     transcription: str,
+    script: str = "Deva",
     translations: dict[str, str],
 ) -> TextLayer:
     """Saves what the listener wrote. 409 `already_transcribed` when someone else was faster."""
@@ -122,13 +125,15 @@ def save(
             select(TextLayer.id).where(
                 TextLayer.recording_id == recording_id,
                 TextLayer.layer_type == "transcription",
-                TextLayer.script_code == SCRIPT,
+                TextLayer.script_code.in_(SCRIPTS),
             )
         )
         if transcribed is not None:
             raise ApiError(409, "already_transcribed", "Someone has just written this one down.")
         raise ApiError(404, "clip_not_found", "This recording cannot be written down.")
-    _script_checked(transcription, SCRIPT, "not_devanagari")
+    if script not in SCRIPTS:
+        raise ApiError(422, "wrong_script", "Write in Devanagari or Mundari Bani.")
+    _script_checked(transcription, script, "wrong_script")
     for language, text in translations.items():
         _script_checked(text, TRANSLATIONS[language], f"translation_{language}_script")
 
@@ -140,7 +145,7 @@ def save(
         layer_type="transcription",
         recording_id=recording.id,
         language_tag=LANGUAGE,
-        script_code=SCRIPT,
+        script_code=script,
         content=transcription,
     )
     for language, text in sorted(translations.items()):
