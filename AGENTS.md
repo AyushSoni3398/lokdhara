@@ -44,6 +44,7 @@ docker compose -f infra/docker-compose.yml up -d db     # PostgreSQL 18 (local o
 cd backend && uv sync                                   # Python 3.13 deps
 uv run alembic upgrade head                             # apply migrations
 uv run python -m app.cli seed-dev                       # synthetic users (prints passwords)
+uv run python -m app.cli load-prompts --as asha          # prompt texts + pictures from content/prompts
 uv run python -m app.cli create-admin --username …       # first real admin
 uv run uvicorn app.main:app --reload                    # API :8000 (docs /api/docs)
 uv run python -m app.worker                             # worker

@@ -37,6 +37,8 @@ This prints a username and password for each test account. Save them somewhere s
 
 A line saying `unknown PostgreSQL timezone` is harmless.
 
+`seed-dev` also loads the prompt texts and pictures from `backend/content/prompts/` into the database (ADR-036). Run it again after an update that adds prompts: it only adds the new ones and keeps the accounts.
+
 ## 4. Open the app
 
 Go to <http://localhost:8080> in Chrome or Edge on the same computer, sign in, and record with the laptop's microphone. After **Save and upload**, open **My submissions** and reload after a few seconds: the status moves from "Being checked" to "Waiting for review" once the worker has finished its checks.

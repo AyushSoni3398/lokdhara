@@ -123,14 +123,14 @@ Topics (ADR-030) start with 23 provisional ones from migration `0018` (Q-X5). Ev
 
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| GET | `/prompts/next?type=image|situation|read_sentence&script=Deva&exclude=…` | contributor | One approved prompt (random, balanced by topic), skipping ones already shown |
+| GET | `/prompts/next?type=image|situation|read_sentence&script=Deva&exclude=…` | contributor | One approved prompt the person has not been shown before (random, balanced by topic; ADR-036) |
 | GET | `/prompts/{id}` | contributor | Prompt text, image/audio signed URLs |
 | GET | `/admin/prompts?status=` | reviewer/admin | Prompt library |
 | POST | `/admin/prompts` | reviewer/admin 🔒 | Create draft prompt (multipart for image/audio) |
 | POST | `/admin/prompts/{id}/approve` · `/retire` | admin 🔒 | Status change |
 | POST | `/admin/prompts/{id}/versions` | reviewer/admin 🔒 | Edit = new version |
 
-Implemented in Milestone 3. Library entries carry `prompt_number`, the sentence number in recording codes, kept by every version of a prompt key (ADR-034). `POST /admin/prompts` and `/versions` are multipart: the prompt as JSON in field `prompt`, an `image` file (PNG, JPEG, or WebP; image prompts only) and an optional spoken version as `audio`. `GET /prompts/next` takes `type`, optional `script`, and repeated `exclude` IDs; it picks a topic at random first, then a prompt within it. Approving a version retires the previously approved version of the same prompt key. Media URLs are signed and expire with `LKD_SIGNED_URL_TTL_SECONDS`. Error codes: `prompt_not_found` (404), `no_prompt_available` (404), `prompt_key_taken` (409), `prompt_not_draft` / `prompt_retired` (409), `image_mismatch` / `prompt_invalid` (422), `image_unsupported` / `audio_unsupported` (422), `image_too_large` / `audio_too_large` (413).
+Implemented in Milestone 3. Library entries carry `prompt_number`, the sentence number in recording codes, kept by every version of a prompt key (ADR-034). `POST /admin/prompts` and `/versions` are multipart: the prompt as JSON in field `prompt`, an `image` file (PNG, JPEG, or WebP; image prompts only) and an optional spoken version as `audio`. `GET /prompts/next` takes `type`, optional `script`, and repeated `exclude` IDs (the prompts shown on this page, newest last); it picks a topic at random first, then a prompt within it, from the prompts this person has never been shown (`prompt_views`, by prompt key, ADR-036). When they have seen them all it starts again, skips the last ID in `exclude` if there is another, and returns `started_again: true`. Prompts carry optional `translation_hi` and `translation_en` (what they mean); both are accepted on create and new versions. `no_prompt_available` now means there are no approved prompts of that kind at all. Approving a version retires the previously approved version of the same prompt key. Media URLs are signed and expire with `LKD_SIGNED_URL_TTL_SECONDS`. Error codes: `prompt_not_found` (404), `no_prompt_available` (404), `prompt_key_taken` (409), `prompt_not_draft` / `prompt_retired` (409), `image_mismatch` / `prompt_invalid` (422), `image_unsupported` / `audio_unsupported` (422), `image_too_large` / `audio_too_large` (413).
 
 ## 5. Recordings and playback
 

@@ -37,7 +37,7 @@ flowchart TD
     O --> M
 ```
 
-- Prompts can be **skipped** ("show another") without penalty.
+- Prompts can be **skipped** ("show another") without penalty. The server remembers which prompts each person has been shown, so none comes back, on any visit or phone, until they have seen every prompt of that kind; then the app says so and starts again (ADR-036).
 - Situation prompts can be played as audio for non-literate speakers (prompt audio recorded by the team, stored in `derived/prompts/`, not community data).
 - In read mode the reader may misread or change words; the reviewer either verifies the reference text or creates a corrected revision. A reading is never assumed to match the sentence exactly.
 
@@ -72,3 +72,10 @@ See [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) for columns.
 - Q-X5: topics and initial prompt sets (linguist + community).
 - Q-X6: source of the read-sentence bank and its licence (new).
 - Q-G7: who approves images and situation prompts for cultural appropriateness (new).
+- Q-G17: checking the ten draft Mundari texts and the ten drawn pictures added on 2026-11-25.
+
+## 5. Where prompts are kept (ADR-036)
+
+- **Source files** (edited by the team, in the repository): `backend/content/prompts/prompts.json` and the pictures in `backend/content/prompts/images/`.
+- **Database** (what the app actually uses): `python -m app.cli load-prompts --as <admin or reviewer>` copies each prompt into the `prompts` table and each picture into object storage (`derived` bucket, `prompts/…`), keeping the picture's key on the row. `seed-dev` does the same, approved, for development and the demo.
+- Prompts added through the admin API go straight to the database and object storage; the files are only the starting set.

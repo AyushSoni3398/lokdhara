@@ -238,6 +238,7 @@ Search indexes: GIN `to_tsvector('simple', content_nfc)`, GIN `content_nfc gin_t
 | text | text NULL | Instruction/situation text, or the sentence to read. |
 | text_language_tag | text NULL | `hi`, `unr`, … |
 | script_code | text NULL | Required for `read_sentence`. |
+| translation_hi, translation_en | text NULL | What the prompt means, shown under it (migration `0021`, ADR-036). |
 | image_object_key | text NULL | Required for `image`; stored in `derived/prompts/`. |
 | prompt_audio_object_key | text NULL | Optional spoken version for non-literate speakers. |
 | source_and_licence | text NOT NULL | Who made it and under what licence. |
@@ -245,6 +246,15 @@ Search indexes: GIN `to_tsvector('simple', content_nfc)`, GIN `content_nfc gin_t
 | status 🔎 | text CHECK IN ('draft','approved','retired') | Only `status` and `approved_by` change after insert; approved or retired prompts need `approved_by` (for a draft retired without approval, the admin who retired it). At most one approved version per `prompt_key`: approving a new version retires the old one. |
 | approved_by | uuid FK users NULL | |
 | created_by, created_at | | |
+
+### `prompt_views` (migration `0021`, ADR-036)
+| Column | Type | Notes |
+|--------|------|-------|
+| user_id | uuid FK users ON DELETE CASCADE | PK with `prompt_key`. |
+| prompt_key | text | The prompt shown, any version. |
+| first_shown_at | timestamptz | |
+
+Which prompts each person has been shown, so "show another" never repeats one. A person's rows for one kind of prompt are deleted when they have seen them all and the app starts again.
 
 ### `topics` (migration `0018`, ADR-030)
 | Column | Type | Notes |
