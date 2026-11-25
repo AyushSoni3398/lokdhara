@@ -1,9 +1,10 @@
-"""docs/DATABASE_SCHEMA.md §3 (prompts) and docs/RECORDING_MODES.md. Created by migration 0005."""
+"""docs/DATABASE_SCHEMA.md §3 (prompts) and docs/RECORDING_MODES.md. Created by migration 0005;
+prompt_views by migration 0021."""
 
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ARRAY, Integer, Text, text
+from sqlalchemy import ARRAY, ForeignKey, Integer, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -26,6 +27,9 @@ class Prompt(Base):
     text: Mapped[str | None] = mapped_column(Text)
     text_language_tag: Mapped[str | None] = mapped_column(Text)
     script_code: Mapped[str | None] = mapped_column(Text)
+    # What the prompt means, shown under it (migration 0021, ADR-036).
+    translation_hi: Mapped[str | None] = mapped_column(Text)
+    translation_en: Mapped[str | None] = mapped_column(Text)
     image_object_key: Mapped[str | None] = mapped_column(Text)
     prompt_audio_object_key: Mapped[str | None] = mapped_column(Text)
     source_and_licence: Mapped[str] = mapped_column(Text)
@@ -34,3 +38,14 @@ class Prompt(Base):
     approved_by: Mapped[uuid.UUID | None] = optional_fk("users.id")
     created_by: Mapped[uuid.UUID] = fk("users.id")
     created_at: Mapped[datetime] = now_default()
+
+
+class PromptView(Base):
+    """A prompt the app has shown to one person, so "show another" does not repeat it
+    (ADR-036). Kept per prompt key, so a new version of a seen prompt still counts as seen."""
+
+    __tablename__ = "prompt_views"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    prompt_key: Mapped[str] = mapped_column(Text, primary_key=True)
+    first_shown_at: Mapped[datetime] = now_default()
