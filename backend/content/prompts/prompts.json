@@ -1,0 +1,373 @@
+{
+  "about": "Lokdhara prompt library: read-speech texts and prompt pictures. `python -m app.cli load-prompts` copies them into the database (pictures go to object storage). Edit this file, not the code.",
+  "prompts": [
+    {
+      "prompt_key": "read-unr-deva-01-johar",
+      "prompt_type": "read_sentence",
+      "text": "जोहार! आइञ मुंडारी काजिताना।",
+      "text_language_tag": "unr",
+      "script_code": "Deva",
+      "translation_hi": "जोहार! मैं मुंडारी बोल रहा/रही हूँ।",
+      "translation_en": "Johar! I am speaking Mundari.",
+      "source_and_licence": "Written for Lokdhara by the project team (2026); Mundari not yet checked by a native speaker; CC BY 4.0",
+      "topic_tags": [
+        "daily_life"
+      ],
+      "note": "Draft Mundari: a native speaker must check spelling and grammar before real collection."
+    },
+    {
+      "prompt_key": "read-unr-deva-02-mother-cooks",
+      "prompt_type": "read_sentence",
+      "text": "एङगा मंडी इसिनताना।",
+      "text_language_tag": "unr",
+      "script_code": "Deva",
+      "translation_hi": "माँ भात पका रही है।",
+      "translation_en": "Mother is cooking rice.",
+      "source_and_licence": "Written for Lokdhara by the project team (2026); Mundari not yet checked by a native speaker; CC BY 4.0",
+      "topic_tags": [
+        "food_and_cooking",
+        "family_and_relations"
+      ],
+      "note": "Draft Mundari: a native speaker must check spelling and grammar before real collection."
+    },
+    {
+      "prompt_key": "read-unr-deva-03-rain",
+      "prompt_type": "read_sentence",
+      "text": "हातुरे जारगी हिजुताना।",
+      "text_language_tag": "unr",
+      "script_code": "Deva",
+      "translation_hi": "गाँव में बारिश आ रही है।",
+      "translation_en": "Rain is coming to the village.",
+      "source_and_licence": "Written for Lokdhara by the project team (2026); Mundari not yet checked by a native speaker; CC BY 4.0",
+      "topic_tags": [
+        "water_and_weather"
+      ],
+      "note": "Draft Mundari: a native speaker must check spelling and grammar before real collection."
+    },
+    {
+      "prompt_key": "read-unr-deva-04-sal-flowers",
+      "prompt_type": "read_sentence",
+      "text": "सारजोम दारुरे बा मेनाअ।",
+      "text_language_tag": "unr",
+      "script_code": "Deva",
+      "translation_hi": "साल के पेड़ पर फूल हैं।",
+      "translation_en": "There are flowers on the sal tree.",
+      "source_and_licence": "Written for Lokdhara by the project team (2026); Mundari not yet checked by a native speaker; CC BY 4.0",
+      "topic_tags": [
+        "forest_and_nature"
+      ],
+      "note": "Draft Mundari: a native speaker must check spelling and grammar before real collection."
+    },
+    {
+      "prompt_key": "read-unr-deva-05-river-water",
+      "prompt_type": "read_sentence",
+      "text": "गड़ारे दाअ मेनाअ।",
+      "text_language_tag": "unr",
+      "script_code": "Deva",
+      "translation_hi": "नदी में पानी है।",
+      "translation_en": "There is water in the river.",
+      "source_and_licence": "Written for Lokdhara by the project team (2026); Mundari not yet checked by a native speaker; CC BY 4.0",
+      "topic_tags": [
+        "water_and_weather"
+      ],
+      "note": "Draft Mundari: a native speaker must check spelling and grammar before real collection."
+    },
+    {
+      "prompt_key": "read-unr-deva-06-sowing",
+      "prompt_type": "read_sentence",
+      "text": "होड़ोको लोयोंगरे बाबा हेरेताना।",
+      "text_language_tag": "unr",
+      "script_code": "Deva",
+      "translation_hi": "लोग खेत में धान बो रहे हैं।",
+      "translation_en": "People are sowing paddy in the field.",
+      "source_and_licence": "Written for Lokdhara by the project team (2026); Mundari not yet checked by a native speaker; CC BY 4.0",
+      "topic_tags": [
+        "agriculture"
+      ],
+      "note": "Draft Mundari: a native speaker must check spelling and grammar before real collection."
+    },
+    {
+      "prompt_key": "read-unr-deva-07-market",
+      "prompt_type": "read_sentence",
+      "text": "आपु हाटते सेनोताना।",
+      "text_language_tag": "unr",
+      "script_code": "Deva",
+      "translation_hi": "पिताजी हाट जा रहे हैं।",
+      "translation_en": "Father is going to the weekly market.",
+      "source_and_licence": "Written for Lokdhara by the project team (2026); Mundari not yet checked by a native speaker; CC BY 4.0",
+      "topic_tags": [
+        "market_and_money",
+        "family_and_relations"
+      ],
+      "note": "Draft Mundari: a native speaker must check spelling and grammar before real collection."
+    },
+    {
+      "prompt_key": "read-unr-deva-08-cattle",
+      "prompt_type": "read_sentence",
+      "text": "होनको गाईको गुपिताना।",
+      "text_language_tag": "unr",
+      "script_code": "Deva",
+      "translation_hi": "बच्चे गायें चरा रहे हैं।",
+      "translation_en": "The children are grazing the cows.",
+      "source_and_licence": "Written for Lokdhara by the project team (2026); Mundari not yet checked by a native speaker; CC BY 4.0",
+      "topic_tags": [
+        "animals_and_livestock"
+      ],
+      "note": "Draft Mundari: a native speaker must check spelling and grammar before real collection."
+    },
+    {
+      "prompt_key": "read-unr-deva-09-ba-parob",
+      "prompt_type": "read_sentence",
+      "text": "बा परोबरे आबु दुरङआ ओंडो सुसुनआ।",
+      "text_language_tag": "unr",
+      "script_code": "Deva",
+      "translation_hi": "बा परब (सरहुल) में हम गाएँगे और नाचेंगे।",
+      "translation_en": "At Ba Parob (Sarhul) we will sing and dance.",
+      "source_and_licence": "Written for Lokdhara by the project team (2026); Mundari not yet checked by a native speaker; CC BY 4.0",
+      "topic_tags": [
+        "festivals_and_rituals",
+        "music_and_dance"
+      ],
+      "note": "Draft Mundari: a native speaker must check spelling and grammar before real collection."
+    },
+    {
+      "prompt_key": "read-unr-deva-10-mandar",
+      "prompt_type": "read_sentence",
+      "text": "अखड़ारे दुमाङ रुताना।",
+      "text_language_tag": "unr",
+      "script_code": "Deva",
+      "translation_hi": "अखड़ा में मांदर बज रहा है।",
+      "translation_en": "The mandar drum is being played in the akhra.",
+      "source_and_licence": "Written for Lokdhara by the project team (2026); Mundari not yet checked by a native speaker; CC BY 4.0",
+      "topic_tags": [
+        "music_and_dance"
+      ],
+      "note": "Draft Mundari: a native speaker must check spelling and grammar before real collection."
+    },
+    {
+      "prompt_key": "image-village-house",
+      "prompt_type": "image",
+      "image": "images/village-house.webp",
+      "text": "यह घर और आँगन देखिए। आपके घर और आँगन में क्या-क्या होता है?",
+      "text_language_tag": "hi",
+      "script_code": "Deva",
+      "translation_en": "Look at this house and courtyard. What is there in your home and courtyard?",
+      "source_and_licence": "Original drawing made for Lokdhara by the project team (2026); no people shown; CC BY 4.0",
+      "topic_tags": [
+        "daily_life"
+      ]
+    },
+    {
+      "prompt_key": "image-paddy-field",
+      "prompt_type": "image",
+      "image": "images/paddy-field.webp",
+      "text": "इस धान के खेत के बारे में बताइए। धान कब और कैसे लगाते हैं?",
+      "text_language_tag": "hi",
+      "script_code": "Deva",
+      "translation_en": "Talk about this paddy field. When and how is paddy planted?",
+      "source_and_licence": "Original drawing made for Lokdhara by the project team (2026); no people shown; CC BY 4.0",
+      "topic_tags": [
+        "agriculture"
+      ]
+    },
+    {
+      "prompt_key": "image-sal-flowers",
+      "prompt_type": "image",
+      "image": "images/sal-flowers.webp",
+      "text": "साल के पेड़ों पर फूल आए हैं। इस मौसम में गाँव में क्या होता है?",
+      "text_language_tag": "hi",
+      "script_code": "Deva",
+      "translation_en": "The sal trees are in flower. What happens in the village in this season?",
+      "source_and_licence": "Original drawing made for Lokdhara by the project team (2026); no people shown; CC BY 4.0",
+      "topic_tags": [
+        "forest_and_nature",
+        "festivals_and_rituals"
+      ]
+    },
+    {
+      "prompt_key": "image-river-stones",
+      "prompt_type": "image",
+      "image": "images/river-stones.webp",
+      "text": "इस नदी को देखिए। नदी में मछली कैसे पकड़ते हैं?",
+      "text_language_tag": "hi",
+      "script_code": "Deva",
+      "translation_en": "Look at this river. How do people catch fish in the river?",
+      "source_and_licence": "Original drawing made for Lokdhara by the project team (2026); no people shown; CC BY 4.0",
+      "topic_tags": [
+        "water_and_weather",
+        "work_and_crafts"
+      ]
+    },
+    {
+      "prompt_key": "image-weekly-market",
+      "prompt_type": "image",
+      "image": "images/weekly-market.webp",
+      "text": "यह हाट है। हाट में क्या-क्या मिलता है और आप क्या खरीदते हैं?",
+      "text_language_tag": "hi",
+      "script_code": "Deva",
+      "translation_en": "This is a weekly market. What is sold there and what do you buy?",
+      "source_and_licence": "Original drawing made for Lokdhara by the project team (2026); no people shown; CC BY 4.0",
+      "topic_tags": [
+        "market_and_money"
+      ]
+    },
+    {
+      "prompt_key": "image-clay-stove",
+      "prompt_type": "image",
+      "image": "images/clay-stove.webp",
+      "text": "इस चूल्हे पर क्या पक रहा होगा? अपने घर का कोई खाना बनाने का तरीका बताइए।",
+      "text_language_tag": "hi",
+      "script_code": "Deva",
+      "translation_en": "What might be cooking on this stove? Describe how a dish from your home is made.",
+      "source_and_licence": "Original drawing made for Lokdhara by the project team (2026); no people shown; CC BY 4.0",
+      "topic_tags": [
+        "food_and_cooking"
+      ]
+    },
+    {
+      "prompt_key": "image-festival-drums",
+      "prompt_type": "image",
+      "image": "images/festival-drums.webp",
+      "text": "अखड़ा में मांदर और नगाड़ा रखे हैं। त्योहार में यहाँ क्या होता है?",
+      "text_language_tag": "hi",
+      "script_code": "Deva",
+      "translation_en": "A mandar and a nagara lie in the akhra. What happens here during a festival?",
+      "source_and_licence": "Original drawing made for Lokdhara by the project team (2026); no people shown; CC BY 4.0",
+      "topic_tags": [
+        "music_and_dance",
+        "festivals_and_rituals"
+      ]
+    },
+    {
+      "prompt_key": "image-cattle-pond",
+      "prompt_type": "image",
+      "image": "images/cattle-pond.webp",
+      "text": "तालाब के पास गाय और बकरियाँ हैं। आप अपने पशुओं की देखभाल कैसे करते हैं?",
+      "text_language_tag": "hi",
+      "script_code": "Deva",
+      "translation_en": "Cows and goats are near the pond. How do you look after your animals?",
+      "source_and_licence": "Original drawing made for Lokdhara by the project team (2026); no people shown; CC BY 4.0",
+      "topic_tags": [
+        "animals_and_livestock"
+      ]
+    },
+    {
+      "prompt_key": "image-monsoon-rain",
+      "prompt_type": "image",
+      "image": "images/monsoon-rain.webp",
+      "text": "गाँव में तेज़ बारिश हो रही है। बरसात के दिनों में क्या-क्या होता है?",
+      "text_language_tag": "hi",
+      "script_code": "Deva",
+      "translation_en": "Heavy rain is falling on the village. What happens during the rainy days?",
+      "source_and_licence": "Original drawing made for Lokdhara by the project team (2026); no people shown; CC BY 4.0",
+      "topic_tags": [
+        "water_and_weather"
+      ]
+    },
+    {
+      "prompt_key": "image-harvest-stacks",
+      "prompt_type": "image",
+      "image": "images/harvest-stacks.webp",
+      "text": "धान कट गया है। कटाई और धान झाड़ने के बारे में बताइए।",
+      "text_language_tag": "hi",
+      "script_code": "Deva",
+      "translation_en": "The paddy has been cut. Talk about harvesting and threshing.",
+      "source_and_licence": "Original drawing made for Lokdhara by the project team (2026); no people shown; CC BY 4.0",
+      "topic_tags": [
+        "agriculture"
+      ]
+    },
+    {
+      "prompt_key": "test-situation-rain",
+      "prompt_type": "situation",
+      "text": "बारिश के किसी दिन के बारे में बताइए।",
+      "text_language_tag": "hi",
+      "translation_en": "Tell us about a rainy day.",
+      "source_and_licence": "Lokdhara test prompt for development; not reviewed, not for real collection",
+      "topic_tags": [
+        "weather"
+      ]
+    },
+    {
+      "prompt_key": "test-situation-market",
+      "prompt_type": "situation",
+      "text": "बाज़ार जाने के बारे में बताइए: आप क्या खरीदते हैं?",
+      "text_language_tag": "hi",
+      "translation_en": "Tell us about going to the market: what do you buy?",
+      "source_and_licence": "Lokdhara test prompt for development; not reviewed, not for real collection",
+      "topic_tags": [
+        "food"
+      ]
+    },
+    {
+      "prompt_key": "test-situation-festival",
+      "prompt_type": "situation",
+      "text": "आपको कौन-सा त्योहार पसंद है, और उसमें क्या होता है?",
+      "text_language_tag": "hi",
+      "translation_en": "Which festival do you like, and what happens during it?",
+      "source_and_licence": "Lokdhara test prompt for development; not reviewed, not for real collection",
+      "topic_tags": [
+        "festival"
+      ]
+    },
+    {
+      "prompt_key": "test-read-placeholder-latin",
+      "prompt_type": "read_sentence",
+      "text": "Yah ek pariksha vakya hai.",
+      "text_language_tag": "hi",
+      "script_code": "Latn",
+      "translation_en": "This is a test sentence.",
+      "source_and_licence": "Lokdhara test prompt for development; not reviewed, not for real collection",
+      "topic_tags": [
+        "test"
+      ],
+      "note": "Hindi placeholder until Mundari sentences in Latin letters are written."
+    },
+    {
+      "prompt_key": "test-read-placeholder-latin-2",
+      "prompt_type": "read_sentence",
+      "text": "Yah doosra pariksha vakya hai.",
+      "text_language_tag": "hi",
+      "script_code": "Latn",
+      "translation_en": "This is the second test sentence.",
+      "source_and_licence": "Lokdhara test prompt for development; not reviewed, not for real collection",
+      "topic_tags": [
+        "test"
+      ],
+      "note": "Hindi placeholder until Mundari sentences in Latin letters are written."
+    },
+    {
+      "prompt_key": "test-read-placeholder-nagm",
+      "prompt_type": "read_sentence",
+      "text": "𞓓𞓕𞓙 𞓤𞓢 𞓑𞓕𞓣𞓚𞓢𞓛𞓕𞓨 𞓗𞓕𞓢𞓓𞓕 𞓙𞓕𞓚",
+      "text_language_tag": "hi",
+      "script_code": "Nagm",
+      "translation_en": "This is a test sentence.",
+      "source_and_licence": "Lokdhara test prompt for development; not reviewed, not for real collection",
+      "topic_tags": [
+        "test"
+      ],
+      "note": "The Hindi placeholder 'yah ek pariksan bakya hai' spelt letter by letter; not checked by a Nag Mundari reader."
+    },
+    {
+      "prompt_key": "test-read-placeholder-nagm-2",
+      "prompt_type": "read_sentence",
+      "text": "𞓓𞓕𞓙 𞓡𞓟𞓛𞓣𞓕 𞓑𞓕𞓣𞓚𞓢𞓛𞓕𞓨 𞓗𞓕𞓢𞓓𞓕 𞓙𞓕𞓚",
+      "text_language_tag": "hi",
+      "script_code": "Nagm",
+      "translation_en": "This is the second test sentence.",
+      "source_and_licence": "Lokdhara test prompt for development; not reviewed, not for real collection",
+      "topic_tags": [
+        "test"
+      ],
+      "note": "The Hindi placeholder 'yah dusra pariksan bakya hai' spelt letter by letter; not checked by a Nag Mundari reader."
+    }
+  ],
+  "retire": [
+    "test-image-house",
+    "test-image-river",
+    "test-image-cooking",
+    "test-read-placeholder",
+    "test-read-placeholder-2"
+  ]
+}
