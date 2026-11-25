@@ -96,7 +96,9 @@
     "scriptLegend": "Which script should the sentence be in?",
     "another": "Show another",
     "imageAlt": "Picture to describe",
-    "listen": "Listen to the prompt"
+    "listen": "Listen to the prompt",
+    "startedAgain": "You have seen all of these. Starting again from the first ones.",
+    "meaning": "Meaning:"
   },
   "scripts": {
     "Deva": "Devanagari",
@@ -264,7 +266,7 @@
     "evidence_required": "Please record the spoken consent.",
     "evidence_not_audio": "The consent recording is not an audio file.",
     "evidence_too_large": "The consent recording is too large.",
-    "no_prompt_available": "No more prompts of this kind right now.",
+    "no_prompt_available": "There are no prompts of this kind yet.",
     "prompt_not_found": "This prompt is no longer available.",
     "prompt_retired": "This prompt is no longer used. Please choose another.",
     "consent_required": "Consent is needed before uploading.",

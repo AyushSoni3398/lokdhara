@@ -9,7 +9,7 @@ from app import cli
 from app.config import Settings
 from app.modules.identity.models import User, UserRole
 from app.object_store import ObjectStore
-from tests.conftest import requires_postgres
+from tests.conftest import MakeUser, requires_postgres
 
 
 def test_seed_dev_refuses_outside_local_environments(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -74,7 +74,30 @@ def test_seed_dev_adds_test_consent_forms_and_prompts_once(
     forms = list(db.scalars(select(ConsentForm)))
     assert sorted(f.language for f in forms) == ["en", "hi"]
     assert all(f.is_test_form for f in forms)
-    assert len(list(db.scalars(select(Prompt.id)))) == 12
+    assert len(list(db.scalars(select(Prompt.id)))) == 27  # backend/content/prompts
+
+
+@requires_postgres
+def test_load_prompts_adds_drafts_once_and_needs_staff(
+    monkeypatch: pytest.MonkeyPatch,
+    engine: Engine,
+    db: Session,
+    object_store: ObjectStore,
+    make_user: MakeUser,
+) -> None:
+    from app.modules.prompts.models import Prompt
+
+    monkeypatch.setattr(cli, "get_engine", lambda: engine)
+    monkeypatch.setattr(cli, "get_object_store", lambda: object_store)
+    make_user("asha", "contributor")
+    make_user("ravi", "reviewer")
+    assert cli.main(["load-prompts", "--as", "asha"]) == 1
+    assert cli.main(["load-prompts", "--as", "ravi", "--approve"]) == 1  # only admins approve
+    assert cli.main(["load-prompts", "--as", "ravi"]) == 0
+    assert cli.main(["load-prompts", "--as", "ravi"]) == 0
+    statuses = list(db.scalars(select(Prompt.status)))
+    assert len(statuses) == 27
+    assert set(statuses) == {"draft"}
 
 
 @requires_postgres

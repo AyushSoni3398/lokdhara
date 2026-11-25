@@ -171,3 +171,5 @@ code { overflow-wrap: anywhere; }
 .key:active, .key[aria-pressed='true'] { background: #f6ebe1; }
 .field { display: grid; gap: 6px; }
 .field > label { font-weight: 600; }
+/* What a prompt means, in the app's language (ADR-036). */
+.prompt-meaning { margin: 8px 0 0; font-size: 1rem; color: #5a4a3c; }

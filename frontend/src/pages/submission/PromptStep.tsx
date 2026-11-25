@@ -8,7 +8,9 @@ import { ErrorMessage } from '../../components/ErrorMessage'
 
 export const READ_SCRIPTS: Script[] = ['Deva', 'Latn', 'Nagm']
 
-/** Shows one approved prompt at a time; "show another" skips it (docs/RECORDING_MODES.md §1). */
+/** Shows one approved prompt at a time; "show another" skips it (docs/RECORDING_MODES.md §1).
+ * The server remembers what each person has been shown, so prompts do not come back on a
+ * later visit either, until all of a kind have been seen (ADR-036). */
 export function PromptStep({
   mode,
   chosen,
@@ -79,6 +81,11 @@ export function PromptStep({
           }}
         />
       )}
+      {chosen?.started_again && (
+        <p className="note" role="status">
+          {t('prompt.startedAgain')}
+        </p>
+      )}
       {chosen && <PromptCard prompt={chosen} />}
       <ErrorMessage error={error} />
       {type && (
@@ -91,7 +98,11 @@ export function PromptStep({
 }
 
 export function PromptCard({ prompt }: { prompt: Prompt }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  // The meaning in the app's language, unless the prompt is already in it.
+  const english = i18n.language.startsWith('en')
+  const meaning = english ? prompt.translation_en : prompt.translation_hi
+  const meaningTag = english ? 'en' : 'hi'
   return (
     <figure className="prompt-card">
       {prompt.image_url && <img src={prompt.image_url} alt={t('prompt.imageAlt')} />}
@@ -102,6 +113,11 @@ export function PromptCard({ prompt }: { prompt: Prompt }) {
         >
           {prompt.text}
         </figcaption>
+      )}
+      {meaning && prompt.text_language_tag !== meaningTag && (
+        <p className="prompt-meaning" lang={meaningTag}>
+          {t('prompt.meaning')} {meaning}
+        </p>
       )}
       {prompt.audio_url && (
         <audio controls src={prompt.audio_url} aria-label={t('prompt.listen')} />

@@ -15,6 +15,7 @@ Status: **Proposed.** Retention periods are placeholders until the data steward 
 | Speaker identity details | Until no longer needed for contact, or on withdrawal | Minimisation |
 | Audit events | 3 years (proposed) | Accountability |
 | Session rows | 30 days after expiry | Security |
+| Prompts shown to a person (`prompt_views`, ADR-036) | Until they have seen every prompt of that kind (then cleared), or the account is deleted | Avoid repeats |
 | Export packages | 7 days after creation | Minimise copies |
 | Database backups | 30 daily + 12 monthly (proposed) | Recovery |
 | Application logs | 30 days | Debugging; contain no content |

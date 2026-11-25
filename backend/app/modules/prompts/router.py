@@ -44,7 +44,7 @@ def _library_out(prompt: Prompt) -> PromptOut:
 
 @router.get("/prompts/next")
 def next_prompt(
-    _user: Recorder,
+    user: Recorder,
     db: DbSession,
     settings: SettingsDep,
     store: Store,
@@ -52,11 +52,13 @@ def next_prompt(
     script: Script | None = None,
     exclude: Annotated[list[uuid.UUID] | None, Query()] = None,
 ) -> ContributorPromptOut:
-    """One approved prompt, skipping the ones in `exclude` (already shown in this session)."""
-    prompt = service.next_prompt(
-        db, prompt_type=prompt_type, script_code=script, exclude=exclude or []
+    """One approved prompt this person has not been shown before (ADR-036). `exclude` lists the
+    prompts already shown on this page; once every prompt of the kind has been seen, the app
+    starts again and says so with `started_again`."""
+    prompt, started_again = service.next_prompt(
+        db, user, prompt_type=prompt_type, script_code=script, exclude=exclude or []
     )
-    return _contributor_out(prompt, store, settings)
+    return _contributor_out(prompt, store, settings, started_again=started_again)
 
 
 @router.get("/prompts/{prompt_id}")
@@ -67,7 +69,7 @@ def get_prompt(
 
 
 def _contributor_out(
-    prompt: Prompt, store: ObjectStore, settings: SettingsDep
+    prompt: Prompt, store: ObjectStore, settings: SettingsDep, *, started_again: bool = False
 ) -> ContributorPromptOut:
     return ContributorPromptOut(
         id=prompt.id,
@@ -75,6 +77,9 @@ def _contributor_out(
         text=prompt.text,
         text_language_tag=prompt.text_language_tag,
         script_code=prompt.script_code,
+        translation_hi=prompt.translation_hi,
+        translation_en=prompt.translation_en,
+        started_again=started_again,
         image_url=service.signed_media_url(store, settings, prompt.image_object_key),
         audio_url=service.signed_media_url(store, settings, prompt.prompt_audio_object_key),
     )

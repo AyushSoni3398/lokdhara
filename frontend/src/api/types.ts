@@ -104,8 +104,13 @@ export interface Prompt {
   text: string | null
   text_language_tag: string | null
   script_code: Script | null
+  /** What the prompt means, shown under it (ADR-036). */
+  translation_hi: string | null
+  translation_en: string | null
   image_url: string | null
   audio_url: string | null
+  /** The person had seen every prompt of this kind, so the app started again. */
+  started_again: boolean
 }
 
 export type Kind = 'audio' | 'text' | 'audio_text'

@@ -1,7 +1,6 @@
 """The prompt library (ADR-018, docs/RECORDING_MODES.md, docs/API_SPECIFICATION.md §4a)."""
 
 import json
-import struct
 import uuid
 from collections import Counter
 from pathlib import Path
@@ -16,7 +15,7 @@ from app.config import Settings
 from app.image_formats import sniff_image
 from app.modules.audit.models import AuditEvent
 from app.modules.prompts import service
-from app.modules.prompts.dev_images import SCENES, draw_png
+from app.modules.prompts.content_pack import DEFAULT_PACK, load_pack, read_pack
 from app.modules.prompts.models import Prompt
 from app.object_store import Bucket, ObjectStore
 from tests.conftest import MakeUser, TestUser, act_as, requires_postgres
@@ -198,10 +197,6 @@ def test_contributors_get_approved_prompts_only(
     assert shown.status_code == 200, shown.text
     assert shown.json()["id"] == approved["id"]
     assert client.get(f"/api/v1/prompts/{draft['id']}").status_code == 404
-    none_left = client.get(
-        "/api/v1/prompts/next", params={"type": "situation", "exclude": [approved["id"]]}
-    )
-    assert none_left.json()["code"] == "no_prompt_available"
 
 
 def test_researchers_are_not_shown_prompts(
@@ -244,12 +239,104 @@ def test_topics_are_balanced(db: Session, make_user: MakeUser) -> None:
         db.add(_row(f"crowded-{index}", ["farming"], author.id))
     db.add(_row("lonely-one", ["festival"], author.id))
     db.commit()
-    picks = Counter(
-        service.next_prompt(db, prompt_type="situation", script_code=None, exclude=[]).topic_tags[0]
-        for _ in range(200)
-    )
+    approved = [Prompt.status == "approved"]
+    picks = Counter(_topic(service._pick(db, approved)) for _ in range(200))
     # Each topic is picked about half the time, not 90% / 10%.
     assert picks["festival"] > 60
+
+
+def _topic(prompt: Prompt | None) -> str:
+    assert prompt is not None
+    return prompt.topic_tags[0]
+
+
+# ------------------------------------------------------------------ no repeats (ADR-036)
+
+
+def _next(client: TestClient, *exclude: str) -> dict[str, Any]:
+    shown = client.get("/api/v1/prompts/next", params={"type": "situation", "exclude": exclude})
+    assert shown.status_code == 200, shown.text
+    result: dict[str, Any] = shown.json()
+    return result
+
+
+def test_show_another_does_not_repeat_until_all_are_seen(
+    client: TestClient, admin: TestUser, make_user: MakeUser
+) -> None:
+    ids = {_approved(client, _situation(f"walk-{n}"))["id"] for n in range(4)}
+    act_as(client, make_user("asha", "contributor"))
+    # Even without `exclude` (leaving the page and coming back), nothing comes back.
+    first_round = [_next(client) for _ in range(4)]
+    assert {p["id"] for p in first_round} == ids
+    assert not any(p["started_again"] for p in first_round)
+    # Then the app starts again, and says so.
+    again = _next(client)
+    assert again["started_again"] is True
+    assert again["id"] in ids
+    assert _next(client)["started_again"] is False
+
+
+def test_starting_again_skips_the_prompt_on_screen(
+    client: TestClient, admin: TestUser, make_user: MakeUser
+) -> None:
+    for n in range(2):
+        _approved(client, _situation(f"walk-{n}"))
+    act_as(client, make_user("asha", "contributor"))
+    first = _next(client)
+    second = _next(client, first["id"])
+    assert second["id"] != first["id"]
+    for _ in range(5):
+        again = _next(client, first["id"], second["id"])
+        assert again["started_again"] is True
+        assert again["id"] == first["id"]  # not the one still on screen
+        client.get("/api/v1/prompts/next", params={"type": "situation"})  # see the other one
+
+
+def test_what_one_person_saw_does_not_hide_prompts_from_another(
+    client: TestClient, admin: TestUser, make_user: MakeUser
+) -> None:
+    only = _approved(client, _situation())
+    act_as(client, make_user("asha", "contributor"))
+    _next(client)
+    act_as(client, make_user("ravi", "contributor"))
+    shown = _next(client)
+    assert shown["id"] == only["id"]
+    assert shown["started_again"] is False
+
+
+def test_a_new_version_of_a_seen_prompt_still_counts_as_seen(
+    client: TestClient, admin: TestUser, make_user: MakeUser
+) -> None:
+    old = _approved(client, _situation("walk-1"))
+    other = _approved(client, _situation("walk-2"))
+    asha = make_user("asha", "contributor")
+    act_as(client, asha)
+    seen = _next(client)
+    act_as(client, admin)
+    edited = client.post(
+        f"{ADMIN}/{seen['id']}/versions", data={"prompt": json.dumps({"text": "New words."})}
+    ).json()
+    client.post(f"{ADMIN}/{edited['id']}/approve")
+    act_as(client, asha)
+    assert _next(client)["id"] == ({old["id"], other["id"]} - {seen["id"]}).pop()
+
+
+def test_no_prompts_of_a_kind_is_a_clear_error(
+    client: TestClient, admin: TestUser, make_user: MakeUser
+) -> None:
+    act_as(client, make_user("asha", "contributor"))
+    empty = client.get("/api/v1/prompts/next", params={"type": "situation"})
+    assert empty.status_code == 404
+    assert empty.json()["code"] == "no_prompt_available"
+
+
+def test_translations_are_shown_with_the_prompt(
+    client: TestClient, admin: TestUser, make_user: MakeUser
+) -> None:
+    _approved(client, _situation(translation_hi="खेत की सुबह", translation_en="A farm morning"))
+    act_as(client, make_user("asha", "contributor"))
+    shown = _next(client)
+    assert (shown["translation_hi"], shown["translation_en"]) == ("खेत की सुबह", "A farm morning")
 
 
 def _row(key: str, topics: list[str], author: uuid.UUID) -> Prompt:
@@ -266,28 +353,51 @@ def _row(key: str, topics: list[str], author: uuid.UUID) -> Prompt:
     )
 
 
-def test_dev_prompts_are_seeded_once(
+# ------------------------------------------------------------------ prompt files (ADR-036)
+
+
+def test_prompt_files_are_complete() -> None:
+    pack = read_pack(DEFAULT_PACK)
+    real = [p for p in pack.prompts if not p.prompt_key.startswith("test-")]
+    reads = [p for p in real if p.prompt_type == "read_sentence"]
+    pictures = [p for p in real if p.prompt_type == "image"]
+    assert len(reads) == 10
+    assert len(pictures) == 10
+    for prompt in reads:
+        assert (prompt.text_language_tag, prompt.script_code) == ("unr", "Deva")
+        assert prompt.translation_hi
+        assert prompt.translation_en
+    for prompt in pictures:
+        assert prompt.image is not None
+        head = (DEFAULT_PACK.parent / prompt.image).read_bytes()[:16]
+        assert sniff_image(head) == "webp"
+        assert prompt.text
+        assert prompt.translation_en
+
+
+def test_prompt_files_load_once_and_retire_old_test_prompts(
     db: Session, make_user: MakeUser, object_store: ObjectStore, settings: Settings
 ) -> None:
     author = make_user("dev-admin", "admin")
-    assert service.ensure_dev_prompts(db, object_store, settings, author.id) == 12
+    db.add(_row("test-image-house", ["home"], author.id))
     db.commit()
-    assert service.ensure_dev_prompts(db, object_store, settings, author.id) == 0
-    prompts = list(db.scalars(select(Prompt)))
-    assert all(prompt.prompt_key.startswith("test-") for prompt in prompts)
-    # Every reading script has a sentence, and every picture prompt a stored PNG.
+    first = load_pack(db, object_store, settings, DEFAULT_PACK, actor_id=author.id, approve=True)
+    db.commit()
+    assert len(first.added) == 27
+    assert first.retired == ["test-image-house"]
+    again = load_pack(db, object_store, settings, DEFAULT_PACK, actor_id=author.id, approve=True)
+    assert (again.added, again.retired) == ([], [])
+
+    prompts = list(db.scalars(select(Prompt).where(Prompt.status == "approved")))
+    assert len(prompts) == 27
+    # Every reading script has a sentence, and every picture is in object storage.
     scripts = {p.script_code for p in prompts if p.prompt_type == "read_sentence"}
     assert scripts == {"Deva", "Latn", "Nagm"}
     images = [p.image_object_key for p in prompts if p.prompt_type == "image"]
-    assert len(images) == 3
+    assert len(images) == 10
     for key in images:
         assert key is not None
-        assert b"".join(object_store.open(Bucket.DERIVED, key)).startswith(b"\x89PNG")
-
-
-def test_dev_pictures_are_valid_pngs() -> None:
-    for name in SCENES:
-        png = draw_png(name)
-        assert sniff_image(png[:16]) == "png"
-        width, height = struct.unpack(">II", png[16:24])
-        assert (width, height) == (480, 320)
+        stored = b"".join(object_store.open(Bucket.DERIVED, key))
+        assert sniff_image(stored[:16]) == "webp"
+    loaded = db.scalars(select(AuditEvent).where(AuditEvent.action == "prompt.load")).all()
+    assert len(loaded) == 27
