@@ -2,6 +2,7 @@
 
     uv run python -m app.cli create-admin --username asha --display-name "Asha"
     uv run python -m app.cli seed-dev          # synthetic users, test consent forms and prompts
+    uv run python -m app.cli load-prompts --as asha [--approve]   # prompt texts and pictures
     uv run python -m app.cli ping-worker       # enqueue a no-op job to check the worker
     uv run python -m app.cli verify-restore --withdrawal-log log.csv   # after a restore
     uv run python -m app.cli reset-mfa --username asha   # lost phone and recovery codes
@@ -27,7 +28,7 @@ from app.modules.identity import mfa_service, service
 from app.modules.identity.models import ROLES, User, UserRole
 from app.modules.ops.restore import check_restore
 from app.modules.processing.queue import enqueue
-from app.modules.prompts import service as prompts
+from app.modules.prompts.content_pack import DEFAULT_PACK, PackError, load_pack
 from app.object_store import get_object_store
 from app.security import new_token
 
@@ -99,7 +100,10 @@ def seed_dev() -> int:
         forms = consents.ensure_dev_forms(db)
         admin_id = db.scalar(select(User.id).where(User.username == "dev-admin"))
         assert admin_id is not None  # noqa: S101 - created above or by an earlier run
-        added_prompts = prompts.ensure_dev_prompts(db, get_object_store(), settings, admin_id)
+        # The same prompt files load-prompts uses, approved so they can be tried at once.
+        loaded = load_pack(
+            db, get_object_store(), settings, DEFAULT_PACK, actor_id=admin_id, approve=True
+        )
         db.commit()
     if not created:
         print("Development users already exist.")
@@ -107,8 +111,46 @@ def seed_dev() -> int:
         print(f"{username:16} {password}")
     if forms:
         print(f"Added test consent forms: {', '.join(forms)} (not for real data).")
-    if added_prompts:
-        print(f"Added {added_prompts} test prompts (Hindi placeholders, not for real data).")
+    if loaded.added:
+        print(f"Added {len(loaded.added)} prompts from {DEFAULT_PACK.name} (approved for testing).")
+    if loaded.retired:
+        print(f"Retired old test prompts: {', '.join(loaded.retired)}.")
+    return 0
+
+
+def load_prompts(username: str, approve: bool, pack: Path) -> int:
+    """Copies the prompt files into the database (ADR-036). New prompts are drafts for an admin
+    to check and approve, unless --approve says they have been checked already."""
+    settings = get_settings()
+    with Session(get_engine()) as db:
+        user = db.scalar(select(User).where(User.username == service.normalize_username(username)))
+        roles = set(
+            db.scalars(
+                select(UserRole.role).where(
+                    UserRole.user_id == (user.id if user else None),
+                    UserRole.revoked_at.is_(None),
+                )
+            )
+        )
+        needed = {"admin"} if approve else {"admin", "reviewer"}
+        if user is None or not roles & needed:
+            print(
+                f"'{username}' must be an {'administrator' if approve else 'admin or reviewer'}.",
+                file=sys.stderr,
+            )
+            return 1
+        try:
+            loaded = load_pack(
+                db, get_object_store(), settings, pack, actor_id=user.id, approve=approve
+            )
+        except PackError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
+        db.commit()
+    state = "approved" if approve else "drafts waiting for an admin to approve"
+    print(f"Added {len(loaded.added)} prompts ({state}); the others were already there.")
+    if loaded.retired:
+        print(f"Retired: {', '.join(loaded.retired)}.")
     return 0
 
 
@@ -178,6 +220,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         help=f"create synthetic users ({', '.join(ROLES)}), test consent forms and prompts",
     )
     commands.add_parser("ping-worker", help="enqueue a no-op job to check the worker")
+    load = commands.add_parser(
+        "load-prompts", help="copy the prompt texts and pictures into the database"
+    )
+    load.add_argument("--as", dest="username", required=True, help="admin or reviewer username")
+    load.add_argument("--approve", action="store_true", help="approve them (admins only)")
+    load.add_argument("--pack", type=Path, default=DEFAULT_PACK, help="prompts.json to load")
     verify = commands.add_parser("verify-restore", help="check a database restored from backup")
     verify.add_argument("--sample", type=int, default=20, help="originals to checksum")
     verify.add_argument("--withdrawal-log", type=Path, help="decrypted withdrawal log CSV")
@@ -192,6 +240,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return create_admin(args.username, args.display_name, args.password_stdin)
     if args.command == "ping-worker":
         return ping_worker()
+    if args.command == "load-prompts":
+        return load_prompts(args.username, args.approve, args.pack)
     return seed_dev()
 
 

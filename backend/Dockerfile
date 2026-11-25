@@ -17,6 +17,7 @@ RUN uv sync --locked --no-dev --no-install-project
 COPY alembic.ini ./
 COPY migrations ./migrations
 COPY app ./app
+COPY content ./content
 RUN uv sync --locked --no-dev
 
 # Never run as root; /data holds the local object store and is owned by this user.

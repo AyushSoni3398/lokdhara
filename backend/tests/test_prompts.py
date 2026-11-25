@@ -1,7 +1,6 @@
 """The prompt library (ADR-018, docs/RECORDING_MODES.md, docs/API_SPECIFICATION.md §4a)."""
 
 import json
-import struct
 import uuid
 from collections import Counter
 from pathlib import Path
@@ -16,7 +15,7 @@ from app.config import Settings
 from app.image_formats import sniff_image
 from app.modules.audit.models import AuditEvent
 from app.modules.prompts import service
-from app.modules.prompts.dev_images import SCENES, draw_png
+from app.modules.prompts.content_pack import DEFAULT_PACK, load_pack, read_pack
 from app.modules.prompts.models import Prompt
 from app.object_store import Bucket, ObjectStore
 from tests.conftest import MakeUser, TestUser, act_as, requires_postgres
@@ -266,28 +265,48 @@ def _row(key: str, topics: list[str], author: uuid.UUID) -> Prompt:
     )
 
 
-def test_dev_prompts_are_seeded_once(
+# ------------------------------------------------------------------ prompt files (ADR-036)
+
+
+def test_prompt_files_are_complete() -> None:
+    pack = read_pack(DEFAULT_PACK)
+    real = [p for p in pack.prompts if not p.prompt_key.startswith("test-")]
+    reads = [p for p in real if p.prompt_type == "read_sentence"]
+    pictures = [p for p in real if p.prompt_type == "image"]
+    assert len(reads) == 10
+    assert len(pictures) == 10
+    for prompt in reads:
+        assert (prompt.text_language_tag, prompt.script_code) == ("unr", "Deva")
+    for prompt in pictures:
+        assert prompt.image is not None
+        head = (DEFAULT_PACK.parent / prompt.image).read_bytes()[:16]
+        assert sniff_image(head) == "webp"
+        assert prompt.text
+
+
+def test_prompt_files_load_once_and_retire_old_test_prompts(
     db: Session, make_user: MakeUser, object_store: ObjectStore, settings: Settings
 ) -> None:
     author = make_user("dev-admin", "admin")
-    assert service.ensure_dev_prompts(db, object_store, settings, author.id) == 12
+    db.add(_row("test-image-house", ["home"], author.id))
     db.commit()
-    assert service.ensure_dev_prompts(db, object_store, settings, author.id) == 0
-    prompts = list(db.scalars(select(Prompt)))
-    assert all(prompt.prompt_key.startswith("test-") for prompt in prompts)
-    # Every reading script has a sentence, and every picture prompt a stored PNG.
+    first = load_pack(db, object_store, settings, DEFAULT_PACK, actor_id=author.id, approve=True)
+    db.commit()
+    assert len(first.added) == 27
+    assert first.retired == ["test-image-house"]
+    again = load_pack(db, object_store, settings, DEFAULT_PACK, actor_id=author.id, approve=True)
+    assert (again.added, again.retired) == ([], [])
+
+    prompts = list(db.scalars(select(Prompt).where(Prompt.status == "approved")))
+    assert len(prompts) == 27
+    # Every reading script has a sentence, and every picture is in object storage.
     scripts = {p.script_code for p in prompts if p.prompt_type == "read_sentence"}
     assert scripts == {"Deva", "Latn", "Nagm"}
     images = [p.image_object_key for p in prompts if p.prompt_type == "image"]
-    assert len(images) == 3
+    assert len(images) == 10
     for key in images:
         assert key is not None
-        assert b"".join(object_store.open(Bucket.DERIVED, key)).startswith(b"\x89PNG")
-
-
-def test_dev_pictures_are_valid_pngs() -> None:
-    for name in SCENES:
-        png = draw_png(name)
-        assert sniff_image(png[:16]) == "png"
-        width, height = struct.unpack(">II", png[16:24])
-        assert (width, height) == (480, 320)
+        stored = b"".join(object_store.open(Bucket.DERIVED, key))
+        assert sniff_image(stored[:16]) == "webp"
+    loaded = db.scalars(select(AuditEvent).where(AuditEvent.action == "prompt.load")).all()
+    assert len(loaded) == 27
