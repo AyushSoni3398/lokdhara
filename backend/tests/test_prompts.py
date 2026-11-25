@@ -197,10 +197,6 @@ def test_contributors_get_approved_prompts_only(
     assert shown.status_code == 200, shown.text
     assert shown.json()["id"] == approved["id"]
     assert client.get(f"/api/v1/prompts/{draft['id']}").status_code == 404
-    none_left = client.get(
-        "/api/v1/prompts/next", params={"type": "situation", "exclude": [approved["id"]]}
-    )
-    assert none_left.json()["code"] == "no_prompt_available"
 
 
 def test_researchers_are_not_shown_prompts(
@@ -243,12 +239,95 @@ def test_topics_are_balanced(db: Session, make_user: MakeUser) -> None:
         db.add(_row(f"crowded-{index}", ["farming"], author.id))
     db.add(_row("lonely-one", ["festival"], author.id))
     db.commit()
-    picks = Counter(
-        service.next_prompt(db, prompt_type="situation", script_code=None, exclude=[]).topic_tags[0]
-        for _ in range(200)
-    )
+    approved = [Prompt.status == "approved"]
+    picks = Counter(_topic(service._pick(db, approved)) for _ in range(200))
     # Each topic is picked about half the time, not 90% / 10%.
     assert picks["festival"] > 60
+
+
+def _topic(prompt: Prompt | None) -> str:
+    assert prompt is not None
+    return prompt.topic_tags[0]
+
+
+# ------------------------------------------------------------------ no repeats (ADR-036)
+
+
+def _next(client: TestClient, *exclude: str) -> dict[str, Any]:
+    shown = client.get("/api/v1/prompts/next", params={"type": "situation", "exclude": exclude})
+    assert shown.status_code == 200, shown.text
+    result: dict[str, Any] = shown.json()
+    return result
+
+
+def test_show_another_does_not_repeat_until_all_are_seen(
+    client: TestClient, admin: TestUser, make_user: MakeUser
+) -> None:
+    ids = {_approved(client, _situation(f"walk-{n}"))["id"] for n in range(4)}
+    act_as(client, make_user("asha", "contributor"))
+    # Even without `exclude` (leaving the page and coming back), nothing comes back.
+    first_round = [_next(client) for _ in range(4)]
+    assert {p["id"] for p in first_round} == ids
+    assert not any(p["started_again"] for p in first_round)
+    # Then the app starts again, and says so.
+    again = _next(client)
+    assert again["started_again"] is True
+    assert again["id"] in ids
+    assert _next(client)["started_again"] is False
+
+
+def test_starting_again_skips_the_prompt_on_screen(
+    client: TestClient, admin: TestUser, make_user: MakeUser
+) -> None:
+    for n in range(2):
+        _approved(client, _situation(f"walk-{n}"))
+    act_as(client, make_user("asha", "contributor"))
+    first = _next(client)
+    second = _next(client, first["id"])
+    assert second["id"] != first["id"]
+    for _ in range(5):
+        again = _next(client, first["id"], second["id"])
+        assert again["started_again"] is True
+        assert again["id"] == first["id"]  # not the one still on screen
+        client.get("/api/v1/prompts/next", params={"type": "situation"})  # see the other one
+
+
+def test_what_one_person_saw_does_not_hide_prompts_from_another(
+    client: TestClient, admin: TestUser, make_user: MakeUser
+) -> None:
+    only = _approved(client, _situation())
+    act_as(client, make_user("asha", "contributor"))
+    _next(client)
+    act_as(client, make_user("ravi", "contributor"))
+    shown = _next(client)
+    assert shown["id"] == only["id"]
+    assert shown["started_again"] is False
+
+
+def test_a_new_version_of_a_seen_prompt_still_counts_as_seen(
+    client: TestClient, admin: TestUser, make_user: MakeUser
+) -> None:
+    old = _approved(client, _situation("walk-1"))
+    other = _approved(client, _situation("walk-2"))
+    asha = make_user("asha", "contributor")
+    act_as(client, asha)
+    seen = _next(client)
+    act_as(client, admin)
+    edited = client.post(
+        f"{ADMIN}/{seen['id']}/versions", data={"prompt": json.dumps({"text": "New words."})}
+    ).json()
+    client.post(f"{ADMIN}/{edited['id']}/approve")
+    act_as(client, asha)
+    assert _next(client)["id"] == ({old["id"], other["id"]} - {seen["id"]}).pop()
+
+
+def test_no_prompts_of_a_kind_is_a_clear_error(
+    client: TestClient, admin: TestUser, make_user: MakeUser
+) -> None:
+    act_as(client, make_user("asha", "contributor"))
+    empty = client.get("/api/v1/prompts/next", params={"type": "situation"})
+    assert empty.status_code == 404
+    assert empty.json()["code"] == "no_prompt_available"
 
 
 def test_translations_are_shown_with_the_prompt(
@@ -256,7 +335,7 @@ def test_translations_are_shown_with_the_prompt(
 ) -> None:
     _approved(client, _situation(translation_hi="खेत की सुबह", translation_en="A farm morning"))
     act_as(client, make_user("asha", "contributor"))
-    shown = client.get("/api/v1/prompts/next", params={"type": "situation"}).json()
+    shown = _next(client)
     assert (shown["translation_hi"], shown["translation_en"]) == ("खेत की सुबह", "A farm morning")
 
 

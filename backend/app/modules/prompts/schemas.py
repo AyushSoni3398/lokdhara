@@ -89,3 +89,6 @@ class ContributorPromptOut(BaseModel):
     translation_en: str | None
     image_url: str | None
     audio_url: str | None
+    # True when this person had seen every prompt of this kind, so the app started again from
+    # the beginning (ADR-036). The app says so instead of silently repeating.
+    started_again: bool = False

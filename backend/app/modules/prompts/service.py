@@ -10,7 +10,8 @@ import uuid
 from collections.abc import Callable
 from typing import BinaryIO
 
-from sqlalchemy import any_, func, select, update
+from sqlalchemy import ColumnElement, any_, delete, func, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from app.audio_formats import CONTENT_TYPES as AUDIO_TYPES
@@ -22,7 +23,7 @@ from app.image_formats import sniff_image
 from app.modules.audit import service as audit
 from app.modules.audit.service import RequestContext
 from app.modules.identity.service import AuthenticatedUser
-from app.modules.prompts.models import Prompt
+from app.modules.prompts.models import Prompt, PromptView
 from app.modules.prompts.schemas import PromptCreateRequest, PromptVersionRequest
 from app.object_store import Bucket, ObjectStore, ObjectTooLarge, new_key
 
@@ -313,18 +314,53 @@ def get_prompt(db: Session, user: AuthenticatedUser, prompt_id: uuid.UUID) -> Pr
 
 
 def next_prompt(
-    db: Session, *, prompt_type: str, script_code: str | None, exclude: list[uuid.UUID]
-) -> Prompt:
-    """A random approved prompt, balanced by topic: first a topic, then a prompt within it, so
-    a topic with many prompts does not crowd out the others."""
+    db: Session,
+    user: AuthenticatedUser,
+    *,
+    prompt_type: str,
+    script_code: str | None,
+    exclude: list[uuid.UUID],
+) -> tuple[Prompt, bool]:
+    """A random approved prompt this person has not been shown before (ADR-036), balanced by
+    topic. Returns the prompt and whether the person had seen them all, so the app started
+    again from the beginning. `exclude` lists the prompts shown on this page, newest last;
+    starting again skips the one still on screen when there is another."""
     if len(exclude) > _MAX_EXCLUDED:
         exclude = exclude[-_MAX_EXCLUDED:]
-    conditions = [Prompt.status == "approved", Prompt.prompt_type == prompt_type]
+    of_kind = [Prompt.status == "approved", Prompt.prompt_type == prompt_type]
     if script_code is not None:
-        conditions.append(Prompt.script_code == script_code)
-    if exclude:
-        conditions.append(Prompt.id.not_in(exclude))
+        of_kind.append(Prompt.script_code == script_code)
+    not_on_page = [Prompt.id.not_in(exclude)] if exclude else []
+    seen = select(PromptView.prompt_key).where(PromptView.user_id == user.id)
 
+    chosen = _pick(db, [*of_kind, *not_on_page, Prompt.prompt_key.not_in(seen)])
+    started_again = False
+    if chosen is None:
+        # Seen them all: forget this kind for this person and start again.
+        keys_of_kind = select(Prompt.prompt_key).where(*of_kind)
+        db.execute(
+            delete(PromptView).where(
+                PromptView.user_id == user.id, PromptView.prompt_key.in_(keys_of_kind)
+            )
+        )
+        on_screen = [Prompt.id.not_in(exclude[-1:])] if exclude else []
+        chosen = _pick(db, [*of_kind, *on_screen]) or _pick(db, of_kind)
+        if chosen is None:
+            db.rollback()
+            raise ApiError(404, "no_prompt_available", "There are no prompts of this kind yet.")
+        started_again = True
+    db.execute(
+        pg_insert(PromptView)
+        .values(user_id=user.id, prompt_key=chosen.prompt_key)
+        .on_conflict_do_nothing()
+    )
+    db.commit()
+    return chosen, started_again
+
+
+def _pick(db: Session, conditions: list[ColumnElement[bool]]) -> Prompt | None:
+    """First a topic, then a prompt within it, so a topic with many prompts does not crowd out
+    the others. None when nothing matches."""
     topics = sorted(
         db.scalars(select(func.unnest(Prompt.topic_tags)).where(*conditions).distinct()).all()
     )
@@ -333,16 +369,15 @@ def next_prompt(
     )
     buckets: list[str | None] = [*topics, *([None] if untagged else [])]
     if not buckets:
-        raise ApiError(404, "no_prompt_available", "There are no more prompts of this kind.")
+        return None
     topic = secrets.choice(buckets)
-    if topic is None:
-        conditions.append(func.cardinality(Prompt.topic_tags) == 0)
-    else:
-        conditions.append(any_(Prompt.topic_tags) == topic)
-    candidates = list(db.scalars(select(Prompt.id).where(*conditions)))
-    chosen = db.get(Prompt, secrets.choice(candidates))
-    assert chosen is not None  # noqa: S101 - just selected under the same conditions
-    return chosen
+    in_topic = (
+        func.cardinality(Prompt.topic_tags) == 0
+        if topic is None
+        else any_(Prompt.topic_tags) == topic
+    )
+    candidates = list(db.scalars(select(Prompt.id).where(*conditions, in_topic)))
+    return db.get(Prompt, secrets.choice(candidates))
 
 
 def signed_media_url(store: ObjectStore, settings: Settings, key: str | None) -> str | None:
