@@ -12,6 +12,8 @@ PromptStatus = Literal["draft", "approved", "retired"]
 # Controlled list to come from Q-X5; until then any short lowercase tag.
 TopicTag = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_-]{1,39}$")]
 PromptText = Annotated[MultiLine, Field(max_length=1000)]
+# What a prompt means in Hindi or English, shown under it (ADR-036).
+Translation = Annotated[MultiLine, Field(max_length=1000)]
 
 
 class PromptCreateRequest(BaseModel):
@@ -23,6 +25,8 @@ class PromptCreateRequest(BaseModel):
     text: PromptText | None = None
     text_language_tag: LanguageTag | None = None
     script_code: Script | None = None
+    translation_hi: Translation | None = None
+    translation_en: Translation | None = None
     source_and_licence: SingleLine = Field(max_length=300)
     topic_tags: list[TopicTag] = Field(default_factory=list, max_length=10)
 
@@ -41,6 +45,8 @@ class PromptVersionRequest(BaseModel):
     text: PromptText | None = None
     text_language_tag: LanguageTag | None = None
     script_code: Script | None = None
+    translation_hi: Translation | None = None
+    translation_en: Translation | None = None
     source_and_licence: SingleLine | None = Field(default=None, max_length=300)
     topic_tags: list[TopicTag] | None = Field(default=None, max_length=10)
 
@@ -57,6 +63,8 @@ class PromptOut(BaseModel):
     text: str | None
     text_language_tag: str | None
     script_code: str | None
+    translation_hi: str | None
+    translation_en: str | None
     has_image: bool
     has_audio: bool
     source_and_licence: str
@@ -77,5 +85,7 @@ class ContributorPromptOut(BaseModel):
     text: str | None
     text_language_tag: str | None
     script_code: str | None
+    translation_hi: str | None
+    translation_en: str | None
     image_url: str | None
     audio_url: str | None

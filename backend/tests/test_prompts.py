@@ -251,6 +251,15 @@ def test_topics_are_balanced(db: Session, make_user: MakeUser) -> None:
     assert picks["festival"] > 60
 
 
+def test_translations_are_shown_with_the_prompt(
+    client: TestClient, admin: TestUser, make_user: MakeUser
+) -> None:
+    _approved(client, _situation(translation_hi="खेत की सुबह", translation_en="A farm morning"))
+    act_as(client, make_user("asha", "contributor"))
+    shown = client.get("/api/v1/prompts/next", params={"type": "situation"}).json()
+    assert (shown["translation_hi"], shown["translation_en"]) == ("खेत की सुबह", "A farm morning")
+
+
 def _row(key: str, topics: list[str], author: uuid.UUID) -> Prompt:
     return Prompt(
         prompt_key=key,
@@ -277,11 +286,14 @@ def test_prompt_files_are_complete() -> None:
     assert len(pictures) == 10
     for prompt in reads:
         assert (prompt.text_language_tag, prompt.script_code) == ("unr", "Deva")
+        assert prompt.translation_hi
+        assert prompt.translation_en
     for prompt in pictures:
         assert prompt.image is not None
         head = (DEFAULT_PACK.parent / prompt.image).read_bytes()[:16]
         assert sniff_image(head) == "webp"
         assert prompt.text
+        assert prompt.translation_en
 
 
 def test_prompt_files_load_once_and_retire_old_test_prompts(

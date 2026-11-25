@@ -75,6 +75,8 @@ def _contributor_out(
         text=prompt.text,
         text_language_tag=prompt.text_language_tag,
         script_code=prompt.script_code,
+        translation_hi=prompt.translation_hi,
+        translation_en=prompt.translation_en,
         image_url=service.signed_media_url(store, settings, prompt.image_object_key),
         audio_url=service.signed_media_url(store, settings, prompt.prompt_audio_object_key),
     )

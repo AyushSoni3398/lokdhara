@@ -173,7 +173,15 @@ def new_version(
     changes = body.model_dump(exclude_unset=True)
     fields = {
         name: changes.get(name, getattr(base, name))
-        for name in ("text", "text_language_tag", "script_code", "source_and_licence", "topic_tags")
+        for name in (
+            "text",
+            "text_language_tag",
+            "script_code",
+            "translation_hi",
+            "translation_en",
+            "source_and_licence",
+            "topic_tags",
+        )
     }
     try:
         checked = PromptCreateRequest(
